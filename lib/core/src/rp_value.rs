@@ -1,9 +1,9 @@
 //! Value of models
 
-use errors::Result;
+use crate::errors::Result;
+use crate::{Diagnostics, Flavor, Loc, RpName, RpNumber, Translate, Translator};
 use serde::Serialize;
 use std::fmt;
-use {Diagnostics, Flavor, Loc, RpName, RpNumber, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(

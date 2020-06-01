@@ -1,28 +1,28 @@
 //! Backend for Dart
 
-use backend::PackageProcessor;
-use core::errors::*;
-use core::{self, Handle, Loc};
-use dart_file_spec::DartFileSpec;
-use flavored::{
+use crate::backend::PackageProcessor;
+use crate::core::errors::*;
+use crate::core::{self, Handle, Loc};
+use crate::dart_file_spec::DartFileSpec;
+use crate::flavored::{
     DartFlavor, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpTupleBody,
     RpTypeBody,
 };
+use crate::trans::{self, Translated};
+use crate::utils::{AssertNotNull, AssertType, Comments};
+use crate::{EXT, TYPE_SEP};
 use genco::{dart, Cons, Dart, Element, Quoted, Tokens};
 use std::rc::Rc;
-use trans::{self, Translated};
-use utils::{AssertNotNull, AssertType, Comments};
-use {EXT, TYPE_SEP};
 
 pub struct Compiler<'el> {
     pub env: &'el Translated<DartFlavor>,
-    handle: &'el Handle,
+    handle: &'el dyn Handle,
     map_of_strings: Dart<'el>,
     list_of_dynamic: Dart<'el>,
 }
 
 impl<'el> Compiler<'el> {
-    pub fn new(env: &'el Translated<DartFlavor>, handle: &'el Handle) -> Compiler<'el> {
+    pub fn new(env: &'el Translated<DartFlavor>, handle: &'el dyn Handle) -> Compiler<'el> {
         let core = dart::imported(dart::DART_CORE);
         let string = core.name("String");
         let map = core.name("Map");
@@ -413,7 +413,7 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
         self.env.decl_iter()
     }
 
-    fn handle(&self) -> &'el Handle {
+    fn handle(&self) -> &'el dyn Handle {
         self.handle
     }
 

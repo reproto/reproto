@@ -1,4 +1,5 @@
-use errors::Result;
+use crate::errors::Result;
+use crate::{AsPackage, RpVersionedPackage};
 use serde;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -6,7 +7,6 @@ use std::fmt;
 use std::mem;
 use std::result;
 use std::slice;
-use {AsPackage, RpVersionedPackage};
 
 /// Iterator over parts in a package.
 #[derive(Debug, Clone)]

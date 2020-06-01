@@ -21,18 +21,18 @@ mod flavored;
 pub mod module;
 mod utils;
 
-use backend::{Initializer, IntoBytes};
-use codegen::ServiceCodegen;
-use compiler::Compiler;
-use core::errors::Result;
-use core::{CoreFlavor, Handle, Loc, RpField, RpPackage, Span};
+use crate::backend::{Initializer, IntoBytes};
+use crate::codegen::ServiceCodegen;
+use crate::compiler::Compiler;
+use crate::core::errors::Result;
+use crate::core::{CoreFlavor, Handle, Loc, RpField, RpPackage, Span};
+use crate::manifest::{Lang, Manifest, NoModule, TryFromToml};
+use crate::trans::Session;
+use crate::utils::VersionHelper;
 use genco::{Cons, Python, Tokens};
-use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
-use trans::Session;
-use utils::VersionHelper;
 
 const TYPE_SEP: &str = "_";
 const INIT_PY: &str = "__init__.py";
@@ -122,8 +122,8 @@ impl TryFromToml for PythonModule {
 pub struct Options {
     pub build_getters: bool,
     pub build_constructor: bool,
-    pub service_generators: Vec<Box<ServiceCodegen>>,
-    pub version_helper: Rc<Box<VersionHelper>>,
+    pub service_generators: Vec<Box<dyn ServiceCodegen>>,
+    pub version_helper: Rc<Box<dyn VersionHelper>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -167,7 +167,7 @@ pub fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
     let mut options = Options::new();
 
     for module in modules {
-        let initializer: Box<Initializer<Options = Options>> = match module {
+        let initializer: Box<dyn Initializer<Options = Options>> = match module {
             Requests(config) => Box::new(module::Requests::new(config)),
             Python2(config) => Box::new(module::Python2::new(config)),
         };
@@ -178,7 +178,7 @@ pub fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
     Ok(options)
 }
 
-fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &dyn Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = setup_options(modules)?;
 

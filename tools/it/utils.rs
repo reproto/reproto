@@ -1,3 +1,4 @@
+use crate::Result;
 use diff;
 use relative_path::RelativePathBuf;
 use std::collections::{HashSet, VecDeque};
@@ -6,7 +7,6 @@ use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
-use Result;
 
 /// Extract relative parts from the given path.
 fn relative_parts<'a>(path: &'a Path, depth: usize) -> Result<Vec<&'a str>> {
@@ -76,7 +76,7 @@ pub enum Diff {
 pub fn diff_recursive(src: &Path, dst: &Path, errors: &mut Vec<Diff>) -> Result<()> {
     use self::Diff::*;
     use self::Location::*;
-    use io::ErrorKind::NotFound;
+    use crate::io::ErrorKind::NotFound;
 
     let mut all: HashSet<Vec<String>> = HashSet::new();
 
@@ -208,7 +208,7 @@ pub fn diff_recursive(src: &Path, dst: &Path, errors: &mut Vec<Diff>) -> Result<
 
 /// Recursively copy a directory.
 pub fn copy_dir(source: &Path, target: &Path) -> Result<()> {
-    use io::ErrorKind::NotFound;
+    use crate::io::ErrorKind::NotFound;
 
     for entry in WalkDir::new(source) {
         let entry = entry?;

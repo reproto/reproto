@@ -1,20 +1,20 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use codegen::{
+use crate::codegen::{
     ClassAdded, ClassCodegen, Codegen, Configure, EnumAdded, EnumCodegen, GetterAdded,
     GetterCodegen, InterfaceAdded, InterfaceCodegen, TupleAdded, TupleCodegen,
 };
-use core::errors::Result;
-use core::{Handle, RpSubTypeStrategy};
-use flavored::{RpInterfaceBody, RpPackage};
+use crate::core::errors::Result;
+use crate::core::{Handle, RpSubTypeStrategy};
+use crate::flavored::{RpInterfaceBody, RpPackage};
+use crate::java_file::JavaFile;
+use crate::serialization::Serialization;
+use crate::utils::Override;
 use genco::java::{
     self, Argument, Class, Field, Interface, Method, Modifier, DOUBLE, FLOAT, INTEGER, LONG, SHORT,
 };
 use genco::{Cons, Element, IntoTokens, Java, Quoted, Tokens};
-use java_file::JavaFile;
-use serialization::Serialization;
 use std::rc::Rc;
-use utils::Override;
 
 pub struct Module;
 
@@ -679,7 +679,7 @@ impl JacksonSupport {
 }
 
 impl Codegen for JacksonSupport {
-    fn generate(&self, handle: &Handle) -> Result<()> {
+    fn generate(&self, handle: &dyn Handle) -> Result<()> {
         let package = RpPackage::parse("io.reproto");
 
         JavaFile::new(package, "JacksonSupport", |out| {

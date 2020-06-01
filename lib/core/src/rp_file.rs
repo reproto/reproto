@@ -1,10 +1,10 @@
 //! File declarations
 
-use errors::Result;
+use crate::errors::Result;
+use crate::{Diagnostics, Flavor, RpDecl, Span, Translate, Translator, Version};
 use linked_hash_map::LinkedHashMap;
 use serde::Serialize;
 use std::collections::VecDeque;
-use {Diagnostics, Flavor, RpDecl, Span, Translate, Translator, Version};
 
 /// Information about an enabled feature.
 #[derive(Debug, Clone, Serialize)]
@@ -34,7 +34,6 @@ where
 }
 
 /// Iterator over all declarations in a file.
-#[allow(linkedlist)]
 pub struct ForEachDecl<'a, F: 'static>
 where
     F: Flavor,

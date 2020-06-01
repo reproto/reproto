@@ -1,6 +1,6 @@
 use super::{LockableWrite, Output};
-use core::errors::*;
-use core::{self, Source, Span};
+use crate::core::errors::*;
+use crate::core::{self, Source, Span};
 use log;
 use std::io;
 
@@ -66,11 +66,11 @@ impl<T> Output for NonColored<T>
 where
     T: 'static + LockableWrite,
 {
-    fn lock<'a>(&'a self) -> Box<io::Write + 'a> {
+    fn lock<'a>(&'a self) -> Box<dyn io::Write + 'a> {
         self.out.lock()
     }
 
-    fn logger(&self) -> Box<log::Log + 'static> {
+    fn logger(&self) -> Box<dyn log::Log + 'static> {
         Box::new(NonColoredLogger {
             out: self.out.open_new(),
         })

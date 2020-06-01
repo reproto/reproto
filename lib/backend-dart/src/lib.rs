@@ -21,13 +21,13 @@ mod flavored;
 mod module;
 mod utils;
 
-use compiler::Compiler;
-use core::errors::*;
-use core::{CoreFlavor, Handle};
-use manifest::{Lang, Manifest, NoModule, TryFromToml};
+use crate::compiler::Compiler;
+use crate::core::errors::*;
+use crate::core::{CoreFlavor, Handle};
+use crate::manifest::{Lang, Manifest, NoModule, TryFromToml};
+use crate::trans::Session;
 use std::any::Any;
 use std::path::Path;
-use trans::Session;
 
 const EXT: &str = "dart";
 const TYPE_SEP: &'static str = "_";
@@ -42,7 +42,7 @@ impl Lang for DartLang {
         Some(format!("// {}", input))
     }
 
-    fn field_ident_naming(&self) -> Option<Box<naming::Naming>> {
+    fn field_ident_naming(&self) -> Option<Box<dyn naming::Naming>> {
         Some(Box::new(naming::to_lower_camel()))
     }
 
@@ -125,7 +125,7 @@ impl TryFromToml for DartModule {
     }
 }
 
-fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &dyn Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let _: Vec<DartModule> = manifest::checked_modules(manifest.modules)?;
     let packages = session.packages()?;
     let session = session.translate(flavored::DartFlavorTranslator::new(packages.clone()))?;

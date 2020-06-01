@@ -4,7 +4,9 @@
 //! functions like finding the line of a given span `Source::find_range` or printing pretty
 //! diagnostics.
 
-use errors::Result;
+use crate::errors::Result;
+use crate::utils::{find_range, Position};
+use crate::{Encoding, RelativePathBuf, Span};
 use ropey::Rope;
 use std::fmt;
 use std::fs::File;
@@ -12,8 +14,6 @@ use std::io::{self, Cursor, Read};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use url::Url;
-use utils::{find_range, Position};
-use {Encoding, RelativePathBuf, Span};
 
 #[derive(Debug, Clone)]
 pub enum Readable {
@@ -35,10 +35,10 @@ impl Readable {
     /// Open a reader for this readable.
     ///
     /// Note: It is not guaranteed that it is possible to open the same source multiple times.
-    fn read(&self) -> Result<Box<Read>> {
+    fn read(&self) -> Result<Box<dyn Read>> {
         use self::Readable::*;
 
-        let out: Box<Read> = match *self {
+        let out: Box<dyn Read> = match *self {
             Empty => Box::new(Cursor::new(&[])),
             Bytes(ref bytes) => Box::new(Cursor::new(ArcCursor(Arc::clone(&bytes)))),
             Path(ref path) => Box::new(
@@ -214,7 +214,7 @@ impl Source {
     }
 
     /// Open up a readable.
-    pub fn read(&self) -> Result<Box<Read>> {
+    pub fn read(&self) -> Result<Box<dyn Read>> {
         self.readable.read()
     }
 
@@ -248,7 +248,6 @@ impl fmt::Display for Source {
             // platform-neutral formatting
             return RelativePathBuf::from_path(path.as_ref())
                 .map_err(|_| fmt::Error)?
-                .display()
                 .fmt(fmt);
         }
 

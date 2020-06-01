@@ -1,6 +1,6 @@
 //! Errors for this crate.
 
-use parser;
+use crate::parser;
 use std::error;
 use std::fmt;
 

@@ -19,18 +19,18 @@ mod compiler;
 mod flavored;
 mod module;
 
-use backend::{Initializer, IntoBytes};
-use compiler::Compiler;
-use core::errors::Result;
-use core::{CoreFlavor, Handle};
-use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, SwiftName};
+use crate::backend::{Initializer, IntoBytes};
+use crate::compiler::Compiler;
+use crate::core::errors::Result;
+use crate::core::{CoreFlavor, Handle};
+use crate::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, SwiftName};
+use crate::manifest::{Lang, Manifest, NoModule, TryFromToml};
+use crate::trans::Session;
 use genco::swift::Swift;
 use genco::Tokens;
-use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
-use trans::Session;
 
 const EXT: &str = "swift";
 const TYPE_SEP: &'static str = "_";
@@ -45,7 +45,7 @@ impl Lang for SwiftLang {
         Some(format!("// {}", input))
     }
 
-    fn package_naming(&self) -> Option<Box<naming::Naming>> {
+    fn package_naming(&self) -> Option<Box<dyn naming::Naming>> {
         Some(Box::new(naming::to_upper_camel()))
     }
 
@@ -170,13 +170,13 @@ impl TryFromToml for SwiftModule {
 pub struct Options {
     /// All types that the struct model should extend.
     pub struct_model_extends: Tokens<'static, Swift<'static>>,
-    pub type_gens: Vec<Box<TypeCodegen>>,
-    pub tuple_gens: Vec<Box<TupleCodegen>>,
-    pub struct_model_gens: Vec<Box<StructModelCodegen>>,
-    pub enum_gens: Vec<Box<EnumCodegen>>,
-    pub interface_gens: Vec<Box<InterfaceCodegen>>,
-    pub interface_model_gens: Vec<Box<InterfaceModelCodegen>>,
-    pub package_gens: Vec<Box<PackageCodegen>>,
+    pub type_gens: Vec<Box<dyn TypeCodegen>>,
+    pub tuple_gens: Vec<Box<dyn TupleCodegen>>,
+    pub struct_model_gens: Vec<Box<dyn StructModelCodegen>>,
+    pub enum_gens: Vec<Box<dyn EnumCodegen>>,
+    pub interface_gens: Vec<Box<dyn InterfaceCodegen>>,
+    pub interface_model_gens: Vec<Box<dyn InterfaceModelCodegen>>,
+    pub package_gens: Vec<Box<dyn PackageCodegen>>,
     /// The provided Any type that should be used in structs.
     pub any_type: Vec<(&'static str, Swift<'static>)>,
 }
@@ -205,7 +205,7 @@ pub fn options(modules: Vec<SwiftModule>) -> Result<Options> {
     for m in modules {
         debug!("+module: {:?}", m);
 
-        let initializer: Box<Initializer<Options = Options>> = match m {
+        let initializer: Box<dyn Initializer<Options = Options>> = match m {
             Grpc => Box::new(module::Grpc::new()),
             Simple => Box::new(module::Simple::new()),
             Codable => Box::new(module::Codable::new()),
@@ -312,7 +312,7 @@ pub struct PackageAdded<'a, 'el: 'a> {
 
 codegen!(PackageCodegen, PackageAdded);
 
-fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &dyn Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = options(modules)?;
 

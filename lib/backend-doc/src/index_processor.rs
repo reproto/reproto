@@ -1,11 +1,11 @@
 //! Processor for service declarations.
 
-use core::errors::*;
-use core::flavored::{RpFile, RpVersionedPackage};
-use doc_builder::DocBuilder;
-use escape::Escape;
-use macros::FormatAttribute;
-use processor::Processor;
+use crate::core::errors::*;
+use crate::core::flavored::{RpFile, RpVersionedPackage};
+use crate::doc_builder::DocBuilder;
+use crate::escape::Escape;
+use crate::macros::FormatAttribute;
+use crate::processor::Processor;
 
 pub struct Data<'a> {
     pub entries: Vec<(&'a RpVersionedPackage, &'a RpFile)>,

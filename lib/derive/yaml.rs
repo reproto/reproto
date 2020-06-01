@@ -1,11 +1,11 @@
-use core;
-use core::errors::Result;
-use format;
+use crate::core;
+use crate::core::errors::Result;
+use crate::format;
+use crate::sir::{FieldSir, Sir};
+use crate::utils::is_datetime;
+use crate::Opaque;
 use linked_hash_map::LinkedHashMap;
 use serde_yaml as yaml;
-use sir::{FieldSir, Sir};
-use utils::is_datetime;
-use Opaque;
 
 #[derive(Debug)]
 pub struct Yaml;
@@ -26,9 +26,9 @@ impl format::Object for yaml::Mapping {
 }
 
 impl format::Value for yaml::Value {
-    fn as_object(&self) -> Option<&format::Object<Value = Self>> {
+    fn as_object(&self) -> Option<&dyn format::Object<Value = Self>> {
         match *self {
-            yaml::Value::Mapping(ref mapping) => Some(mapping as &format::Object<Value = Self>),
+            yaml::Value::Mapping(ref mapping) => Some(mapping as &dyn format::Object<Value = Self>),
             _ => None,
         }
     }

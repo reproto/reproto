@@ -1,20 +1,20 @@
 use super::Objects;
-use core::errors::*;
-use core::{
+use crate::core::errors::*;
+use crate::core::{
     self, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage,
     Source, Version,
 };
-use index::{Deployment, Index};
-use sha256::to_sha256;
-use update::Update;
+use crate::index::{Deployment, Index};
+use crate::sha256::to_sha256;
+use crate::update::Update;
 
 pub struct Repository {
-    index: Box<Index>,
-    objects: Box<Objects>,
+    index: Box<dyn Index>,
+    objects: Box<dyn Objects>,
 }
 
 impl Repository {
-    pub fn new(index: Box<Index>, objects: Box<Objects>) -> Repository {
+    pub fn new(index: Box<dyn Index>, objects: Box<dyn Objects>) -> Repository {
         Repository {
             index: index,
             objects: objects,

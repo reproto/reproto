@@ -1,7 +1,7 @@
 //! Data Models for fields
 
-use errors::Result;
-use {Diagnostics, Flavor, FlavorField, Translate, Translator};
+use crate::errors::Result;
+use crate::{Diagnostics, Flavor, FlavorField, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(bound = "F::Type: ::serde::Serialize")]

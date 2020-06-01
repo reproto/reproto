@@ -38,7 +38,7 @@ mod internal {
 
 pub use self::internal::{Backtrace, HAS_BACKTRACE};
 
-pub type Result<T> = result::Result<T, Error>;
+pub type Result<T, E = Error> = result::Result<T, E>;
 
 /// Extra convenience functions for results based on core errors.
 pub trait ResultExt<T>
@@ -128,7 +128,7 @@ impl Error {
             return None;
         }
 
-        static ENABLED: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
+        static ENABLED: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
 
         match ENABLED.load(atomic::Ordering::SeqCst) {
             0 => {

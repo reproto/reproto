@@ -99,16 +99,16 @@ fn print_differences(source: &Path, target: &Path, errors: &[it::utils::Diff]) {
     for e in errors {
         match *e {
             MissingDir(ref loc, ref dir) => {
-                println!("missing dir in {}:{}", loc.display(), dir.display());
+                println!("missing dir in {}:{}", loc.display(), dir);
             }
             ExpectedDir(ref loc, ref file) => {
-                println!("expected dir in {}:{}", loc.display(), file.display());
+                println!("expected dir in {}:{}", loc.display(), file);
             }
             MissingFile(ref loc, ref file) => {
-                println!("missing file in {}:{}", loc.display(), file.display());
+                println!("missing file in {}:{}", loc.display(), file);
             }
             ExpectedFile(ref loc, ref file) => {
-                println!("expected file in {}:{}", loc.display(), file.display());
+                println!("expected file in {}:{}", loc.display(), file);
             }
             Mismatch(ref src, _, ref mismatch) => {
                 let added = mismatch
@@ -127,7 +127,7 @@ fn print_differences(source: &Path, target: &Path, errors: &[it::utils::Diff]) {
                     })
                     .sum::<u32>();
 
-                println!("{}: +{}, -{}", src.display(), added, removed);
+                println!("{}: +{}, -{}", src, added, removed);
 
                 for m in mismatch {
                     match m {
@@ -234,7 +234,7 @@ fn try_main() -> Result<()> {
         i
     });
 
-    project.add(Language::OpenApi, { Instance::new("yaml") });
+    project.add(Language::OpenApi, Instance::new("yaml"));
 
     project.add(Language::OpenApi, {
         let mut i = Instance::new("json");

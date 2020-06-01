@@ -1,11 +1,11 @@
 //! Trait used to handle imports.
 
-use errors::Result;
-use {RpRequiredPackage, RpVersionedPackage};
+use crate::errors::Result;
+use crate::{RpRequiredPackage, RpVersionedPackage};
 
 pub trait Import {
     /// Perform the import.
-    fn import(&mut self, &RpRequiredPackage) -> Result<Option<RpVersionedPackage>>;
+    fn import(&mut self, _: &RpRequiredPackage) -> Result<Option<RpVersionedPackage>>;
 }
 
 /// no-op implementation.

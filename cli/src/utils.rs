@@ -1,18 +1,18 @@
-use clap::ArgMatches;
-use core::errors::{Error, Result, ResultExt};
-use core::{
+use crate::core::errors::{Error, Result, ResultExt};
+use crate::core::{
     CoreFlavor, Flavor, Reporter, Resolved, ResolvedByPrefix, Resolver, RpChannel, RpFile,
     RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Source, SourceDiagnostics,
     Version,
 };
-use env;
-use manifest::{self, Lang, Language, Manifest, Publish};
-use repository::Repository;
-use semck;
+use crate::env;
+use crate::manifest::{self, Lang, Language, Manifest, Publish};
+use crate::repository::Repository;
+use crate::semck;
+use crate::trans::Session;
+use clap::ArgMatches;
 use std::fmt;
 use std::fs::File;
 use std::path::Path;
-use trans::Session;
 
 /// Load the manifest based on commandline arguments.
 pub fn load_manifest<'a>(m: &ArgMatches<'a>) -> Result<Manifest> {
@@ -118,20 +118,20 @@ pub fn load_manifest<'a>(m: &ArgMatches<'a>) -> Result<Manifest> {
 }
 
 pub fn session<'a>(
-    lang: Box<Lang>,
+    lang: Box<dyn Lang>,
     manifest: &Manifest,
-    reporter: &'a mut Reporter,
-    resolver: &'a mut Resolver,
+    reporter: &'a mut dyn Reporter,
+    resolver: &'a mut dyn Resolver,
 ) -> Result<Session<'a, CoreFlavor>> {
     session_with_hook(lang, manifest, reporter, resolver, |_| Ok(()))
 }
 
 /// Setup session.
 pub fn session_with_hook<'a, F: 'static>(
-    lang: Box<Lang>,
+    lang: Box<dyn Lang>,
     manifest: &Manifest,
-    reporter: &'a mut Reporter,
-    resolver: &'a mut Resolver,
+    reporter: &'a mut dyn Reporter,
+    resolver: &'a mut dyn Resolver,
     path_hook: F,
 ) -> Result<Session<'a, CoreFlavor>>
 where
@@ -190,7 +190,7 @@ pub struct Match {
 
 /// Setup matches from a publish manifest.
 pub fn publish_matches<'a, I>(
-    resolver: &mut Resolver,
+    resolver: &mut dyn Resolver,
     version_override: Option<&Version>,
     publish: I,
 ) -> Result<Vec<Match>>
@@ -229,7 +229,7 @@ where
 }
 
 pub fn matches<'a, I>(
-    resolver: &mut Resolver,
+    resolver: &mut dyn Resolver,
     version_override: Option<&Version>,
     packages: I,
 ) -> Result<Vec<Match>>
@@ -328,7 +328,7 @@ pub fn semck_check(
         source_to: &Source,
         violation: semck::Violation,
     ) -> Result<()> {
-        use semck::Violation::*;
+        use crate::semck::Violation::*;
 
         match violation {
             DeclRemoved(c, reg) => {
@@ -468,8 +468,8 @@ pub fn semck_check(
 /// Setup a basic session falling back to `NoLang` unless one is specified.
 pub fn simple_config<'a>(
     manifest: &Manifest,
-    reporter: &'a mut Reporter,
-    resolver: &'a mut Resolver,
+    reporter: &'a mut dyn Reporter,
+    resolver: &'a mut dyn Resolver,
 ) -> Result<Session<'a, CoreFlavor>> {
     let lang = manifest.lang_or_nolang();
     let session = session(lang, &manifest, reporter, resolver)?;

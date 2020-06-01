@@ -1,11 +1,11 @@
 //! Update action that synchronizes all repositories.
 
+use crate::core::errors::*;
+use crate::env;
+use crate::repository::Update;
+use crate::utils::load_manifest;
 use clap::{App, ArgMatches, SubCommand};
-use core::errors::*;
-use env;
-use repository::Update;
 use std::collections::HashSet;
-use utils::load_manifest;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("update").about("Update local repository");

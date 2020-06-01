@@ -1,7 +1,7 @@
 //! Module that adds lombok annotations to generated classes.
 
-use codegen::{ClassAdded, ClassCodegen, Configure};
-use core::errors::*;
+use crate::codegen::{ClassAdded, ClassCodegen, Configure};
+use crate::core::errors::*;
 use genco::java::imported;
 use genco::Java;
 

@@ -2,13 +2,13 @@
 //!
 //! These structures are all map-like.
 
-use errors::Result;
+use crate::errors::Result;
+use crate::{Diagnostics, Flavor, Loc, RpValue, Span, Translate, Translator};
 use serde::Serialize;
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::mem;
-use {Diagnostics, Flavor, Loc, RpValue, Span, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(bound = "F::Package: Serialize")]

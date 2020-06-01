@@ -1,11 +1,11 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use backend::Initializer;
-use core::errors::Result;
+use crate::backend::Initializer;
+use crate::core::errors::Result;
+use crate::utils::VersionHelper;
+use crate::Options;
 use genco::{Cons, Python, Tokens};
 use std::rc::Rc;
-use utils::VersionHelper;
-use Options;
 
 #[derive(Debug, Default, Deserialize)]
 pub struct Config {}

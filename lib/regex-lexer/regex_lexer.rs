@@ -1,7 +1,7 @@
 //! Lexer for paths.
 
-use errors::Result;
-use regex_token::RegexToken;
+use crate::errors::Result;
+use crate::regex_token::RegexToken;
 use std::str::CharIndices;
 
 #[derive(Debug, Clone, Copy)]

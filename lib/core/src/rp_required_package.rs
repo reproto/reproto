@@ -1,8 +1,8 @@
 //! A package requirement
 
-use errors::Result;
+use crate::errors::Result;
+use crate::{Range, RpPackage};
 use std::fmt;
-use {Range, RpPackage};
 
 #[derive(Debug, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpRequiredPackage {

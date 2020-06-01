@@ -3,6 +3,7 @@ name = "reproto-pack"
 version = "0.3.39"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
+edition = "2018"
 readme = "README.md"
 repository = "https://github.com/reproto/reproto"
 homepage = "https://github.com/reproto/reproto"
@@ -12,8 +13,8 @@ Utility application to pack subleme themes and syntaxes for reproto.
 """
 
 [dependencies]
-syntect = "3.0.0"
-clap = "2.32.0"
+syntect = "4.2.0"
+clap = "2.33.1"
 
 [[bin]]
 name = "reproto-pack"

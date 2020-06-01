@@ -1,10 +1,10 @@
 //! build command
 
+use crate::core::errors::Result;
+use crate::core::{Filesystem, Reporter};
+use crate::env;
+use crate::output::Output;
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::errors::Result;
-use core::{Filesystem, Reporter};
-use env;
-use output::Output;
 use std::rc::Rc;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
@@ -33,7 +33,8 @@ pub fn entry(_: Rc<Context>, _: &mut Reporter, _: &ArgMatches, _: &Output) -> Re
 }
 
 #[cfg(feature = "notify")]
-pub fn entry(fs: &Filesystem, matches: &ArgMatches, output: &Output) -> Result<()> {
+pub fn entry(fs: &dyn Filesystem, matches: &ArgMatches, output: &dyn Output) -> Result<()> {
+    use crate::utils::{load_manifest, session_with_hook};
     use notify::{RecommendedWatcher, RecursiveMode, Watcher};
     use std::cell::RefCell;
     use std::collections::HashSet;
@@ -42,7 +43,6 @@ pub fn entry(fs: &Filesystem, matches: &ArgMatches, output: &Output) -> Result<(
     use std::sync::mpsc;
     use std::thread;
     use std::time::Duration;
-    use utils::{load_manifest, session_with_hook};
 
     // files discovered by the environment
     let paths: Rc<RefCell<HashSet<PathBuf>>> = Rc::new(RefCell::new(HashSet::new()));
@@ -252,8 +252,8 @@ pub fn entry(fs: &Filesystem, matches: &ArgMatches, output: &Output) -> Result<(
     }
 
     fn try_compile(
-        fs: &Filesystem,
-        reporter: &mut Reporter,
+        fs: &dyn Filesystem,
+        reporter: &mut dyn Reporter,
         matches: &ArgMatches,
         paths: &Rc<RefCell<HashSet<PathBuf>>>,
         added_files: &Rc<RefCell<HashSet<PathBuf>>>,
@@ -300,8 +300,8 @@ pub fn entry(fs: &Filesystem, matches: &ArgMatches, output: &Output) -> Result<(
 
 #[cfg(feature = "notify")]
 mod stalker {
-    use core::errors::Result;
-    use core::{Filesystem, Handle, RelativePath};
+    use crate::core::errors::Result;
+    use crate::core::{Filesystem, Handle, RelativePath};
     use std::cell::RefCell;
     use std::collections::HashSet;
     use std::io;
@@ -310,14 +310,14 @@ mod stalker {
 
     /// A filesystem implementation that keeps track of files which have been opened for writing.
     pub struct StalkerFilesystem<'a> {
-        delegate: &'a Filesystem,
+        delegate: &'a dyn Filesystem,
         files: Rc<RefCell<HashSet<PathBuf>>>,
         dirs: Rc<RefCell<HashSet<PathBuf>>>,
     }
 
     impl<'a> StalkerFilesystem<'a> {
         pub fn new(
-            delegate: &'a Filesystem,
+            delegate: &'a dyn Filesystem,
             files: Rc<RefCell<HashSet<PathBuf>>>,
             dirs: Rc<RefCell<HashSet<PathBuf>>>,
         ) -> StalkerFilesystem {
@@ -330,7 +330,7 @@ mod stalker {
     }
 
     impl<'a> Filesystem for StalkerFilesystem<'a> {
-        fn open_root(&self, root: Option<&Path>) -> Result<Box<Handle>> {
+        fn open_root(&self, root: Option<&Path>) -> Result<Box<dyn Handle>> {
             let delegate = self.delegate.open_root(root.clone())?;
 
             return Ok(Box::new(StalkerHandle {
@@ -344,7 +344,7 @@ mod stalker {
 
     /// A handle that captures files into a RefCell.
     struct StalkerHandle {
-        delegate: Box<Handle>,
+        delegate: Box<dyn Handle>,
         root: Option<PathBuf>,
         files: Rc<RefCell<HashSet<PathBuf>>>,
         dirs: Rc<RefCell<HashSet<PathBuf>>>,
@@ -368,7 +368,7 @@ mod stalker {
             self.delegate.create_dir_all(path)
         }
 
-        fn create(&self, path: &RelativePath) -> Result<Box<io::Write>> {
+        fn create(&self, path: &RelativePath) -> Result<Box<dyn io::Write>> {
             match self.delegate.create(path) {
                 Ok(w) => {
                     if let Some(root) = self.root.as_ref() {

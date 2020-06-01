@@ -2,11 +2,11 @@ extern crate reproto_core as core;
 
 use self::Component::*;
 use self::Violation::*;
-use core::errors::*;
-use core::flavored::{
+use crate::core::errors::*;
+use crate::core::flavored::{
     RpChannel, RpDecl, RpEndpoint, RpField, RpFile, RpName, RpNamed, RpType, RpVariantRef,
 };
-use core::{Loc, Span, Version};
+use crate::core::{Loc, Span, Version};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -62,7 +62,7 @@ pub enum Violation {
 }
 
 fn fields<'a>(named: &RpNamed<'a>) -> Vec<&'a Loc<RpField>> {
-    use core::RpNamed::*;
+    use crate::core::RpNamed::*;
 
     match *named {
         Type(target) => target.fields.iter().collect(),
@@ -74,7 +74,7 @@ fn fields<'a>(named: &RpNamed<'a>) -> Vec<&'a Loc<RpField>> {
 }
 
 fn enum_variants<'a>(named: &'a RpNamed) -> Vec<RpVariantRef<'a>> {
-    use core::RpNamed::*;
+    use crate::core::RpNamed::*;
 
     match *named {
         Enum(target) => target.variants.iter().collect(),
@@ -83,7 +83,7 @@ fn enum_variants<'a>(named: &'a RpNamed) -> Vec<RpVariantRef<'a>> {
 }
 
 fn endpoints_to_map<'a>(named: &RpNamed<'a>) -> HashMap<&'a str, &'a Loc<RpEndpoint>> {
-    use core::RpNamed::*;
+    use crate::core::RpNamed::*;
 
     match *named {
         Service(target) => target.endpoints.iter().map(|e| (e.ident(), e)).collect(),

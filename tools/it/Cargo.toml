@@ -1,17 +1,18 @@
 [package]
 name = "reproto-it"
 version = "0.1.0"
+edition = "2018"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 
 [dependencies]
-relative-path = "0.4.0"
-rayon = "1.0.2"
-failure = "0.1.2"
-walkdir = "2.2.5"
-serde = "1.0.79"
-serde_json = "1.0.32"
-serde_derive = "1.0.79"
-diff = "0.1.11"
+relative-path = "1.0.0"
+rayon = "1.3.0"
+failure = "0.1.8"
+walkdir = "2.3.1"
+serde = "1.0.111"
+serde_json = "1.0.53"
+serde_derive = "1.0.111"
+diff = "0.1.12"
 
 [[bin]]
 name = "it"

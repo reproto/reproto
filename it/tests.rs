@@ -1,4 +1,4 @@
-use Language::*;
+use crate::Language::*;
 
 define!{
     allstructures => {

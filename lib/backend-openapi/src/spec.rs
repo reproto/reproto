@@ -1,4 +1,4 @@
-use core::Version;
+use crate::core::Version;
 use linked_hash_map::LinkedHashMap;
 use std::collections::BTreeMap;
 

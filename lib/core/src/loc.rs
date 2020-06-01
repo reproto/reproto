@@ -1,3 +1,4 @@
+use crate::Span;
 use serde;
 use std::borrow;
 use std::cmp;
@@ -5,7 +6,6 @@ use std::fmt;
 use std::hash;
 use std::ops;
 use std::result;
-use Span;
 
 /// Loc is a value and a span combined.
 ///

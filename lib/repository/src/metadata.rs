@@ -1,7 +1,7 @@
 //! Deployment metadata
 
-use checksum::Checksum;
-use core::Version;
+use crate::checksum::Checksum;
+use crate::core::Version;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Deployment {

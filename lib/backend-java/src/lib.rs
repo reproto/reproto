@@ -23,17 +23,17 @@ mod options;
 mod serialization;
 mod utils;
 
-use codegen::Configure;
-use compiler::Compiler;
-use core::errors::Result;
-use core::{CoreFlavor, Handle};
-use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
-use naming::Naming;
-use options::Options;
+use crate::codegen::Configure;
+use crate::compiler::Compiler;
+use crate::core::errors::Result;
+use crate::core::{CoreFlavor, Handle};
+use crate::manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
+use crate::naming::Naming;
+use crate::options::Options;
+use crate::trans::Session;
 use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
-use trans::Session;
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct JavaLang;
@@ -45,11 +45,11 @@ impl Lang for JavaLang {
         Some(format!("// {}", input))
     }
 
-    fn field_ident_naming(&self) -> Option<Box<Naming>> {
+    fn field_ident_naming(&self) -> Option<Box<dyn Naming>> {
         Some(Box::new(naming::to_lower_camel()))
     }
 
-    fn endpoint_ident_naming(&self) -> Option<Box<Naming>> {
+    fn endpoint_ident_naming(&self) -> Option<Box<dyn Naming>> {
         Some(Box::new(naming::to_lower_camel()))
     }
 
@@ -204,7 +204,7 @@ fn setup_options<'a>(modules: Vec<JavaModule>) -> Result<Options> {
     Ok(options)
 }
 
-fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &dyn Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let packages = session.packages()?;
     let session = session.translate(flavored::JavaFlavorTranslator::new(packages.clone()))?;
 

@@ -4,8 +4,8 @@ extern crate reproto_regex_lexer as regex_lexer;
 
 mod parser;
 
-use core::errors::{Error, Result};
-use core::regex::Regex;
+use crate::core::errors::{Error, Result};
+use crate::core::regex::Regex;
 
 pub fn parse(input: &str) -> Result<Regex> {
     use self::regex_lexer::Error::*;

@@ -1,9 +1,9 @@
-use core::errors::Result;
-use format;
+use crate::core::errors::Result;
+use crate::format;
+use crate::Opaque;
 use linked_hash_map::LinkedHashMap;
 use std::collections::HashSet;
 use std::mem;
-use Opaque;
 
 /// Results from calling `Sir::test_interface`.
 struct InterfaceTestResult {

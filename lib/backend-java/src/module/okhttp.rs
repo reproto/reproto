@@ -1,13 +1,13 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use codegen::{Configure, ServiceAdded, ServiceCodegen};
-use core::errors::*;
-use core::{self, Loc};
-use flavored::{JavaEndpoint, RpEndpointHttp1, RpPathStep};
+use crate::codegen::{Configure, ServiceAdded, ServiceCodegen};
+use crate::core::errors::*;
+use crate::core::{self, Loc};
+use crate::flavored::{JavaEndpoint, RpEndpointHttp1, RpPathStep};
+use crate::serialization::Serialization;
+use crate::utils::Override;
 use genco::java::{self, Argument, Class, Constructor, Field, Method, Modifier, VOID};
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
-use serialization::Serialization;
-use utils::Override;
 
 #[derive(Debug, Default, Deserialize)]
 pub struct Config {}

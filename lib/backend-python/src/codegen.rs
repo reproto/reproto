@@ -1,5 +1,5 @@
-use core::errors::Result;
-use flavored::RpServiceBody;
+use crate::core::errors::Result;
+use crate::flavored::RpServiceBody;
 use genco::{Python, Tokens};
 use std::rc::Rc;
 

@@ -1,11 +1,11 @@
-use checksum::Checksum;
-use core::errors::*;
-use core::{Range, RelativePath, RpPackage, Version};
-use git::GitRepo;
-use index::{file_index, Deployment, Index};
-use objects::{FileObjects, GitObjects, Objects};
+use crate::checksum::Checksum;
+use crate::core::errors::*;
+use crate::core::{Range, RelativePath, RpPackage, Version};
+use crate::git::GitRepo;
+use crate::index::{file_index, Deployment, Index};
+use crate::objects::{FileObjects, GitObjects, Objects};
+use crate::update::Update;
 use std::sync::Arc;
-use update::Update;
 use url::Url;
 
 pub struct GitIndex {
@@ -78,7 +78,7 @@ impl Index for GitIndex {
         self.file_index.objects_url()
     }
 
-    fn objects_from_index(&self, relative_path: &RelativePath) -> Result<Box<Objects>> {
+    fn objects_from_index(&self, relative_path: &RelativePath) -> Result<Box<dyn Objects>> {
         let path = relative_path.to_path(&self.file_index.path());
         let file_objects = FileObjects::new(&path);
 

@@ -801,7 +801,7 @@ impl<'a> ProjectRunner<'a> {
 
         /// Check if the two documents are similar enough to be considered equal.
         fn similar(left: &json::Value, right: &json::Value) -> bool {
-            use json::Value::*;
+            use crate::json::Value::*;
 
             match (left, right) {
                 (&Null, &Null) => true,
@@ -1151,8 +1151,8 @@ impl<'a> Project<'a> {
         self.suites.push(suite);
     }
 
-    pub fn runners(&self, root: &Path) -> Result<Vec<Box<'a + Runner>>> {
-        let mut runners: Vec<Box<Runner>> = Vec::new();
+    pub fn runners(&self, root: &Path) -> Result<Vec<Box<dyn 'a + Runner>>> {
+        let mut runners: Vec<Box<dyn Runner>> = Vec::new();
 
         let default_instances = vec![Instance::new("default")];
         let target_dir = root.join("target");

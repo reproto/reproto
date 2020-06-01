@@ -1,9 +1,9 @@
 //! The file spec collecting changes.
 
-use backend::IntoBytes;
-use compiler::Compiler;
-use core::errors::Result;
-use core::RpPackage;
+use crate::backend::IntoBytes;
+use crate::compiler::Compiler;
+use crate::core::errors::Result;
+use crate::core::RpPackage;
 use genco::{Rust, Tokens};
 
 pub struct RustFileSpec<'a>(pub Tokens<'a, Rust<'a>>);

@@ -1,7 +1,7 @@
 //! Abstraction over git repositories.
 //! Uses git command available on the system to keep a repo in-sync.
 
-use core::errors::*;
+use crate::core::errors::*;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};

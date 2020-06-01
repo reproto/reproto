@@ -2,18 +2,18 @@
 
 #![allow(unused)]
 
-use core::errors::Result;
-use core::{
+use crate::core::errors::Result;
+use crate::core::{
     self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberKind,
     RpNumberType, RpStringType, Translate, Translator,
 };
+use crate::trans::Packages;
+use crate::{EXT, TYPE_SEP};
 use genco::dart;
 use genco::{Cons, Dart, Tokens};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
-use trans::Packages;
-use {EXT, TYPE_SEP};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DartType<'el> {
@@ -335,7 +335,7 @@ impl FlavorTranslator for DartFlavorTranslator {
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
-        use core::RpEnumType::*;
+        use crate::core::RpEnumType::*;
 
         match enum_type {
             String(string) => self.translate_string(string),

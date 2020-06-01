@@ -1,14 +1,14 @@
 //! Derive a schema from the given input.
 
-use ast;
+use crate::ast;
+use crate::compile;
+use crate::core::errors::Result;
+use crate::core::{Reporter, RpPackage, RpVersionedPackage, Source};
+use crate::derive;
+use crate::env;
+use crate::manifest::{Lang, Language};
 use clap::{App, Arg, ArgMatches, SubCommand};
-use compile;
-use core::errors::Result;
-use core::{Reporter, RpPackage, RpVersionedPackage, Source};
-use derive;
-use env;
 use genco::IoFmt;
-use manifest::{Lang, Language};
 use std::any::Any;
 use std::fmt::Write;
 use std::io;
@@ -65,7 +65,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(reporter: &mut Reporter, matches: &ArgMatches) -> Result<()> {
+pub fn entry(reporter: &mut dyn Reporter, matches: &ArgMatches) -> Result<()> {
     let root_name = match matches.value_of("root-name") {
         None => "Generated".to_string(),
         Some(name) => name.to_string(),
@@ -76,7 +76,7 @@ pub fn entry(reporter: &mut Reporter, matches: &ArgMatches) -> Result<()> {
         Some(name) => RpPackage::parse(name),
     };
 
-    let format: Box<derive::Format> = match matches.value_of("format") {
+    let format: Box<dyn derive::Format> = match matches.value_of("format") {
         None | Some("json") => Box::new(derive::Json),
         Some("yaml") => Box::new(derive::Yaml),
         Some(value) => return Err(format!("Unsupported format: {}", value).into()),
@@ -129,7 +129,7 @@ pub fn entry(reporter: &mut Reporter, matches: &ArgMatches) -> Result<()> {
         |path, content| {
             let mut buf = IoFmt(&mut stdout);
 
-            if let Some(comment) = lang.comment(format!(" File: {}", path.display()).as_str()) {
+            if let Some(comment) = lang.comment(format!(" File: {}", path).as_str()) {
                 writeln!(buf, "{}", comment)?;
                 writeln!(buf, "")?;
             }
@@ -144,7 +144,7 @@ pub fn entry(reporter: &mut Reporter, matches: &ArgMatches) -> Result<()> {
 
     return Ok(());
 
-    fn load_modules(lang: &Lang, names: Vec<String>) -> Result<Vec<Box<Any>>> {
+    fn load_modules(lang: &dyn Lang, names: Vec<String>) -> Result<Vec<Box<dyn Any>>> {
         let mut modules = Vec::new();
 
         for name in names {

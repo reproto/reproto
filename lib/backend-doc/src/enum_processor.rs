@@ -1,12 +1,12 @@
 //! Processor for service declarations.
 
-use core;
-use core::errors::*;
-use core::flavored::{RpEnumBody, RpVariantRef};
-use doc_builder::DocBuilder;
-use escape::Escape;
-use macros::FormatAttribute;
-use processor::Processor;
+use crate::core;
+use crate::core::errors::*;
+use crate::core::flavored::{RpEnumBody, RpVariantRef};
+use crate::doc_builder::DocBuilder;
+use crate::escape::Escape;
+use crate::macros::FormatAttribute;
+use crate::processor::Processor;
 
 define_processor!(EnumProcessor, RpEnumBody, self,
     process => {

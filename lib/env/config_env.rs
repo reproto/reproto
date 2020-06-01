@@ -1,7 +1,7 @@
 //! Encapsulate home environment
 
-use config::read_config;
-use core::errors::Result;
+use crate::config::read_config;
+use crate::core::errors::Result;
 use dirs;
 use std::path::PathBuf;
 

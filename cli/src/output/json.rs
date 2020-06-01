@@ -1,7 +1,7 @@
 use super::{LockableWrite, Output};
-use core::errors::*;
-use core::flavored::RpName;
-use core::{Encoding, Source, Span, SymbolKind};
+use crate::core::errors::*;
+use crate::core::flavored::RpName;
+use crate::core::{Encoding, Source, Span, SymbolKind};
 use log;
 use serde_json;
 use std::io;
@@ -108,11 +108,11 @@ impl<T> Output for Json<T>
 where
     T: 'static + LockableWrite,
 {
-    fn lock<'a>(&'a self) -> Box<io::Write + 'a> {
+    fn lock<'a>(&'a self) -> Box<dyn io::Write + 'a> {
         self.out.lock()
     }
 
-    fn logger(&self) -> Box<log::Log + 'static> {
+    fn logger(&self) -> Box<dyn log::Log + 'static> {
         Box::new(JsonLogger {
             out: self.out.open_new(),
         })

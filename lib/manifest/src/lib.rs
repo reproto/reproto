@@ -30,28 +30,32 @@ use std::path::{Path, PathBuf};
 #[macro_export]
 macro_rules! lang_base {
     ($module:ty, $compile:ident) => {
-        fn copy(&self) -> Box<Lang> {
+        fn copy(&self) -> Box<dyn Lang> {
             Box::new(*self)
         }
 
         /// Module specs.
-        fn module_specs(&self, path: &Path, input: Option<toml::Value>) -> Result<Option<Vec<Box<Any>>>> {
+        fn module_specs(
+            &self,
+            path: &Path,
+            input: Option<toml::Value>,
+        ) -> Result<Option<Vec<Box<dyn Any>>>> {
             $crate::parse_section_any::<$module>(path, input)
         }
 
-        fn string_spec(&self, path: &Path, input: &str) -> Result<Box<Any>> {
+        fn string_spec(&self, path: &Path, input: &str) -> Result<Box<dyn Any>> {
             $crate::parse_string_any::<$module>(path, input)
         }
 
         fn compile(
             &self,
-            handle: &core::Handle,
+            handle: &dyn core::Handle,
             env: $crate::trans::Session<$crate::core::CoreFlavor>,
-            manifest: $crate::Manifest
+            manifest: $crate::Manifest,
         ) -> Result<()> {
             $compile(handle, env, manifest)
         }
-    }
+    };
 }
 
 /// The trait that describes the specific implementation of a given language.
@@ -62,7 +66,7 @@ pub trait Lang: fmt::Debug {
     /// Copy self.
     ///
     /// Implemented through `lang_base!` macro.
-    fn copy(&self) -> Box<Lang>;
+    fn copy(&self) -> Box<dyn Lang>;
 
     /// Parse a complex set of module configurations.
     ///
@@ -71,19 +75,19 @@ pub trait Lang: fmt::Debug {
         &self,
         path: &Path,
         input: Option<toml::Value>,
-    ) -> Result<Option<Vec<Box<Any>>>>;
+    ) -> Result<Option<Vec<Box<dyn Any>>>>;
 
     /// Parse a module configuration consisting of _only_ a string.
     ///
     /// Implemented through `lang_base!` macro.
-    fn string_spec(&self, path: &Path, input: &str) -> Result<Box<Any>>;
+    fn string_spec(&self, path: &Path, input: &str) -> Result<Box<dyn Any>>;
 
     /// Language-specific compile hook.
     ///
     /// Implemented through `lang_base!` macro.
     fn compile(
         &self,
-        handle: &core::Handle,
+        handle: &dyn core::Handle,
         env: trans::Session<CoreFlavor>,
         manifest: Manifest,
     ) -> Result<()>;
@@ -107,8 +111,8 @@ pub trait Lang: fmt::Debug {
     fn into_session<'a>(
         &self,
         package_prefix: Option<core::RpPackage>,
-        reporter: &'a mut core::Reporter,
-        resolver: &'a mut core::Resolver,
+        reporter: &'a mut dyn core::Reporter,
+        resolver: &'a mut dyn core::Resolver,
     ) -> Result<trans::Session<'a, CoreFlavor>> {
         let keywords = self
             .keywords()
@@ -142,17 +146,17 @@ pub trait Lang: fmt::Debug {
     }
 
     /// Rename packages according to the given naming convention.
-    fn package_naming(&self) -> Option<Box<Naming>> {
+    fn package_naming(&self) -> Option<Box<dyn Naming>> {
         None
     }
 
     /// Rename fields according to the given naming convention.
-    fn field_ident_naming(&self) -> Option<Box<Naming>> {
+    fn field_ident_naming(&self) -> Option<Box<dyn Naming>> {
         None
     }
 
     /// Rename endpoint identifiers according to the given naming convention.
-    fn endpoint_ident_naming(&self) -> Option<Box<Naming>> {
+    fn endpoint_ident_naming(&self) -> Option<Box<dyn Naming>> {
         None
     }
 }
@@ -185,7 +189,7 @@ impl Lang for NoLang {
 }
 
 fn no_compile(
-    _handle: &core::Handle,
+    _handle: &dyn core::Handle,
     _env: trans::Session<CoreFlavor>,
     _manifest: Manifest,
 ) -> Result<()> {
@@ -376,7 +380,7 @@ where
 pub fn parse_section_any<T: 'static>(
     base: &Path,
     value: Option<toml::Value>,
-) -> Result<Option<Vec<Box<Any>>>>
+) -> Result<Option<Vec<Box<dyn Any>>>>
 where
     T: TryFromToml,
 {
@@ -384,7 +388,7 @@ where
         Ok(Some(
             values
                 .into_iter()
-                .map(|b| Box::new(b) as Box<Any>)
+                .map(|b| Box::new(b) as Box<dyn Any>)
                 .collect(),
         ))
     } else {
@@ -393,16 +397,16 @@ where
 }
 
 /// Parse the given string as a module.
-pub fn parse_string_any<T: 'static>(base: &Path, name: &str) -> Result<Box<Any>>
+pub fn parse_string_any<T: 'static>(base: &Path, name: &str) -> Result<Box<dyn Any>>
 where
     T: TryFromToml,
 {
     let value = toml::Value::Table(toml::value::Table::default());
-    Ok(Box::new(parse_spec::<T>(base, name, value)?) as Box<Any>)
+    Ok(Box::new(parse_spec::<T>(base, name, value)?) as Box<dyn Any>)
 }
 
 /// Attempt to perform a checked conversion of the given vector of modules.
-pub fn checked_modules<M: Any>(modules: Option<Vec<Box<Any>>>) -> Result<Vec<M>> {
+pub fn checked_modules<M: Any>(modules: Option<Vec<Box<dyn Any>>>) -> Result<Vec<M>> {
     let mut out = Vec::new();
 
     if let Some(modules) = modules {
@@ -504,7 +508,7 @@ pub struct Source {
 #[derive(Debug, Default)]
 pub struct Manifest {
     /// Language manifest is being compiled for.
-    pub lang: Option<Box<Lang>>,
+    pub lang: Option<Box<dyn Lang>>,
     /// Path where manifest was loaded from.
     pub path: Option<PathBuf>,
     /// Packages to build.
@@ -518,7 +522,7 @@ pub struct Manifest {
     /// Packages to publish.
     pub publish: Option<Vec<Publish>>,
     /// Modules to enable.
-    pub modules: Option<Vec<Box<Any>>>,
+    pub modules: Option<Vec<Box<dyn Any>>>,
     /// Additional paths specified.
     pub paths: Vec<PathBuf>,
     /// Output directory.
@@ -538,7 +542,7 @@ impl Manifest {
     pub fn from_yaml<R, C>(&mut self, mut reader: R, convert_language: C) -> Result<()>
     where
         R: Read,
-        C: Fn(Language) -> Box<Lang>,
+        C: Fn(Language) -> Box<dyn Lang>,
     {
         let mut value = {
             let mut content = String::new();
@@ -573,12 +577,12 @@ impl Manifest {
     }
 
     /// Access language to build for.
-    pub fn lang(&self) -> Option<Box<Lang>> {
+    pub fn lang(&self) -> Option<Box<dyn Lang>> {
         self.lang.as_ref().map(|l| l.copy())
     }
 
     /// Access language to build for, or fall back to `NoLang` which is a no-operation language.
-    pub fn lang_or_nolang(&self) -> Box<Lang> {
+    pub fn lang_or_nolang(&self) -> Box<dyn Lang> {
         self.lang().unwrap_or_else(|| Box::new(NoLang))
     }
 
@@ -596,7 +600,7 @@ impl Manifest {
     }
 
     /// Resolve all sources for this manifest.
-    pub fn resolve(&self, resolver: &mut Resolver) -> Result<Vec<Source>> {
+    pub fn resolve(&self, resolver: &mut dyn Resolver) -> Result<Vec<Source>> {
         let mut sources = Vec::new();
 
         // if there are no packages, load from path resolver.

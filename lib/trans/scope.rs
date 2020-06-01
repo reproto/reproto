@@ -1,12 +1,12 @@
 //! Propagates scope-specific information to `into_model` transformations.
 
-use core::errors::Error;
-use core::{
+use crate::core::errors::Error;
+use crate::core::{
     CoreFlavor, Diagnostics, Import, Loc, RpName, RpRequiredPackage, RpVersionedPackage, Span,
     Version,
 };
-use features::{Feature, Features};
-use naming::Naming;
+use crate::features::{Feature, Features};
+use crate::naming::Naming;
 use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
@@ -24,11 +24,11 @@ pub struct Scope<I> {
     package: RpVersionedPackage,
     /// Language keywords to avoid.
     keywords: Rc<HashMap<String, String>>,
-    field_ident_naming: Option<Box<Naming>>,
-    endpoint_ident_naming: Option<Box<Naming>>,
+    field_ident_naming: Option<Box<dyn Naming>>,
+    endpoint_ident_naming: Option<Box<dyn Naming>>,
     import: I,
-    pub endpoint_naming: Option<Box<Naming>>,
-    pub field_naming: Option<Box<Naming>>,
+    pub endpoint_naming: Option<Box<dyn Naming>>,
+    pub field_naming: Option<Box<dyn Naming>>,
     pub prefixes: HashMap<String, RpVersionedPackage>,
     /// Path of the current scope.
     path: Vec<String>,
@@ -40,8 +40,8 @@ impl<I> Scope<I> {
         features: Rc<Features>,
         package: RpVersionedPackage,
         keywords: Rc<HashMap<String, String>>,
-        field_ident_naming: Option<Box<Naming>>,
-        endpoint_ident_naming: Option<Box<Naming>>,
+        field_ident_naming: Option<Box<dyn Naming>>,
+        endpoint_ident_naming: Option<Box<dyn Naming>>,
         import: I,
     ) -> Scope<I> {
         Self {
@@ -101,22 +101,22 @@ impl<I> Scope<I> {
     }
 
     /// Access active endpoint naming.
-    pub fn endpoint_naming(&self) -> Option<&Naming> {
+    pub fn endpoint_naming(&self) -> Option<&dyn Naming> {
         self.endpoint_naming.as_ref().map(AsRef::as_ref)
     }
 
     /// Access active field naming.
-    pub fn field_naming(&self) -> Option<&Naming> {
+    pub fn field_naming(&self) -> Option<&dyn Naming> {
         self.field_naming.as_ref().map(AsRef::as_ref)
     }
 
     /// Access field identifier naming.
-    pub fn field_ident_naming(&self) -> Option<&Naming> {
+    pub fn field_ident_naming(&self) -> Option<&dyn Naming> {
         self.field_ident_naming.as_ref().map(AsRef::as_ref)
     }
 
     /// Access endpoint identifier naming.
-    pub fn endpoint_ident_naming(&self) -> Option<&Naming> {
+    pub fn endpoint_ident_naming(&self) -> Option<&dyn Naming> {
         self.endpoint_ident_naming.as_ref().map(AsRef::as_ref)
     }
 
@@ -204,9 +204,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use core::{RpPackage, RpVersionedPackage, Version};
-    use features::Features;
-    use scope::Scope;
+    use crate::core::{RpPackage, RpVersionedPackage, Version};
+    use crate::features::Features;
+    use crate::scope::Scope;
     use std::collections::HashMap;
     use std::rc::Rc;
 

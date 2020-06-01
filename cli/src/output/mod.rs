@@ -5,9 +5,9 @@ mod non_colored;
 pub use self::colored::Colored;
 pub use self::json::Json;
 pub use self::non_colored::NonColored;
-use core::errors::*;
-use core::flavored::RpName;
-use core::{self, Diagnostic, Reported, Source};
+use crate::core::errors::*;
+use crate::core::flavored::RpName;
+use crate::core::{self, Diagnostic, Reported, Source};
 use log;
 use std::io::{self, Write};
 
@@ -25,7 +25,7 @@ where
 {
     fn open_new(&self) -> Self;
 
-    fn lock<'a>(&'a self) -> Box<Write + 'a>;
+    fn lock<'a>(&'a self) -> Box<dyn Write + 'a>;
 }
 
 impl LockableWrite for io::Stdout {
@@ -33,13 +33,13 @@ impl LockableWrite for io::Stdout {
         io::stdout()
     }
 
-    fn lock<'a>(&'a self) -> Box<Write + 'a> {
+    fn lock<'a>(&'a self) -> Box<dyn Write + 'a> {
         Box::new(self.lock())
     }
 }
 
 pub trait Output {
-    fn lock<'a>(&'a self) -> Box<Write + 'a>;
+    fn lock<'a>(&'a self) -> Box<dyn Write + 'a>;
 
     fn handle_context(&self, diagnostics: &[Reported]) -> Result<()> {
         for d in diagnostics {
@@ -123,7 +123,7 @@ pub trait Output {
         Ok(m.to_string())
     }
 
-    fn logger(&self) -> Box<log::Log + 'static>;
+    fn logger(&self) -> Box<dyn log::Log + 'static>;
 
     fn print(&self, m: &str) -> Result<()>;
 

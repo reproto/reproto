@@ -1,10 +1,10 @@
 //! Model for endpoints
 
-use errors::Result;
+use crate::errors::Result;
+use crate::{Attributes, Diagnostics, Flavor, Loc, RpChannel, RpPathSpec, Translate, Translator};
 use serde::Serialize;
 use std::default;
 use std::rc::Rc;
-use {Attributes, Diagnostics, Flavor, Loc, RpChannel, RpPathSpec, Translate, Translator};
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub enum RpHttpMethod {

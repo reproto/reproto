@@ -1,11 +1,11 @@
 //! The flavor of RpIR being used.
 
-use errors::Result;
+use crate::errors::Result;
+use crate::{Loc, RpEndpoint, RpEnumType, RpField, RpName, RpPackage, RpType, RpVersionedPackage};
 use std::borrow::Cow;
 use std::cmp;
 use std::fmt;
 use std::hash;
-use {Loc, RpEndpoint, RpEnumType, RpField, RpName, RpPackage, RpType, RpVersionedPackage};
 
 pub trait FlavorField: fmt::Debug + Clone {
     /// Indicates if the field is discriminating in an untagged context.

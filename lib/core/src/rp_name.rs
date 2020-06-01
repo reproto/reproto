@@ -1,9 +1,9 @@
 //! Describes a fully qualified name as a model
 
-use errors::Result;
+use crate::errors::Result;
+use crate::{CoreFlavor, Diagnostics, Flavor, Loc, Translate, Translator};
 use serde::Serialize;
 use std::fmt;
-use {CoreFlavor, Diagnostics, Flavor, Loc, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(bound = "F::Package: Serialize")]

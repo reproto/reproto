@@ -1,12 +1,12 @@
 //! Options for java code generation.
 
-use codegen::{
+use crate::codegen::{
     ClassCodegen, Codegen, EnumCodegen, GetterCodegen, InterfaceCodegen, ServiceCodegen,
     TupleCodegen,
 };
-use core::errors::Result;
+use crate::core::errors::Result;
+use crate::serialization::Serialization;
 use genco::Java;
-use serialization::Serialization;
 use std::mem;
 
 pub struct Options {
@@ -35,19 +35,19 @@ pub struct Options {
     /// Do not generate methods in service interface.
     pub suppress_service_methods: bool,
     /// Hook to generate code called in the root of the declarations.
-    pub root_generators: Vec<Box<Codegen>>,
+    pub root_generators: Vec<Box<dyn Codegen>>,
     /// Hook to run getter generators.
-    pub getter_generators: Vec<Box<GetterCodegen>>,
+    pub getter_generators: Vec<Box<dyn GetterCodegen>>,
     /// Hook to run class generators.
-    pub class_generators: Vec<Box<ClassCodegen>>,
+    pub class_generators: Vec<Box<dyn ClassCodegen>>,
     /// Hook to run service generators.
-    pub service_generators: Vec<Box<ServiceCodegen>>,
+    pub service_generators: Vec<Box<dyn ServiceCodegen>>,
     /// Hook to run tuple generators.
-    pub tuple_generators: Vec<Box<TupleCodegen>>,
+    pub tuple_generators: Vec<Box<dyn TupleCodegen>>,
     /// Hook to run interface generators.
-    pub interface_generators: Vec<Box<InterfaceCodegen>>,
+    pub interface_generators: Vec<Box<dyn InterfaceCodegen>>,
     /// Hook to run enum generators.
-    pub enum_generators: Vec<Box<EnumCodegen>>,
+    pub enum_generators: Vec<Box<dyn EnumCodegen>>,
 }
 
 impl Options {

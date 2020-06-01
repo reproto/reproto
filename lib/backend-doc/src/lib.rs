@@ -32,16 +32,16 @@ pub const INDEX: &str = "index";
 pub const DEFAULT_THEME: &str = "light";
 pub const DEFAULT_SYNTAX_THEME: &str = "ayu-mirage";
 
+use crate::core::errors::*;
+use crate::core::CoreFlavor;
+use crate::doc_compiler::DocCompiler;
+use crate::manifest::Manifest;
+use crate::trans::Session;
 use clap::{App, Arg, ArgMatches};
-use core::errors::*;
-use core::CoreFlavor;
-use doc_compiler::DocCompiler;
-use manifest::Manifest;
 use std::collections::HashMap;
 use syntect::dumps::from_binary;
 use syntect::highlighting::{Theme, ThemeSet};
 use syntect::parsing::SyntaxSet;
-use trans::Session;
 
 include!(concat!(env!("OUT_DIR"), "/themes.rs"));
 

@@ -1,6 +1,6 @@
 //! # Helper data structure do handle option lookups
 
-use {Diagnostics, Loc, OptionEntry, RpNumber, WithSpan};
+use crate::{Diagnostics, Loc, OptionEntry, RpNumber, WithSpan};
 
 /// Helper for looking up and dealing with options.
 pub trait Options {

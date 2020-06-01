@@ -107,5 +107,5 @@ pub use self::span::Span;
 pub use self::translator::{FlavorTranslator, PackageTranslator, Translate, Translator};
 pub use self::utils::{Encoding, Position};
 pub use self::with_span::WithSpan;
+pub use crate::semver::{Range, Version};
 pub use num_bigint::BigInt;
-pub use semver::{Range, Version};

@@ -15,16 +15,16 @@ mod yaml;
 pub use self::format::Format;
 pub use self::json::Json;
 pub use self::yaml::Yaml;
-use ast::{
+use crate::ast::{
     Attribute, AttributeItem, Decl, Field, InterfaceBody, Item, Name, SubType, TupleBody, Type,
     TypeBody, TypeMember, Value,
 };
-use core::errors::Result;
-use core::{Loc, RpPackage, Source, Span, DEFAULT_TAG};
+use crate::core::errors::Result;
+use crate::core::{Loc, RpPackage, Source, Span, DEFAULT_TAG};
+use crate::sir::{FieldSir, Sir, SubTypeSir};
 use inflector::cases::pascalcase::to_pascal_case;
 use inflector::cases::snakecase::to_snake_case;
 use linked_hash_map::LinkedHashMap;
-use sir::{FieldSir, Sir, SubTypeSir};
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
@@ -36,7 +36,7 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub struct Derive {
     root_name: String,
-    format: Box<format::Format>,
+    format: Box<dyn format::Format>,
     package_prefix: Option<RpPackage>,
 }
 
@@ -84,7 +84,7 @@ impl Context {
 impl Derive {
     pub fn new(
         root_name: String,
-        format: Box<format::Format>,
+        format: Box<dyn format::Format>,
         package_prefix: Option<RpPackage>,
     ) -> Derive {
         Derive {
@@ -548,8 +548,8 @@ pub fn derive<'input>(derive: Derive, object: &'input Source) -> Result<Decl<'in
 #[cfg(test)]
 mod tests {
     use super::{derive, Derive, Json};
-    use ast::Decl;
-    use core::Source;
+    use crate::ast::Decl;
+    use crate::core::Source;
 
     fn input<T>(input: &str, test: T)
     where

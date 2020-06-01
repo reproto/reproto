@@ -18,7 +18,7 @@ use std::result;
 /// Read the full contents of the given reader as a string.
 pub fn read_to_string<'a, R>(mut reader: R) -> Result<String>
 where
-    R: AsMut<Read + 'a>,
+    R: AsMut<dyn Read + 'a>,
 {
     let mut content = String::new();
     reader.as_mut().read_to_string(&mut content)?;
@@ -50,23 +50,26 @@ pub fn parse<'input>(
                 diag.err((start, end), format!("extra token: {:?}", token));
                 Err(())
             }
-            UnrecognizedToken { token, expected } => {
-                match token {
-                    Some((start, token, end)) => {
-                        diag.err(
-                            (start, end),
-                            format!(
-                                "syntax error, got token {:?}, expected: {}",
-                                token,
-                                expected.join(", ")
-                            ),
-                        );
-                    }
-                    None => {
-                        let m = format!("syntax error, expected: {}", expected.join(", "));
-                        diag.err((0, 0), m);
-                    }
-                };
+            UnrecognizedToken {
+                token: (start, token, end),
+                expected,
+            } => {
+                diag.err(
+                    (start, end),
+                    format!(
+                        "syntax error, got token {:?}, expected: {}",
+                        token,
+                        expected.join(", ")
+                    ),
+                );
+
+                return Err(());
+            }
+            UnrecognizedEOF { location, expected } => {
+                diag.err(
+                    (location, location),
+                    format!("unexpected eof, expected: {}", expected.join(", ")),
+                );
 
                 return Err(());
             }
@@ -126,7 +129,8 @@ mod tests {
 
     fn parse(
         input: &'static str,
-    ) -> Box<Iterator<Item = lexer::errors::Result<(usize, lexer::Token<'static>, usize)>>> {
+    ) -> Box<dyn Iterator<Item = lexer::errors::Result<(usize, lexer::Token<'static>, usize)>>>
+    {
         Box::new(lexer::lex(input))
     }
 

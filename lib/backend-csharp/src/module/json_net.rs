@@ -1,10 +1,10 @@
-use codegen::{
+use crate::codegen::{
     ClassAdded, ClassCodegen, Configure, EnumAdded, EnumCodegen, InterfaceAdded, InterfaceCodegen,
     TupleAdded, TupleCodegen, TypeField, TypeFieldAdded, TypeFieldCodegen,
 };
-use core::errors::Result;
-use core::{self, RpSubTypeStrategy};
-use flavored::RpInterfaceBody;
+use crate::core::errors::Result;
+use crate::core::{self, RpSubTypeStrategy};
+use crate::flavored::RpInterfaceBody;
 use genco::csharp::{self, using, Argument};
 use genco::{Cons, Csharp, Element, IntoTokens, Quoted, Tokens};
 use std::rc::Rc;
@@ -200,7 +200,7 @@ impl JsonNet {
                 m.modifiers = vec![Modifier::Public, Modifier::Override];
                 m.returns = BOOLEAN;
 
-                m.body.push({ toks!["return false;"] });
+                m.body.push(toks!["return false;"]);
 
                 m.into_tokens()
             }
@@ -453,7 +453,7 @@ impl TupleCodegen for JsonNet {
                     ]);
 
                     for f in &self.1.fields {
-                        let mut ser = toks![
+                        let ser = toks![
                             self.0.j_token.clone(),
                             ".FromObject(o.",
                             f.var(),

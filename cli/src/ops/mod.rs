@@ -10,11 +10,11 @@ mod self_update;
 mod update;
 mod watch;
 
+use crate::core::errors::*;
+use crate::core::{Filesystem, Reporter};
+use crate::output::Output;
 use clap::{App, Arg, ArgMatches};
-use core::errors::*;
-use core::{Filesystem, Reporter};
 use log;
-use output::Output;
 
 pub fn base_args<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = out.arg(
@@ -142,7 +142,7 @@ pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
 /// Configure default logging.
 ///
 /// If debug (--debug) is specified, logging should be configured with `LogLevelFilter::Debug`.
-fn default_logging(matches: &ArgMatches, output: &Output) -> Result<()> {
+fn default_logging(matches: &ArgMatches, output: &dyn Output) -> Result<()> {
     let level = if matches.is_present("debug") {
         log::LevelFilter::Debug
     } else {
@@ -156,10 +156,10 @@ fn default_logging(matches: &ArgMatches, output: &Output) -> Result<()> {
 }
 
 pub fn entry(
-    fs: &Filesystem,
-    reporter: &mut Reporter,
+    fs: &dyn Filesystem,
+    reporter: &mut dyn Reporter,
     matches: &ArgMatches,
-    output: &Output,
+    output: &dyn Output,
 ) -> Result<()> {
     let (name, matches) = matches.subcommand();
     let matches = matches.ok_or_else(|| "no subcommand")?;

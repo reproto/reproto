@@ -2,23 +2,23 @@
 
 #![allow(unused)]
 
-use backend::package_processor;
-use core::errors::Result;
-use core::{
+use crate::backend::package_processor;
+use crate::core::errors::Result;
+use crate::core::{
     self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberType,
     RpStringType, Translate, Translator,
 };
+use crate::naming::{self, Naming};
+use crate::trans::Packages;
+use crate::utils::{Exception, VersionHelper};
+use crate::{Options, TYPE_SEP};
 use genco::python::{self, Python};
 use genco::{Cons, Element, IntoTokens, Tokens};
-use naming::{self, Naming};
 use std::cmp;
 use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
-use trans::Packages;
-use utils::{Exception, VersionHelper};
-use {Options, TYPE_SEP};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PythonKind<'el> {
@@ -56,13 +56,13 @@ impl<'el> PythonKind<'el> {
 
 #[derive(Debug, Clone)]
 pub struct PythonType<'el> {
-    helper: Rc<Box<VersionHelper>>,
+    helper: Rc<Box<dyn VersionHelper>>,
     kind: PythonKind<'el>,
 }
 
 impl<'el> PythonType<'el> {
     /// Create a new python type instance.
-    pub fn new(helper: Rc<Box<VersionHelper>>, kind: PythonKind<'el>) -> Self {
+    pub fn new(helper: Rc<Box<dyn VersionHelper>>, kind: PythonKind<'el>) -> Self {
         PythonType { helper, kind }
     }
 }
@@ -249,11 +249,11 @@ impl Flavor for PythonFlavor {
 /// Responsible for translating RpType -> Python type.
 pub struct PythonFlavorTranslator {
     packages: Rc<Packages>,
-    helper: Rc<Box<VersionHelper>>,
+    helper: Rc<Box<dyn VersionHelper>>,
 }
 
 impl PythonFlavorTranslator {
-    pub fn new(packages: Rc<Packages>, helper: Rc<Box<VersionHelper>>) -> Self {
+    pub fn new(packages: Rc<Packages>, helper: Rc<Box<dyn VersionHelper>>) -> Self {
         Self { packages, helper }
     }
 

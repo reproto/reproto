@@ -1,7 +1,7 @@
 //! Reporter for spanned diagnostics.
-use flavored::RpName;
+use crate::flavored::RpName;
+use crate::{Source, Span};
 use std::fmt;
-use {Source, Span};
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub enum SymbolKind {

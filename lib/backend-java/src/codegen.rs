@@ -1,11 +1,11 @@
 //! Code generator for the given path.
 
-use core::errors::Result;
-use core::Handle;
-use flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
+use crate::core::errors::Result;
+use crate::core::Handle;
+use crate::flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
+use crate::Options;
 use genco::java::{Class, Enum, Interface, Method};
 use std::rc::Rc;
-use Options;
 
 /// Generate helper implementations for codegen traits.
 macro_rules! codegen {
@@ -59,7 +59,7 @@ pub struct Configure<'a> {
 
 pub trait Codegen {
     /// Build the given piece of code in the given handle.
-    fn generate(&self, handle: &Handle) -> Result<()>;
+    fn generate(&self, handle: &dyn Handle) -> Result<()>;
 }
 
 /// Generate service-based code.

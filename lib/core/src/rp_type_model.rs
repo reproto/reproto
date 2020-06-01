@@ -1,8 +1,8 @@
 //! Model for tuples.
 
-use errors::Result;
-use translator;
-use {Diagnostics, Flavor, Loc, RpCode, RpReg, Translate, Translator};
+use crate::errors::Result;
+use crate::translator;
+use crate::{Diagnostics, Flavor, Loc, RpCode, RpReg, Translate, Translator};
 
 decl_body!(
     pub struct RpTypeBody<F> {

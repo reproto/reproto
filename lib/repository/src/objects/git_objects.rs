@@ -1,13 +1,13 @@
 //! ## Load objects through a local git repo
 
-use checksum::Checksum;
-use core::errors::*;
-use core::Source;
-use git::GitRepo;
-use objects::{FileObjects, Objects};
+use crate::checksum::Checksum;
+use crate::core::errors::*;
+use crate::core::Source;
+use crate::git::GitRepo;
+use crate::objects::{FileObjects, Objects};
+use crate::update::Update;
 use std::io::Read;
 use std::sync::Arc;
-use update::Update;
 use url::Url;
 
 pub struct GitObjects {
@@ -34,7 +34,12 @@ impl GitObjects {
 }
 
 impl Objects for GitObjects {
-    fn put_object(&mut self, checksum: &Checksum, reader: &mut Read, force: bool) -> Result<bool> {
+    fn put_object(
+        &mut self,
+        checksum: &Checksum,
+        reader: &mut dyn Read,
+        force: bool,
+    ) -> Result<bool> {
         if !self.publishing {
             return Err(format!("objects repo not support publishing: {}", self.url).into());
         }

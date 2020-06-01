@@ -1,10 +1,10 @@
 //! Type of a model.
 
-use errors::Result;
-use regex::Regex;
+use crate::errors::Result;
+use crate::regex::Regex;
+use crate::{BigInt, CoreFlavor, Flavor, Loc, RpEnumType, RpName, RpNumber};
 use serde::Serialize;
 use std::fmt;
-use {BigInt, CoreFlavor, Flavor, Loc, RpEnumType, RpName, RpNumber};
 
 /// Describes number validation.
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]

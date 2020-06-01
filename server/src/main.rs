@@ -1,23 +1,18 @@
-extern crate futures;
-extern crate futures_cpupool;
-extern crate hyper;
 #[macro_use]
 extern crate log;
-extern crate pretty_env_logger;
 extern crate reproto_core as core;
 extern crate reproto_repository as repository;
 extern crate reproto_server as server;
 
 use core::errors::Result;
-use futures_cpupool::CpuPool;
-use hyper::rt::{self, Future};
 use hyper::server::Server;
+use hyper::service::make_service_fn;
 use repository::{index_from_path, objects_from_path};
 use server::reproto_service;
 use std::env;
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 /// Get the configuration path to load.
 fn config_path() -> Result<Option<PathBuf>> {
@@ -30,7 +25,7 @@ fn config_path() -> Result<Option<PathBuf>> {
     }
 }
 
-fn entry() -> Result<()> {
+async fn entry() -> Result<()> {
     pretty_env_logger::init();
 
     let config = if let Some(path) = config_path()? {
@@ -47,34 +42,29 @@ fn entry() -> Result<()> {
     } = config;
     let listen_address = listen_address.parse()?;
 
-    let pool = Arc::new(CpuPool::new_num_cpus());
-
     let objects = objects_from_path(objects)?;
-    let objects = Arc::new(Mutex::new(objects));
+    let objects = Mutex::new(objects);
 
     let index = index_from_path(index)?;
-    let index = Arc::new(Mutex::new(index));
+    let index = Mutex::new(index);
 
-    let setup = move || {
-        futures::future::ok::<_, hyper::Error>(reproto_service::ReprotoService {
-            max_file_size,
-            pool: pool.clone(),
-            objects: objects.clone(),
-            index: index.clone(),
-        })
-    };
+    let service = reproto_service::ReprotoService::new(max_file_size, objects, index);
 
-    let server = Server::bind(&listen_address).serve(setup).map_err(|e| {
-        error!("server error: {}", e);
+    let setup = make_service_fn(move |_| {
+        let service = service.clone();
+
+        async { Ok::<_, hyper::Error>(service) }
     });
 
     info!("listening on http://{}", listen_address);
-    rt::run(server);
+    let server = Server::bind(&listen_address).serve(setup);
+    server.await?;
     Ok(())
 }
 
-fn main() {
-    if let Err(e) = entry() {
+#[tokio::main]
+async fn main() {
+    if let Err(e) = entry().await {
         error!("{}", e.message());
 
         for e in e.causes().skip(1) {

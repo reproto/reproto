@@ -1,8 +1,8 @@
 //! Helper component to build Java files.
 
-use core::errors::*;
-use core::{Handle, RelativePathBuf};
-use flavored::RpPackage;
+use crate::core::errors::*;
+use crate::core::{Handle, RelativePathBuf};
+use crate::flavored::RpPackage;
 use genco::java::Extra;
 use genco::{IoFmt, Java, Tokens, WriteTokens};
 
@@ -24,7 +24,7 @@ where
         }
     }
 
-    pub fn process(self, handle: &Handle) -> Result<()> {
+    pub fn process(self, handle: &dyn Handle) -> Result<()> {
         let package = self.package.join(".");
 
         let path = self
@@ -34,7 +34,7 @@ where
             .fold(RelativePathBuf::new(), |p, part| p.join(part));
 
         if !handle.is_dir(&path) {
-            debug!("+dir: {}", path.display());
+            debug!("+dir: {}", path);
             handle.create_dir_all(&path)?;
         }
 
@@ -46,7 +46,7 @@ where
         let mut extra = Extra::default();
         extra.package(package);
 
-        debug!("+class: {}", path.display());
+        debug!("+class: {}", path);
         IoFmt(&mut handle.create(&path)?.as_mut()).write_file(file, &mut extra)?;
 
         Ok(())

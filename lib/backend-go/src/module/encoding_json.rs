@@ -1,16 +1,16 @@
 //! encoding/json module for Go
 
-use backend::Initializer;
-use core;
-use core::errors::{Error, Result};
-use flavored::{GoName, RpEnumBody, RpInterfaceBody, RpSubType, RpTupleBody};
-use genco::go::{imported, Go};
-use genco::{Quoted, Tokens};
-use std::rc::Rc;
-use {
+use crate::backend::Initializer;
+use crate::core;
+use crate::core::errors::{Error, Result};
+use crate::flavored::{GoName, RpEnumBody, RpInterfaceBody, RpSubType, RpTupleBody};
+use crate::{
     EnumAdded, EnumCodegen, FieldAdded, FieldCodegen, InterfaceAdded, InterfaceCodegen, Options,
     TupleAdded, TupleCodegen,
 };
+use genco::go::{imported, Go};
+use genco::{Quoted, Tokens};
+use std::rc::Rc;
 
 pub struct Module {}
 

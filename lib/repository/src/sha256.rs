@@ -1,5 +1,5 @@
-use checksum::Checksum;
-use core::errors::*;
+use crate::checksum::Checksum;
+use crate::core::errors::*;
 use ring::digest;
 use std::io::Read;
 

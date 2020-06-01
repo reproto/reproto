@@ -10,15 +10,15 @@
 
 use self::Op::{Compatible, Ex, Gt, GtEq, Lt, LtEq, Tilde, Wildcard};
 use self::WildcardVersion::{Minor, Patch};
-use errors::Error;
-use parser;
+use crate::errors::Error;
+use crate::parser;
+use crate::version::{Identifier, Version};
 #[cfg(feature = "serde")]
 use serde::de::{self, Deserialize, Deserializer, Visitor};
 #[cfg(feature = "serde")]
 use serde::ser::{Serialize, Serializer};
 use std::fmt;
 use std::str;
-use version::{Identifier, Version};
 
 /// A `Range` is a struct containing a list of predicates that can apply to ranges of version
 /// numbers. Matching operations can then be done with the `Range` against a particular
@@ -378,13 +378,13 @@ impl Predicate {
 impl fmt::Display for Range {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         if self.predicates.is_empty() {
-            try!(write!(fmt, "*"));
+            r#try!(write!(fmt, "*"));
         } else {
             for (i, ref pred) in self.predicates.iter().enumerate() {
                 if i == 0 {
-                    try!(write!(fmt, "{}", pred));
+                    r#try!(write!(fmt, "{}", pred));
                 } else {
-                    try!(write!(fmt, ", {}", pred));
+                    r#try!(write!(fmt, ", {}", pred));
                 }
             }
         }
@@ -396,32 +396,32 @@ impl fmt::Display for Range {
 impl fmt::Display for Predicate {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self.op {
-            Wildcard(Minor) => try!(write!(fmt, "{}.*", self.major)),
+            Wildcard(Minor) => r#try!(write!(fmt, "{}.*", self.major)),
             Wildcard(Patch) => {
                 if let Some(minor) = self.minor {
-                    try!(write!(fmt, "{}.{}.*", self.major, minor))
+                    r#try!(write!(fmt, "{}.{}.*", self.major, minor))
                 } else {
-                    try!(write!(fmt, "{}.*.*", self.major))
+                    r#try!(write!(fmt, "{}.*.*", self.major))
                 }
             }
             _ => {
-                try!(write!(fmt, "{}{}", self.op, self.major));
+                r#try!(write!(fmt, "{}{}", self.op, self.major));
 
                 if let Some(v) = self.minor {
-                    try!(write!(fmt, ".{}", v));
+                    r#try!(write!(fmt, ".{}", v));
                 }
 
                 if let Some(v) = self.patch {
-                    try!(write!(fmt, ".{}", v));
+                    r#try!(write!(fmt, ".{}", v));
                 }
 
                 if !self.pre.is_empty() {
-                    try!(write!(fmt, "-"));
+                    r#try!(write!(fmt, "-"));
                     for (i, x) in self.pre.iter().enumerate() {
                         if i != 0 {
-                            try!(write!(fmt, "."))
+                            r#try!(write!(fmt, "."))
                         }
-                        try!(write!(fmt, "{}", x));
+                        r#try!(write!(fmt, "{}", x));
                     }
                 }
             }
@@ -434,15 +434,15 @@ impl fmt::Display for Predicate {
 impl fmt::Display for Op {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Ex => try!(write!(fmt, "= ")),
-            Gt => try!(write!(fmt, "> ")),
-            GtEq => try!(write!(fmt, ">= ")),
-            Lt => try!(write!(fmt, "< ")),
-            LtEq => try!(write!(fmt, "<= ")),
-            Tilde => try!(write!(fmt, "~")),
-            Compatible => try!(write!(fmt, "^")),
+            Ex => r#try!(write!(fmt, "= ")),
+            Gt => r#try!(write!(fmt, "> ")),
+            GtEq => r#try!(write!(fmt, ">= ")),
+            Lt => r#try!(write!(fmt, "< ")),
+            LtEq => r#try!(write!(fmt, "<= ")),
+            Tilde => r#try!(write!(fmt, "~")),
+            Compatible => r#try!(write!(fmt, "^")),
             // gets handled specially in Predicate::fmt
-            Wildcard(_) => try!(write!(fmt, "")),
+            Wildcard(_) => r#try!(write!(fmt, "")),
         }
         Ok(())
     }

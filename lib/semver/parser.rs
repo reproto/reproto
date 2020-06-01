@@ -37,12 +37,12 @@
 //! ```
 
 use self::Error::*;
-use lexer::{self, Lexer, Token};
-use range::{Op, Predicate, Range, WildcardVersion};
+use crate::lexer::{self, Lexer, Token};
+use crate::range::{Op, Predicate, Range, WildcardVersion};
+use crate::version::{Identifier, Version};
 use std::error;
 use std::fmt;
 use std::mem;
-use version::{Identifier, Version};
 
 /// Evaluate if parser contains the given pattern as a separator, surrounded by whitespace.
 macro_rules! has_ws_separator {
@@ -79,30 +79,19 @@ pub enum Error<'input> {
 }
 
 impl<'input> fmt::Display for Error<'input> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            UnexpectedEnd => write!(fmt, "unexpected end"),
-            UnexpectedToken(ref t) => write!(fmt, "unexpected token: {:?}", t),
-            Lexer(ref l) => write!(fmt, "lexer error: {}", l),
-            MoreInput(..) => write!(fmt, "more input"),
-            EmptyPredicate => write!(fmt, "empty predicate"),
-            EmptyRange => write!(fmt, "empty range"),
+            UnexpectedEnd => "unexpected end".fmt(fmt),
+            UnexpectedToken(..) => "unexpected token".fmt(fmt),
+            Lexer(..) => "lexer error".fmt(fmt),
+            MoreInput(..) => "more input".fmt(fmt),
+            EmptyPredicate => "empty predicate".fmt(fmt),
+            EmptyRange => "empty range".fmt(fmt),
         }
     }
 }
 
-impl<'input> error::Error for Error<'input> {
-    fn description(&self) -> &str {
-        match *self {
-            UnexpectedEnd => "unexpected end",
-            UnexpectedToken(..) => "unexpected token",
-            Lexer(ref l) => l.description(),
-            MoreInput(..) => "more input",
-            EmptyPredicate => "empty predicate",
-            EmptyRange => "empty range",
-        }
-    }
-}
+impl<'input> error::Error for Error<'input> {}
 
 impl<'input> From<lexer::Error> for Error<'input> {
     fn from(value: lexer::Error) -> Self {

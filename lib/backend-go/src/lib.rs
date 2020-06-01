@@ -19,20 +19,20 @@ mod compiler;
 mod flavored;
 mod module;
 
-use backend::{Initializer, IntoBytes};
-use compiler::Compiler;
-use core::errors::Result;
-use core::{CoreFlavor, Handle};
-use flavored::{GoName, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody};
+use crate::backend::{Initializer, IntoBytes};
+use crate::compiler::Compiler;
+use crate::core::errors::Result;
+use crate::core::{CoreFlavor, Handle};
+use crate::flavored::{GoName, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody};
+use crate::manifest::{Lang, Manifest, NoModule, TryFromToml};
+use crate::naming::Naming;
+use crate::trans::Session;
 use genco::go::{self, Go};
 use genco::{Element, IntoTokens, Tokens};
-use manifest::{Lang, Manifest, NoModule, TryFromToml};
-use naming::Naming;
 use std::any::Any;
 use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
-use trans::Session;
 
 const TYPE_SEP: &str = "_";
 const EXT: &str = "go";
@@ -55,7 +55,7 @@ impl Lang for GoLang {
         vec![]
     }
 
-    fn field_ident_naming(&self) -> Option<Box<Naming>> {
+    fn field_ident_naming(&self) -> Option<Box<dyn Naming>> {
         Some(Box::new(naming::to_upper_camel()))
     }
 }
@@ -90,10 +90,10 @@ impl TryFromToml for GoModule {
 }
 
 pub struct Options {
-    pub field_gens: Vec<Box<FieldCodegen>>,
-    pub enum_gens: Vec<Box<EnumCodegen>>,
-    pub tuple_gens: Vec<Box<TupleCodegen>>,
-    pub interface_gens: Vec<Box<InterfaceCodegen>>,
+    pub field_gens: Vec<Box<dyn FieldCodegen>>,
+    pub enum_gens: Vec<Box<dyn EnumCodegen>>,
+    pub tuple_gens: Vec<Box<dyn TupleCodegen>>,
+    pub interface_gens: Vec<Box<dyn InterfaceCodegen>>,
 }
 
 impl Options {
@@ -115,7 +115,7 @@ pub fn options(modules: Vec<GoModule>) -> Result<Options> {
     for m in modules {
         debug!("+module: {:?}", m);
 
-        let initializer: Box<Initializer<Options = Options>> = match m {
+        let initializer: Box<dyn Initializer<Options = Options>> = match m {
             EncodingJson => Box::new(module::EncodingJson::new()),
         };
 
@@ -271,7 +271,7 @@ impl<'el> IntoTokens<'el, Go<'el>> for Tags {
     }
 }
 
-fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &dyn Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let packages = session.packages()?;
 
     let session = session.translate(flavored::GoFlavorTranslator::new(packages))?;

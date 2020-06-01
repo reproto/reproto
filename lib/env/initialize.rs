@@ -1,11 +1,11 @@
 //! Function to initialize a new project.
 
-use core::errors::Result;
-use core::{Handle, RelativePath};
+use crate::core::errors::Result;
+use crate::core::{Handle, RelativePath};
 
 const EXAMPLE: &'static [u8] = include_bytes!("example.reproto");
 
-pub fn initialize(handle: &Handle) -> Result<()> {
+pub fn initialize(handle: &dyn Handle) -> Result<()> {
     let mut path = RelativePath::new("proto");
     let manifest = RelativePath::new("reproto.toml");
 
@@ -28,13 +28,13 @@ pub fn initialize(handle: &Handle) -> Result<()> {
     }
 
     if !handle.is_file(manifest) {
-        info!("Writing Manifest: {}", manifest.display());
+        info!("Writing Manifest: {}", manifest);
 
         let mut manifest = handle.create(manifest)?;
 
         if with_output {
             writeln!(manifest, "paths = [")?;
-            writeln!(manifest, "  \"{}\"", path.display())?;
+            writeln!(manifest, "  \"{}\"", path)?;
             writeln!(manifest, "]")?;
             writeln!(manifest, "output = \"target\"")?;
         }
@@ -50,12 +50,7 @@ pub fn initialize(handle: &Handle) -> Result<()> {
 
         writeln!(manifest, "")?;
         writeln!(manifest, "[packages]")?;
-        writeln!(
-            manifest,
-            "# File: {}/{}.reproto",
-            path.display(),
-            package.join("/")
-        )?;
+        writeln!(manifest, "# File: {}/{}.reproto", path, package.join("/"))?;
         writeln!(manifest, "\"{}\" = \"*\"", package.join("."))?;
     }
 
@@ -67,13 +62,13 @@ pub fn initialize(handle: &Handle) -> Result<()> {
 
     if let Some(parent) = example.parent() {
         if !handle.is_dir(parent) {
-            info!("Creating: {}", parent.display());
+            info!("Creating: {}", parent);
             handle.create_dir_all(parent)?;
         }
     }
 
     if !handle.is_file(&example) {
-        info!("Writing: {}", example.display());
+        info!("Writing: {}", example);
         let mut example = handle.create(&example)?;
         example.write_all(EXAMPLE)?;
     }

@@ -1,22 +1,22 @@
-use ast;
-use core::errors::{Error, Result};
-use core::{
+use crate::ast;
+use crate::core::errors::{Error, Result};
+use crate::core::{
     translator, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Import, Loc, PackageTranslator,
     Reporter, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg, RpRequiredPackage,
     RpVersionedPackage, Source, Translate, Version,
 };
-use features::Features;
-use into_model::IntoModel;
+use crate::features::Features;
+use crate::into_model::IntoModel;
+use crate::naming::Naming;
+use crate::parser;
+use crate::scope::Scope;
+use crate::translated::Translated;
 use linked_hash_map::LinkedHashMap;
-use naming::Naming;
-use parser;
-use scope::Scope;
 use std::cell::RefCell;
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 use std::result;
-use translated::Translated;
 
 /// Try the given expression, and associated diagnostics with context if an error occurred.
 macro_rules! try_with_diag {
@@ -59,9 +59,9 @@ where
     /// Global package prefix.
     package_prefix: Option<RpPackage>,
     /// Global reporter for collecting diagnostics.
-    pub reporter: &'a mut Reporter,
+    pub reporter: &'a mut dyn Reporter,
     /// Index resolver to use.
-    pub resolver: &'a mut Resolver,
+    pub resolver: &'a mut dyn Resolver,
     /// Store required packages, to avoid unnecessary lookups.
     lookup_required: HashMap<RpRequiredPackage, Option<RpVersionedPackage>>,
     /// Loaded versioned packages.
@@ -75,13 +75,13 @@ where
     /// Whether to use safe packages or not.
     safe_packages: bool,
     /// Package naming to apply.
-    package_naming: Option<Rc<Box<Naming>>>,
+    package_naming: Option<Rc<Box<dyn Naming>>>,
     /// Field naming to apply.
-    field_ident_naming: Option<Box<Naming>>,
+    field_ident_naming: Option<Box<dyn Naming>>,
     /// Endpoint ident naming to apply.
-    endpoint_ident_naming: Option<Box<Naming>>,
+    endpoint_ident_naming: Option<Box<dyn Naming>>,
     /// Hook to provide to paths that were loaded.
-    path_hook: Option<Box<Fn(&Path) -> Result<()>>>,
+    path_hook: Option<Box<dyn Fn(&Path) -> Result<()>>>,
 }
 
 /// Environment containing all loaded declarations.
@@ -92,8 +92,8 @@ where
     /// Construct a new, language-neutral environment.
     pub fn new(
         package_prefix: Option<RpPackage>,
-        reporter: &'a mut Reporter,
-        resolver: &'a mut Resolver,
+        reporter: &'a mut dyn Reporter,
+        resolver: &'a mut dyn Resolver,
     ) -> Result<Session<'a, F>> {
         let features = Rc::new(Features::new()?);
 
@@ -144,7 +144,7 @@ where
     }
 
     /// Set package naming policy.
-    pub fn with_package_naming(self, package_naming: Box<Naming>) -> Self {
+    pub fn with_package_naming(self, package_naming: Box<dyn Naming>) -> Self {
         Self {
             package_naming: Some(Rc::new(package_naming)),
             ..self
@@ -152,7 +152,7 @@ where
     }
 
     /// Set field naming policy.
-    pub fn with_field_ident_naming(self, field_ident_naming: Box<Naming>) -> Self {
+    pub fn with_field_ident_naming(self, field_ident_naming: Box<dyn Naming>) -> Self {
         Self {
             field_ident_naming: Some(field_ident_naming),
             ..self
@@ -160,7 +160,7 @@ where
     }
 
     /// Set endpoint ident naming.
-    pub fn with_endpoint_ident_naming(self, endpoint_ident_naming: Box<Naming>) -> Self {
+    pub fn with_endpoint_ident_naming(self, endpoint_ident_naming: Box<dyn Naming>) -> Self {
         Self {
             endpoint_ident_naming: Some(endpoint_ident_naming),
             ..self
@@ -610,7 +610,7 @@ pub struct Packages {
     package_prefix: Option<RpPackage>,
     keywords: Rc<HashMap<String, String>>,
     safe_packages: bool,
-    package_naming: Option<Rc<Box<Naming>>>,
+    package_naming: Option<Rc<Box<dyn Naming>>>,
 }
 
 impl Packages {

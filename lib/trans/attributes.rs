@@ -1,16 +1,16 @@
 //! Handle parsing of attributes.
 
-use core::errors::Error;
-use core::flavored::{
+use crate::core::errors::Error;
+use crate::core::flavored::{
     Attributes, RpAccept, RpChannel, RpEndpointArgument, RpEndpointHttp, RpHttpMethod, RpPathSpec,
     RpValue,
 };
-use core::{self, Diagnostics, Import, Loc, RpStringValidate, Span, Version, WithSpan};
-use features::Feature;
-use into_model::IntoModel;
-use path_parser;
-use regex_parser;
-use scope::Scope;
+use crate::core::{self, Diagnostics, Import, Loc, RpStringValidate, Span, Version, WithSpan};
+use crate::features::Feature;
+use crate::into_model::IntoModel;
+use crate::path_parser;
+use crate::regex_parser;
+use crate::scope::Scope;
 use std::collections::HashMap;
 
 /// `#![feature(..)]` attributes.
@@ -77,7 +77,7 @@ pub fn reproto(diag: &mut Diagnostics, attributes: &mut Attributes) -> Result<Re
     };
 
     if let Some(version) = selection.take("version") {
-        let (mut version, span) = Loc::take_pair(version);
+        let (version, span) = Loc::take_pair(version);
 
         let v = version
             .as_string()
@@ -230,7 +230,7 @@ where
 
     /// Parse a method.
     fn parse_method(diag: &mut Diagnostics, method: Loc<RpValue>) -> Result<RpHttpMethod, ()> {
-        use core::RpHttpMethod::*;
+        use crate::core::RpHttpMethod::*;
 
         let (method, span) = Loc::take_pair(method);
 

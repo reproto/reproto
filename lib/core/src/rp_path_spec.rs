@@ -1,8 +1,8 @@
 //! Path specifications
 
-use errors::Result;
+use crate::errors::Result;
+use crate::{Diagnostics, Flavor, RpEndpointArgument, Translate, Translator};
 use std::fmt;
-use {Diagnostics, Flavor, RpEndpointArgument, Translate, Translator};
 
 /// A part of a step.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]

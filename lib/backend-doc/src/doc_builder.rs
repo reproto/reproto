@@ -6,7 +6,7 @@ pub struct DocBuilder<'a> {
 }
 
 impl<'a> DocBuilder<'a> {
-    pub fn new(write: &'a mut fmt::Write) -> DocBuilder<'a> {
+    pub fn new(write: &'a mut dyn fmt::Write) -> DocBuilder<'a> {
         DocBuilder {
             formatter: Formatter::new(write),
         }

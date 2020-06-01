@@ -1,7 +1,7 @@
 //! Helper component to build C# files.
 
-use core::errors::*;
-use core::{Handle, RelativePathBuf};
+use crate::core::errors::*;
+use crate::core::{Handle, RelativePathBuf};
 use genco::csharp::Extra;
 use genco::{Csharp, IoFmt, Tokens, WriteTokens};
 
@@ -23,7 +23,7 @@ where
         }
     }
 
-    pub fn process(self, handle: &Handle) -> Result<()> {
+    pub fn process(self, handle: &dyn Handle) -> Result<()> {
         let parts = self.namespace.split('.').collect::<Vec<_>>();
 
         let path = parts
@@ -32,7 +32,7 @@ where
             .fold(RelativePathBuf::new(), |p, part| p.join(part));
 
         if !handle.is_dir(&path) {
-            debug!("+dir: {}", path.display());
+            debug!("+dir: {}", path);
             handle.create_dir_all(&path)?;
         }
 
@@ -44,7 +44,7 @@ where
         let mut extra = Extra::default();
         extra.namespace(self.namespace);
 
-        debug!("+class: {}", path.display());
+        debug!("+class: {}", path);
         IoFmt(&mut handle.create(&path)?.as_mut()).write_file(file, &mut extra)?;
 
         Ok(())

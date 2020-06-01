@@ -1,18 +1,18 @@
 //! gRPC module for Rust.
 
-use backend::Initializer;
-use core;
-use core::errors::{Error, Result};
-use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, SwiftName};
-use genco::swift::{local, Swift};
-use genco::{Quoted, Tokens};
-use std::collections::BTreeSet;
-use std::rc::Rc;
-use {
+use crate::backend::Initializer;
+use crate::core;
+use crate::core::errors::{Error, Result};
+use crate::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, SwiftName};
+use crate::{
     EnumAdded, EnumCodegen, FileSpec, InterfaceAdded, InterfaceCodegen, InterfaceModelAdded,
     InterfaceModelCodegen, Options, PackageAdded, PackageCodegen, StructModelAdded,
     StructModelCodegen, TupleAdded, TupleCodegen,
 };
+use genco::swift::{local, Swift};
+use genco::{Quoted, Tokens};
+use std::collections::BTreeSet;
+use std::rc::Rc;
 
 pub struct Module {}
 

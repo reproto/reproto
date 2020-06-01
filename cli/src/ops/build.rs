@@ -1,10 +1,10 @@
 //! build command
 
+use crate::core::errors::Result;
+use crate::core::{Filesystem, Reporter};
+use crate::env;
+use crate::utils::{load_manifest, session};
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::errors::Result;
-use core::{Filesystem, Reporter};
-use env;
-use utils::{load_manifest, session};
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("build").about("Build specifications");
@@ -19,7 +19,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(fs: &Filesystem, reporter: &mut Reporter, matches: &ArgMatches) -> Result<()> {
+pub fn entry(fs: &dyn Filesystem, reporter: &mut dyn Reporter, matches: &ArgMatches) -> Result<()> {
     let manifest = load_manifest(matches)?;
     let lang = manifest.lang().ok_or_else(|| {
         "no language to build for, either specify in manifest under `language` or `--lang`"

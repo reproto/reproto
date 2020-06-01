@@ -1,6 +1,6 @@
 //! Literal code segments
 
-use Loc;
+use crate::Loc;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]

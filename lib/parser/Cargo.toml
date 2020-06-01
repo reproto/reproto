@@ -3,6 +3,7 @@ name = "reproto-parser"
 version = "0.3.39"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
+edition = "2018"
 readme = "README.md"
 repository = "https://github.com/reproto/reproto"
 homepage = "https://github.com/reproto/reproto"
@@ -20,8 +21,8 @@ reproto-core = {path = "../core", version = "0.3"}
 reproto-ast = {path = "../ast", version = "0.3"}
 reproto-lexer = {path = "../lexer", version = "0.3"}
 
-lalrpop-util = "0.16.0"
-num-bigint = { version = "0.2.0", default_features = false, features = ["std"] }
+lalrpop-util = "0.19.0"
+num-bigint = { version = "0.2.6", default_features = false, features = ["std"] }
 
 [build-dependencies]
-lalrpop = "0.16.0"
+lalrpop = "0.19.0"

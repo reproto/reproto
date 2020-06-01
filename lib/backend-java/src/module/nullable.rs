@@ -1,4 +1,4 @@
-use codegen::Configure;
+use crate::codegen::Configure;
 
 pub struct Module;
 

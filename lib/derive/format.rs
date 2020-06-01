@@ -1,6 +1,6 @@
-use core;
-use core::errors::Result;
-use sir::Sir;
+use crate::core;
+use crate::core::errors::Result;
+use crate::sir::Sir;
 use std::fmt;
 
 ///
@@ -19,7 +19,7 @@ pub trait Object {
 
 pub trait Value {
     /// Attempt to convert the current value into an Object.
-    fn as_object(&self) -> Option<&Object<Value = Self>>;
+    fn as_object(&self) -> Option<&dyn Object<Value = Self>>;
 
     /// Attempt to convert the current value into a String.
     fn as_str(&self) -> Option<&str>;

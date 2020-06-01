@@ -1,21 +1,21 @@
 //! Backend for Rust
 
-use backend::PackageProcessor;
-use core::errors::*;
-use core::{self, Handle, Loc, RelativePath, RelativePathBuf};
-use flavored::{
+use crate::backend::PackageProcessor;
+use crate::core::errors::*;
+use crate::core::{self, Handle, Loc, RelativePath, RelativePathBuf};
+use crate::flavored::{
     RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpTupleBody,
     RpTypeBody, RpVariant, RustFlavor,
 };
+use crate::rust_file_spec::RustFileSpec;
+use crate::trans::{self, Translated};
+use crate::utils::Comments;
+use crate::{Options, Root, Service, EXT, LIB, MOD, TYPE_SEP};
 use genco::rust;
 use genco::{Cons, IntoTokens, Quoted, Rust, Tokens};
-use rust_file_spec::RustFileSpec;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::rc::Rc;
-use trans::{self, Translated};
-use utils::Comments;
-use {Options, Root, Service, EXT, LIB, MOD, TYPE_SEP};
 
 /// #[allow(non_camel_case_types)] attribute.
 pub struct AllowNonCamelCaseTypes;
@@ -73,14 +73,14 @@ impl<'el> IntoTokens<'el, Rust<'el>> for Untagged {
 pub struct Compiler<'el> {
     pub env: &'el Translated<RustFlavor>,
     options: Options,
-    handle: &'el Handle,
+    handle: &'el dyn Handle,
 }
 
 impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Translated<RustFlavor>,
         options: Options,
-        handle: &'el Handle,
+        handle: &'el dyn Handle,
     ) -> Compiler<'el> {
         Compiler {
             env,
@@ -213,22 +213,18 @@ impl<'el> Compiler<'el> {
             let parent = full_path.parent().unwrap_or(RelativePath::new("."));
 
             if !self.handle.is_dir(&parent) {
-                debug!("+dir: {}", parent.display());
+                debug!("+dir: {}", parent);
                 handle.create_dir_all(&parent)?;
             }
 
             // do not create mod file if there is a lib.rs in the root.
             if lib_path.parent().is_none() && handle.is_file(&lib_path) {
-                debug!(
-                    "+mod: {} (skip due to: {})",
-                    full_path.display(),
-                    lib_path.display()
-                );
+                debug!("+mod: {} (skip due to: {})", full_path, lib_path);
                 continue;
             }
 
             if !handle.is_file(&full_path) {
-                debug!("+mod: {}", full_path.display());
+                debug!("+mod: {}", full_path);
                 let mut f = handle.create(&full_path)?;
 
                 for child in children {
@@ -253,7 +249,7 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
         self.env.decl_iter()
     }
 
-    fn handle(&self) -> &'el Handle {
+    fn handle(&self) -> &'el dyn Handle {
         self.handle
     }
 

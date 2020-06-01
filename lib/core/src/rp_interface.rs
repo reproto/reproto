@@ -1,10 +1,10 @@
 //! Model for tuples.
 
-use errors::Result;
+use crate::errors::Result;
+use crate::translator;
+use crate::{Diagnostics, Flavor, FlavorField, Loc, RpCode, RpDecl, RpReg, Translate, Translator};
 use linked_hash_map::LinkedHashMap;
 use serde::Serialize;
-use translator;
-use {Diagnostics, Flavor, FlavorField, Loc, RpCode, RpDecl, RpReg, Translate, Translator};
 
 /// Default key to use for tagged sub type strategy.
 pub const DEFAULT_TAG: &str = "type";

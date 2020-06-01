@@ -1,7 +1,7 @@
 //! Model for registered types.
 
+use crate::{Flavor, RpName};
 use std::fmt;
-use {Flavor, RpName};
 
 /// Marker for the existence of a registered type of the given kind.
 #[derive(Debug, Clone)]

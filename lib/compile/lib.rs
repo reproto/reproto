@@ -2,8 +2,8 @@ extern crate reproto_ast as ast;
 extern crate reproto_core as core;
 extern crate reproto_manifest as manifest;
 
-use core::{RelativePath, Reporter, Resolver, RpPackage, RpVersionedPackage, Source};
-use manifest::Lang;
+use crate::core::{RelativePath, Reporter, Resolver, RpPackage, RpVersionedPackage, Source};
+use crate::manifest::Lang;
 use std::any::Any;
 use std::str;
 
@@ -18,14 +18,14 @@ pub enum Input<'input> {
 /// A simple compilation stage.
 pub struct SimpleCompile<'a, 'input> {
     pub input: Input<'input>,
-    pub reporter: &'a mut Reporter,
+    pub reporter: &'a mut dyn Reporter,
     pub package_prefix: Option<RpPackage>,
-    pub resolver: Option<&'a mut Resolver>,
+    pub resolver: Option<&'a mut dyn Resolver>,
 }
 
 impl<'a, 'input> SimpleCompile<'a, 'input> {
     /// Build a new compilation stage.
-    pub fn new(input: Input<'input>, reporter: &'a mut Reporter) -> SimpleCompile<'a, 'input> {
+    pub fn new(input: Input<'input>, reporter: &'a mut dyn Reporter) -> SimpleCompile<'a, 'input> {
         Self {
             input: input,
             reporter: reporter,
@@ -43,7 +43,7 @@ impl<'a, 'input> SimpleCompile<'a, 'input> {
     }
 
     /// Set resolver.
-    pub fn resolver(self, resolver: &'a mut Resolver) -> Self {
+    pub fn resolver(self, resolver: &'a mut dyn Resolver) -> Self {
         Self {
             resolver: Some(resolver),
             ..self
@@ -56,8 +56,8 @@ impl<'a, 'input> SimpleCompile<'a, 'input> {
 pub fn simple_compile<'a, 'input, O>(
     mut out: O,
     config: SimpleCompile<'a, 'input>,
-    modules: Vec<Box<Any>>,
-    lang: &Lang,
+    modules: Vec<Box<dyn Any>>,
+    lang: &dyn Lang,
 ) -> core::errors::Result<()>
 where
     O: FnMut(&RelativePath, &str) -> core::errors::Result<()>,

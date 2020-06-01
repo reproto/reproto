@@ -7,10 +7,10 @@ extern crate reproto_core as core;
 extern crate reproto_repository as repository;
 extern crate url;
 
-use core::errors::{Error, Result};
+use core::errors::Result;
 use core::Source;
 use futures::future::{err, ok};
-use futures::{Future, Stream};
+use futures::{StreamExt as _, TryFutureExt as _};
 use hyper::client::HttpConnector;
 use hyper::{Body, Client, Method, Request, StatusCode};
 use hyper_rustls::HttpsConnector;
@@ -38,32 +38,28 @@ impl HttpObjects {
         Ok(url)
     }
 
-    fn handle_request(
-        &mut self,
-        request: Request<Body>,
-    ) -> impl Future<Item = (Vec<u8>, StatusCode), Error = Error> {
-        let body_and_status = self
-            .client
-            .request(request)
-            .map_err::<_, Error>(|e| format!("Request to repository failed: {}", e).into())
-            .and_then(|res| {
-                let status = res.status().clone();
+    async fn handle_request(&mut self, request: Request<Body>) -> Result<(Vec<u8>, StatusCode)> {
+        let mut res = self.client.request(request).await?;
 
-                res.into_body()
-                    .map_err::<Error, _>(|e| format!("Failed to perform request: {}", e).into())
-                    .fold(Vec::new(), |mut out: Vec<u8>, chunk| {
-                        out.extend(chunk.as_ref());
-                        ok::<_, Error>(out)
-                    })
-                    .map(move |body| (body, status))
-            });
+        let body = res.body_mut();
+        let mut output = Vec::new();
 
-        Box::new(body_and_status)
+        while let Some(chunk) = body.next().await {
+            let bytes = chunk?;
+            output.extend(&bytes[..]);
+        }
+
+        Ok((output, res.status()))
     }
 }
 
 impl Objects for HttpObjects {
-    fn put_object(&mut self, checksum: &Checksum, source: &mut Read, _force: bool) -> Result<bool> {
+    fn put_object(
+        &mut self,
+        checksum: &Checksum,
+        source: &mut dyn Read,
+        _force: bool,
+    ) -> Result<bool> {
         let mut buffer = Vec::new();
         source.read_to_end(&mut buffer)?;
 
@@ -86,7 +82,7 @@ impl Objects for HttpObjects {
             ok(())
         });
 
-        work.wait()?;
+        futures::executor::block_on(work)?;
 
         // TODO: use status code to determine if the upload resulted in changes or not.
         Ok(true)
@@ -117,14 +113,14 @@ impl Objects for HttpObjects {
             return err(format!("bad response: {}", status).into());
         });
 
-        let out = work.wait()?;
+        let out = futures::executor::block_on(work)?;
         Ok(out.map(|out| Source::bytes(name, out)))
     }
 }
 
 /// Load objects from an HTTP url.
-pub fn objects_from_url(config: ObjectsConfig, url: &Url) -> Result<Box<Objects>> {
-    let client = Client::builder().build(HttpsConnector::new(4));
+pub fn objects_from_url(config: ObjectsConfig, url: &Url) -> Result<Box<dyn Objects>> {
+    let client = Client::builder().build(HttpsConnector::new());
 
     let http_objects = HttpObjects {
         url: url.clone(),

@@ -1,14 +1,14 @@
 //! Multiple resolvers with combined result.
 
-use core::errors::Result;
-use core::{Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage};
+use crate::core::errors::Result;
+use crate::core::{Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage};
 
 pub struct Resolvers {
-    resolvers: Vec<Box<Resolver>>,
+    resolvers: Vec<Box<dyn Resolver>>,
 }
 
 impl Resolvers {
-    pub fn new(resolvers: Vec<Box<Resolver>>) -> Resolvers {
+    pub fn new(resolvers: Vec<Box<dyn Resolver>>) -> Resolvers {
         Resolvers {
             resolvers: resolvers,
         }

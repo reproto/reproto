@@ -1,12 +1,12 @@
 //! Model for declarations
 
-use errors::Result;
-use serde::Serialize;
-use std::fmt;
-use {
+use crate::errors::Result;
+use crate::{
     Diagnostics, Flavor, Loc, RpEnumBody, RpInterfaceBody, RpReg, RpServiceBody, RpSubType,
     RpTupleBody, RpTypeBody, RpVariantRef, Span, Translate, Translator,
 };
+use serde::Serialize;
+use std::fmt;
 
 #[derive(Debug, Clone)]
 pub enum RpNamed<'a, F: 'static>

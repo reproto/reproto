@@ -1,10 +1,10 @@
 //! A file that is loaded into a workspace.
 
-use core::errors::Result;
-use core::{Diagnostics, Encoding, Position, RpVersionedPackage, Source, Span};
-use models::{Completion, Jump, Prefix, Range, Reference, Rename, Symbol};
+use crate::core::errors::Result;
+use crate::core::{Diagnostics, Encoding, Position, RpVersionedPackage, Source, Span};
+use crate::models::{Completion, Jump, Prefix, Range, Reference, Rename, Symbol};
+use crate::triggers::Triggers;
 use std::collections::HashMap;
-use triggers::Triggers;
 use url::Url;
 
 #[derive(Debug, Clone)]

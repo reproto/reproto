@@ -1,6 +1,6 @@
 //! Types to deserialize.
 
-use serde;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

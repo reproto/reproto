@@ -11,23 +11,23 @@ mod internal {
     extern crate tar;
 
     use self::flate2::read::GzDecoder;
-    use self::futures::future::{err, ok};
-    use self::futures::{Future, Stream};
+    use self::futures::{executor, Future, StreamExt};
     use self::hyper::client::HttpConnector;
     use self::hyper::header;
     use self::hyper::{Body, Client, Method, Request, Response, StatusCode, Uri};
     use self::hyper_rustls::HttpsConnector;
     use self::tar::Archive;
+    use crate::core::errors::{Error, Result};
+    use crate::core::Version;
+    use crate::env;
+    use crate::VERSION;
     use clap::ArgMatches;
-    use core::errors::{Error, Result};
-    use core::Version;
-    use env;
     use std::fs::{self, File};
     use std::io::{self, Cursor};
     use std::path::Path;
+    use std::pin::Pin;
     use std::sync::Arc;
     use url::Url;
-    use VERSION;
 
     #[cfg(target_os = "macos")]
     mod os {
@@ -95,7 +95,7 @@ mod internal {
 
         let mut client = UpdateClient::new(url)?;
 
-        let mut releases = client.get_releases().wait()?;
+        let mut releases = executor::block_on(client.get_releases())?;
 
         releases.sort();
 
@@ -129,9 +129,7 @@ mod internal {
         let binary = format!("reproto{}", ext);
 
         if !archived.is_file() || force {
-            let release = client
-                .get_release(&version, platform, arch)
-                .wait()
+            let release = executor::block_on(client.get_release(&version, platform, arch))
                 .map_err(|e| format!("{}: failed to download archive: {}", tuple, e.display()))?;
 
             download_archive(release, &archived, &binary).map_err(|e| {
@@ -278,7 +276,7 @@ mod internal {
 
     impl UpdateClient {
         pub fn new(url: Url) -> Result<Self> {
-            let client = Client::builder().build(HttpsConnector::new(4));
+            let client = Client::builder().build(HttpsConnector::new());
 
             Ok(Self {
                 client: Arc::new(client),
@@ -290,7 +288,7 @@ mod internal {
         fn handle_redirect(
             client: Arc<Client<HttpsConnector<HttpConnector>>>,
             res: &Response<Body>,
-        ) -> Option<Box<Future<Item = Vec<u8>, Error = Error>>> {
+        ) -> Result<Option<Pin<Box<dyn Future<Output = Result<Vec<u8>>>>>>> {
             let should_redirect = match res.status() {
                 StatusCode::MOVED_PERMANENTLY
                 | StatusCode::FOUND
@@ -300,168 +298,121 @@ mod internal {
                 _ => false,
             };
 
-            if should_redirect {
-                let uri = if let Some(loc) = res.headers().get(header::LOCATION) {
-                    match ::std::str::from_utf8(loc.as_bytes())
-                        .map_err(Error::from)
-                        .and_then(|s| s.parse::<Uri>().map_err(Error::from))
-                    {
-                        Ok(uri) => uri,
-                        Err(e) => return Some(Box::new(err(e))),
-                    }
-                } else {
-                    return None;
-                };
+            let uri = if let Some(loc) = res.headers().get(header::LOCATION) {
+                let s = ::std::str::from_utf8(loc.as_bytes()).map_err(Error::from)?;
+                s.parse::<Uri>().map_err(Error::from)?
+            } else {
+                return Err("missing location header".into());
+            };
 
-                let req = match Request::builder()
-                    .method(Method::GET)
-                    .uri(uri)
-                    .body(Body::empty())
-                {
-                    Ok(req) => req,
-                    Err(e) => return Some(Box::new(err(e.into()))),
-                };
-
-                return Some(Box::new(Self::request(client, req)));
+            if !should_redirect {
+                return Ok(None);
             }
 
-            return None;
+            Ok(Some(Box::pin(async move {
+                let req = Request::builder()
+                    .method(Method::GET)
+                    .uri(uri)
+                    .body(Body::empty())?;
+
+                Self::request(client, req).await
+            })))
         }
 
         /// Perform the given request.
-        fn request(
+        async fn request(
             client: Arc<Client<HttpsConnector<HttpConnector>>>,
             req: Request<Body>,
-        ) -> impl Future<Item = Vec<u8>, Error = Error> {
+        ) -> Result<Vec<u8>> {
             let inner_client = Arc::clone(&client);
 
-            client
-                .request(req)
-                .map_err(|e| Error::from(e))
-                .and_then(move |res| {
-                    if let Some(future) = Self::handle_redirect(inner_client, &res) {
-                        return future;
-                    }
+            let mut res = client.request(req).await.map_err(Error::from)?;
 
-                    let status = res.status().clone();
+            if let Some(future) = Self::handle_redirect(inner_client, &res)? {
+                return future.await;
+            }
 
-                    let fut =
-                        res.into_body()
-                            .map_err(|e| Error::from(e))
-                            .fold(Vec::new(), |mut out: Vec<u8>, chunk| {
-                                out.extend(chunk.as_ref());
-                                ok::<_, Error>(out)
-                            })
-                            .map(move |body| (body, status))
-                            .and_then(|(body, status)| {
-                                if !status.is_success() {
-                                    if let Ok(body) = String::from_utf8(body) {
-                                        return err(
-                                            format!("bad response: {}: {}", status, body).into()
-                                        );
-                                    }
+            let status = res.status().clone();
+            let body = res.body_mut();
 
-                                    return err(format!("bad response: {}", status).into());
-                                }
+            let mut output = Vec::new();
 
-                                ok(body)
-                            });
+            while let Some(chunk) = body.next().await.transpose()? {
+                output.extend(&chunk);
+            }
 
-                    Box::new(fut)
-                })
+            if !res.status().is_success() {
+                if let Ok(body) = std::str::from_utf8(&output) {
+                    return Err(format!("bad response: {}: {}", status, body).into());
+                }
+
+                return Err(format!("bad response: {}", status).into());
+            }
+
+            Ok(output)
         }
 
-        pub fn get_releases(&mut self) -> Box<Future<Item = Vec<Version>, Error = Error>> {
-            let url = match self.url.join("releases") {
-                Ok(url) => url,
-                Err(e) => return Box::new(err(e.into())),
-            };
-
-            let uri = match url.as_ref().parse::<Uri>() {
-                Ok(uri) => uri,
-                Err(e) => return Box::new(err(e.into())),
-            };
-
-            let request = match Request::get(uri).body(Body::empty()) {
-                Ok(request) => request,
-                Err(e) => return Box::new(err(e.into())),
-            };
+        pub async fn get_releases(&mut self) -> Result<Vec<Version>, Error> {
+            let url = self.url.join("releases")?;
+            let uri = url.as_ref().parse::<Uri>()?;
+            let request = Request::get(uri).body(Body::empty())?;
 
             let url = url.clone();
 
-            let future = Self::request(Arc::clone(&self.client), request)
-                .and_then(|body| {
-                    let body = match String::from_utf8(body) {
-                        Err(e) => return err(format!("body is not utf-8: {}", e).into()),
-                        Ok(body) => body,
-                    };
+            let body = Self::request(Arc::clone(&self.client), request)
+                .await
+                .map_err(move |e| format!("request to `{}` failed: {}", url, e.display()))?;
 
-                    let mut out = Vec::new();
+            let body = match String::from_utf8(body) {
+                Ok(body) => body,
+                Err(e) => return Err(format!("body is not utf-8: {}", e).into()),
+            };
 
-                    for line in body.split('\n') {
-                        let line = line.trim();
+            let mut out = Vec::new();
 
-                        if line.is_empty() {
-                            continue;
-                        }
+            for line in body.split('\n') {
+                let line = line.trim();
 
-                        let version = match Version::parse(line) {
-                            Err(e) => return err(e.into()),
-                            Ok(version) => version,
-                        };
+                if line.is_empty() {
+                    continue;
+                }
 
-                        out.push(version);
-                    }
+                out.push(Version::parse(line)?);
+            }
 
-                    ok(out)
-                })
-                .map_err(move |e| format!("request to `{}` failed: {}", url, e.display()).into());
-
-            Box::new(future)
+            Ok(out)
         }
 
-        pub fn get_release(
+        pub async fn get_release(
             &mut self,
             version: &Version,
             platform: &str,
             arch: &str,
-        ) -> Box<Future<Item = Vec<u8>, Error = Error>> {
-            let url = match self
+        ) -> Result<Vec<u8>, Error> {
+            let url = self
                 .url
-                .join(&format!("reproto-{}-{}-{}.tar.gz", version, platform, arch))
-            {
-                Ok(url) => url,
-                Err(e) => return Box::new(err(e.into())),
-            };
+                .join(&format!("reproto-{}-{}-{}.tar.gz", version, platform, arch))?;
 
-            let uri = match url.as_ref().parse::<Uri>() {
-                Ok(uri) => uri,
-                Err(e) => return Box::new(err(e.into())),
-            };
+            let uri = url.as_ref().parse::<Uri>()?;
 
-            let request = match Request::builder()
+            let request = Request::builder()
                 .method(Method::GET)
                 .uri(uri)
-                .body(Body::empty())
-            {
-                Ok(request) => request,
-                Err(e) => return Box::new(err(e.into())),
-            };
+                .body(Body::empty())?;
 
             let url = url.clone();
 
-            let future = Self::request(Arc::clone(&self.client), request)
-                .map_err(move |e| format!("request to `{}` failed: {}", url, e.display()).into());
-
-            Box::new(future)
+            Self::request(Arc::clone(&self.client), request)
+                .await
+                .map_err(move |e| format!("request to `{}` failed: {}", url, e.display()).into())
         }
     }
 }
 
 #[cfg(not(feature = "self-updates"))]
 mod internal {
+    use crate::core::errors::Result;
     use clap::ArgMatches;
-    use core::errors::Result;
 
     pub fn entry(_: &ArgMatches) -> Result<()> {
         return Err("support for self-updates is not enabled".into());

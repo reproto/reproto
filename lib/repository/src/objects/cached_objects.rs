@@ -1,14 +1,14 @@
 //! ## Load objects through a local cache directory
 
-use checksum::Checksum;
-use core::errors::*;
-use core::Source;
-use hex_slice::HexSlice;
+use crate::checksum::Checksum;
+use crate::core::errors::*;
+use crate::core::Source;
+use crate::hex_slice::HexSlice;
+use crate::Objects;
 use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::PathBuf;
 use std::time::{self, Duration};
-use Objects;
 
 pub struct CachedObjects<T> {
     objects_cache: PathBuf,
@@ -85,7 +85,12 @@ impl<T: Objects> CachedObjects<T> {
 }
 
 impl<T: Objects> Objects for CachedObjects<T> {
-    fn put_object(&mut self, checksum: &Checksum, source: &mut Read, force: bool) -> Result<bool> {
+    fn put_object(
+        &mut self,
+        checksum: &Checksum,
+        source: &mut dyn Read,
+        force: bool,
+    ) -> Result<bool> {
         self.inner.put_object(checksum, source, force)
     }
 

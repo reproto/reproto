@@ -11,12 +11,12 @@ extern crate serde;
 extern crate serde_json;
 extern crate toml;
 
-use core::errors::*;
-use core::{CoreFlavor, Handle, RelativePathBuf};
-use manifest::{Lang, Manifest, NoModule, TryFromToml};
+use crate::core::errors::*;
+use crate::core::{CoreFlavor, Handle, RelativePathBuf};
+use crate::manifest::{Lang, Manifest, NoModule, TryFromToml};
+use crate::trans::Session;
 use std::any::Any;
 use std::path::Path;
-use trans::Session;
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct JsonLang;
@@ -38,13 +38,13 @@ impl TryFromToml for JsonModule {
     }
 }
 
-fn compile(handle: &Handle, session: Session<CoreFlavor>, _manifest: Manifest) -> Result<()> {
+fn compile(handle: &dyn Handle, session: Session<CoreFlavor>, _manifest: Manifest) -> Result<()> {
     let session = session.translate_default()?;
 
     let root = RelativePathBuf::from(".");
 
     for (package, file) in session.for_each_file() {
-        let mut path = package
+        let path = package
             .package
             .parts()
             .fold(root.clone(), |path, part| path.join(part));
@@ -55,14 +55,14 @@ fn compile(handle: &Handle, session: Session<CoreFlavor>, _manifest: Manifest) -
             .unwrap_or_else(|| root.clone());
 
         if !handle.is_dir(&parent) {
-            debug!("+dir: {}", parent.display());
+            debug!("+dir: {}", parent);
             handle.create_dir_all(&parent)?;
         }
 
         let path = if let Some(version) = package.version.as_ref() {
             let stem = path
                 .file_stem()
-                .ok_or_else(|| format!("Missing file stem: {}", path.display()))?;
+                .ok_or_else(|| format!("Missing file stem: {}", path))?;
 
             let file_name = format!("{}-{}.json", stem, version);
             path.with_file_name(file_name)
@@ -70,7 +70,7 @@ fn compile(handle: &Handle, session: Session<CoreFlavor>, _manifest: Manifest) -
             path.with_extension("json")
         };
 
-        debug!("+file: {}", path.display());
+        debug!("+file: {}", path);
         writeln!(
             handle.create(&path)?,
             "{}",

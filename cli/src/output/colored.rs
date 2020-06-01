@@ -1,7 +1,7 @@
 use super::{LockableWrite, Output};
+use crate::core::errors::*;
+use crate::core::{self, Source, Span};
 use ansi_term::Colour::{self, Blue, Red};
-use core::errors::*;
-use core::{self, Source, Span};
 use log;
 use std::io;
 
@@ -51,16 +51,15 @@ impl<T> Output for Colored<T>
 where
     T: 'static + LockableWrite,
 {
-    fn lock<'a>(&'a self) -> Box<io::Write + 'a> {
+    fn lock<'a>(&'a self) -> Box<dyn io::Write + 'a> {
         self.out.lock()
     }
 
     fn error_message(&self, m: &str) -> Result<String> {
-        use ansi_term::Colour::Red;
         Ok(format!("{}", Red.paint(m)))
     }
 
-    fn logger(&self) -> Box<log::Log + 'static> {
+    fn logger(&self) -> Box<dyn log::Log + 'static> {
         Box::new(ColoredLogger {
             out: self.out.open_new(),
         })

@@ -1,8 +1,8 @@
 //! Data model for request or responses for endpoints
 
-use errors::Result;
+use crate::errors::Result;
+use crate::{Diagnostics, Flavor, Translate, Translator};
 use std::fmt;
-use {Diagnostics, Flavor, Translate, Translator};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(bound = "F::Type: ::serde::Serialize")]

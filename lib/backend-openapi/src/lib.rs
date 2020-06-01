@@ -35,19 +35,21 @@ macro_rules! number_rule {
 }
 
 use self::spec::*;
-use core::errors::*;
-use core::flavored::{
+use crate::core::errors::*;
+use crate::core::flavored::{
     RpChannel, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpTupleBody, RpType,
     RpTypeBody, RpVersionedPackage,
 };
-use core::{CoreFlavor, Handle, Loc, RelativePath, RelativePathBuf, RpHttpMethod, RpNumberKind};
+use crate::core::{
+    CoreFlavor, Handle, Loc, RelativePath, RelativePathBuf, RpHttpMethod, RpNumberKind,
+};
+use crate::manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
+use crate::trans::{Session, Translated};
 use linked_hash_map::LinkedHashMap;
-use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::cell::RefCell;
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::path::Path;
-use trans::{Session, Translated};
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct OpenApiLang;
@@ -85,7 +87,7 @@ impl TryFromToml for OpenApiModule {
     }
 }
 
-fn compile(handle: &Handle, env: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &dyn Handle, env: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let env = env.translate_default()?;
 
     let modules = checked_modules(manifest.modules)?;
@@ -115,14 +117,14 @@ impl OutputFormat {
 
 struct Compiler<'handle> {
     upper_camel: naming::ToUpperCamel,
-    handle: &'handle Handle,
+    handle: &'handle dyn Handle,
     env: Translated<CoreFlavor>,
     any_type: RpName,
     output_format: OutputFormat,
 }
 
 impl<'handle> Compiler<'handle> {
-    pub fn new(handle: &'handle Handle, env: Translated<CoreFlavor>) -> Self {
+    pub fn new(handle: &'handle dyn Handle, env: Translated<CoreFlavor>) -> Self {
         Compiler {
             upper_camel: naming::to_upper_camel(),
             handle,
@@ -151,7 +153,7 @@ impl<'handle> Compiler<'handle> {
         let root = RelativePathBuf::from(".");
 
         for (package, file) in self.env.for_each_file() {
-            let mut dir = package
+            let dir = package
                 .package
                 .parts()
                 .fold(root.clone(), |path, part| path.join(part));
@@ -163,7 +165,7 @@ impl<'handle> Compiler<'handle> {
                     _ => continue,
                 };
 
-                let mut builder = SpecBuilder {
+                let builder = SpecBuilder {
                     upper_camel: &self.upper_camel,
                     handle: self.handle,
                     env: &self.env,
@@ -176,7 +178,7 @@ impl<'handle> Compiler<'handle> {
 
                 let (spec, path) = builder.build(&dir, package, service)?;
 
-                debug!("+file: {}", path.display());
+                debug!("+file: {}", path);
 
                 let out = self.handle.create(&path)?;
 
@@ -205,7 +207,7 @@ pub enum Queued<'a> {
 /// Allocates names that are conflict free.
 struct SpecBuilder<'builder> {
     upper_camel: &'builder naming::ToUpperCamel,
-    handle: &'builder Handle,
+    handle: &'builder dyn Handle,
     env: &'builder Translated<CoreFlavor>,
     /// Names and what local names they are associated with.
     allocated_names: RefCell<HashMap<RpName, String>>,
@@ -269,7 +271,7 @@ impl<'builder> SpecBuilder<'builder> {
                 None => RpHttpMethod::Get,
             };
 
-            let mut p = spec
+            let p = spec
                 .paths
                 .entry(path.to_string())
                 .or_insert_with(SpecPath::default);
@@ -289,7 +291,7 @@ impl<'builder> SpecBuilder<'builder> {
             for v in path.vars() {
                 let schema = self.type_to_schema(&mut queue, v.channel.ty())?;
 
-                let mut param = spec::Parameter {
+                let param = spec::Parameter {
                     name: v.safe_ident(),
                     required: true,
                     in_: ParameterIn::Path,
@@ -327,7 +329,7 @@ impl<'builder> SpecBuilder<'builder> {
 
         if let Some(parent) = path.parent() {
             if !self.handle.is_dir(parent) {
-                debug!("+dir: {}", parent.display());
+                debug!("+dir: {}", parent);
                 self.handle.create_dir_all(parent)?;
             }
         }
@@ -408,7 +410,7 @@ impl<'builder> SpecBuilder<'builder> {
                 }
             };
 
-            let mut components = spec.components.get_or_insert_with(Components::default);
+            let components = spec.components.get_or_insert_with(Components::default);
             components.schemas.insert(ref_, schema);
         }
 
@@ -580,7 +582,7 @@ impl<'builder> SpecBuilder<'builder> {
 
     /// Allocate a conflict-free name.
     fn allocate_name(&self, name: &RpName) -> Result<String> {
-        use naming::Naming;
+        use crate::naming::Naming;
 
         let mut all_names = self
             .all_names
@@ -667,7 +669,7 @@ impl<'builder> SpecBuilder<'builder> {
         queue: &mut VecDeque<Queued<'builder>>,
         ty: &'builder RpType,
     ) -> Result<spec::Schema<'builder>> {
-        use core::RpType::*;
+        use crate::core::RpType::*;
 
         let out = match *ty {
             Name { ref name } => {

@@ -1,17 +1,17 @@
 //! Translates one IR in-place into another.
 
-use errors::Result;
+use crate::errors::Result;
+use crate::Flavor;
+use crate::{
+    CoreFlavor, Diagnostics, Loc, RpEndpoint, RpEnumType, RpField, RpName, RpNumberType, RpReg,
+    RpStringType, RpType, RpVersionedPackage,
+};
 use linked_hash_map::LinkedHashMap;
 use std::cell::RefCell;
 use std::cmp;
 use std::collections::HashMap;
 use std::hash;
 use std::rc::Rc;
-use Flavor;
-use {
-    CoreFlavor, Diagnostics, Loc, RpEndpoint, RpEnumType, RpField, RpName, RpNumberType, RpReg,
-    RpStringType, RpType, RpVersionedPackage,
-};
 
 /// Method for translating package.
 pub trait PackageTranslator<K, V> {
@@ -163,28 +163,28 @@ pub trait Translator {
     /// Translate the given package from one flavor to another.
     fn translate_package(
         &self,
-        <Self::Source as Flavor>::Package,
+        _: <Self::Source as Flavor>::Package,
     ) -> Result<<Self::Target as Flavor>::Package>;
 
     /// Translate the given type from one flavor to another.
     fn translate_type(
         &self,
         diag: &mut Diagnostics,
-        <Self::Source as Flavor>::Type,
+        _: <Self::Source as Flavor>::Type,
     ) -> Result<<Self::Target as Flavor>::Type>;
 
     /// Translate the given field from one flavor to another.
     fn translate_field(
         &self,
         diag: &mut Diagnostics,
-        <Self::Source as Flavor>::Field,
+        _: <Self::Source as Flavor>::Field,
     ) -> Result<<Self::Target as Flavor>::Field>;
 
     /// Translate the given endpoint from one flavor to another.
     fn translate_endpoint(
         &self,
         diag: &mut Diagnostics,
-        <Self::Source as Flavor>::Endpoint,
+        _: <Self::Source as Flavor>::Endpoint,
     ) -> Result<<Self::Target as Flavor>::Endpoint>;
 
     /// Translate a local declaration name.

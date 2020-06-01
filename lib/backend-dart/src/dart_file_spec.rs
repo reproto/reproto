@@ -1,9 +1,9 @@
 //! The file spec collecting changes.
 
-use backend::IntoBytes;
-use compiler::Compiler;
-use core::errors::Result;
-use core::RpPackage;
+use crate::backend::IntoBytes;
+use crate::compiler::Compiler;
+use crate::core::errors::Result;
+use crate::core::RpPackage;
 use genco::{Dart, Tokens};
 
 pub struct DartFileSpec<'a>(pub Tokens<'a, Dart<'a>>);

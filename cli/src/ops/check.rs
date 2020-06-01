@@ -1,8 +1,8 @@
+use crate::core::errors::*;
+use crate::core::{Reporter, RpRequiredPackage, RpVersionedPackage, Version};
+use crate::env;
+use crate::utils::{load_manifest, matches, publish_matches, semck_check, simple_config, Match};
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::errors::*;
-use core::{Reporter, RpRequiredPackage, RpVersionedPackage, Version};
-use env;
-use utils::{load_manifest, matches, publish_matches, semck_check, simple_config, Match};
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("check").about("Check specifications");
@@ -19,7 +19,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(reporter: &mut Reporter, m: &ArgMatches) -> Result<()> {
+pub fn entry(reporter: &mut dyn Reporter, m: &ArgMatches) -> Result<()> {
     let manifest = load_manifest(m)?;
     let mut resolver = env::resolver(&manifest)?;
     let mut session = simple_config(&manifest, reporter, resolver.as_mut())?;

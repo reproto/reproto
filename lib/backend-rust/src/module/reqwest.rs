@@ -1,14 +1,14 @@
 //! gRPC module for Rust.
 
-use backend::Initializer;
-use core::errors::Result;
-use core::{self, Loc};
-use flavored::{RpEndpointHttp1, RpPackage, RpPathSpec, RpServiceBody, RustEndpoint};
+use crate::backend::Initializer;
+use crate::core::errors::Result;
+use crate::core::{self, Loc};
+use crate::flavored::{RpEndpointHttp1, RpPackage, RpPathSpec, RpServiceBody, RustEndpoint};
+use crate::utils::Comments;
+use crate::{Options, Root, RootCodegen, RustFileSpec, Service, ServiceCodegen, SCOPE_SEP};
 use genco::rust::{imported, local};
 use genco::{Cons, IntoTokens, Quoted, Rust, Tokens};
 use std::rc::Rc;
-use utils::Comments;
-use {Options, Root, RootCodegen, RustFileSpec, Service, ServiceCodegen, SCOPE_SEP};
 
 pub struct Module {}
 
@@ -396,7 +396,7 @@ struct Endpoint<'a, 'el: 'a> {
 
 impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Endpoint<'a, 'el> {
     fn into_tokens(self) -> Tokens<'el, Rust<'el>> {
-        use core::RpHttpMethod::*;
+        use crate::core::RpHttpMethod::*;
 
         let Endpoint {
             result,

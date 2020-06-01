@@ -1,23 +1,25 @@
 //! Java backend for reproto
 
-use codegen::{ClassAdded, EnumAdded, GetterAdded, InterfaceAdded, ServiceAdded, TupleAdded};
-use core::errors::*;
-use core::{self, Handle, Loc};
-use flavored::{
+use crate::codegen::{
+    ClassAdded, EnumAdded, GetterAdded, InterfaceAdded, ServiceAdded, TupleAdded,
+};
+use crate::core::errors::*;
+use crate::core::{self, Handle, Loc};
+use crate::flavored::{
     JavaField, JavaFlavor, RpCode, RpDecl, RpEnumBody, RpInterfaceBody, RpServiceBody, RpTupleBody,
     RpTypeBody,
 };
+use crate::java_file::JavaFile;
+use crate::naming::{self, Naming};
+use crate::trans::{Packages, Translated};
+use crate::utils::{Observer, Override};
+use crate::Options;
 use genco::java::{
     self, imported, local, Argument, Class, Constructor, Enum, Field, Interface, Method, Modifier,
     BOOLEAN, INTEGER,
 };
 use genco::{Cons, Element, Java, Quoted, Tokens};
-use java_file::JavaFile;
-use naming::{self, Naming};
 use std::rc::Rc;
-use trans::{Packages, Translated};
-use utils::{Observer, Override};
-use Options;
 
 /// Helper macro to implement listeners opt loop.
 fn code<'el>(codes: &'el [Loc<RpCode>]) -> Tokens<'el, Java<'el>> {
@@ -87,7 +89,7 @@ impl<'el> Compiler<'el> {
         }
     }
 
-    pub fn compile(&self, packages: &Packages, handle: &Handle) -> Result<()> {
+    pub fn compile(&self, packages: &Packages, handle: &dyn Handle) -> Result<()> {
         for generator in &self.options.root_generators {
             generator.generate(handle)?;
         }
@@ -109,7 +111,7 @@ impl<'el> Compiler<'el> {
         Ok(())
     }
 
-    fn compile_decl(&self, handle: &Handle, decl: &RpDecl) -> Result<()> {
+    fn compile_decl(&self, handle: &dyn Handle, decl: &RpDecl) -> Result<()> {
         JavaFile::new(decl.name().package.clone(), decl.ident(), |out| {
             self.process_decl(decl, 0usize, out)
         })
@@ -789,7 +791,7 @@ impl<'el> Compiler<'el> {
         depth: usize,
         container: &mut Tokens<'el, Java<'el>>,
     ) -> Result<()> {
-        use core::RpDecl::*;
+        use crate::core::RpDecl::*;
 
         match *decl {
             Interface(ref interface) => {

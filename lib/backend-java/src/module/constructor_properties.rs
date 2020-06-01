@@ -1,7 +1,7 @@
 //! Module that adds the @ConstructorProperties annotation to every constructor.
 
-use codegen::{ClassAdded, ClassCodegen, Configure};
-use core::errors::Result;
+use crate::codegen::{ClassAdded, ClassCodegen, Configure};
+use crate::core::errors::Result;
 use genco::java::imported;
 use genco::{Java, Quoted, Tokens};
 

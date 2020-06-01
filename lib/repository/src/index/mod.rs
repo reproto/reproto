@@ -3,14 +3,14 @@ mod git_index;
 
 pub use self::file_index::init_file_index;
 use self::git_index::GitIndex;
-use checksum::Checksum;
-use core::errors::*;
-use core::{Range, RelativePath, RpPackage, Version};
-use git;
-use objects::Objects;
+use crate::checksum::Checksum;
+use crate::core::errors::*;
+use crate::core::{Range, RelativePath, RpPackage, Version};
+use crate::git;
+use crate::objects::Objects;
+use crate::update::Update;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use update::Update;
 use url::Url;
 
 /// Configuration file for objects backends.
@@ -62,7 +62,7 @@ pub trait Index: Send {
     fn objects_url(&self) -> Result<&str>;
 
     /// Load objects relative to the index repository.
-    fn objects_from_index(&self, relative_path: &RelativePath) -> Result<Box<Objects>>;
+    fn objects_from_index(&self, relative_path: &RelativePath) -> Result<Box<dyn Objects>>;
 
     /// Update local caches related to the index.
     fn update(&self) -> Result<Vec<Update>> {
@@ -101,13 +101,13 @@ impl Index for NoIndex {
     }
 
     /// Load objects relative to the index repository.
-    fn objects_from_index(&self, _: &RelativePath) -> Result<Box<Objects>> {
+    fn objects_from_index(&self, _: &RelativePath) -> Result<Box<dyn Objects>> {
         Err("Empty Index".into())
     }
 }
 
 /// Setup an index for the given path.
-pub fn index_from_path<P: AsRef<Path>>(path: P) -> Result<Box<Index>> {
+pub fn index_from_path<P: AsRef<Path>>(path: P) -> Result<Box<dyn Index>> {
     let path = path.as_ref();
 
     if !path.is_dir() {
@@ -124,7 +124,7 @@ pub fn index_from_path<P: AsRef<Path>>(path: P) -> Result<Box<Index>> {
     Ok(Box::new(file_index::FileIndex::new(&path)?))
 }
 
-fn open_git_index(url: &Url, git_repo: git::GitRepo, publishing: bool) -> Result<Box<Index>> {
+fn open_git_index(url: &Url, git_repo: git::GitRepo, publishing: bool) -> Result<Box<dyn Index>> {
     let git_repo = Arc::new(git_repo);
 
     let file_objects = file_index::FileIndex::new(git_repo.path())?;
@@ -138,7 +138,7 @@ pub fn index_from_git<'a, I>(
     scheme: I,
     url: &'a Url,
     publishing: bool,
-) -> Result<Box<Index>>
+) -> Result<Box<dyn Index>>
 where
     I: IntoIterator<Item = &'a str>,
 {
@@ -166,7 +166,7 @@ where
     open_git_index(url, git_repo, publishing)
 }
 
-pub fn index_from_url(config: IndexConfig, url: &Url, publishing: bool) -> Result<Box<Index>> {
+pub fn index_from_url(config: IndexConfig, url: &Url, publishing: bool) -> Result<Box<dyn Index>> {
     let mut scheme = url.scheme().split("+");
 
     let first = scheme

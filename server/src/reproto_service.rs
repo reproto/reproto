@@ -1,36 +1,51 @@
-use errors::Error;
+use crate::errors::Error;
 use flate2::read::GzDecoder;
-use futures::future::{err, ok};
-use futures_cpupool::CpuPool;
+use futures::{Future, StreamExt};
 use hyper::header::{self, HeaderMap, HeaderValue};
-use hyper::rt::{Future, Stream};
 use hyper::service::Service;
 use hyper::{self, Body, Method, Request, Response, StatusCode};
 use reproto_repository::{to_checksum, Checksum, Index, Objects};
 use std::io::{Cursor, Read, Seek, SeekFrom};
+use std::pin::Pin;
 use std::sync::{Arc, Mutex};
-use tokio_fs;
-use tokio_io;
+use std::task::{Context, Poll};
+use tokio::io::AsyncReadExt;
 
 const CHECKSUM_MISMATCH: &'static str = "checksum mismatch";
 
-type BoxFut = Box<Future<Item = Response<Body>, Error = Error> + Send>;
-
-pub struct ReprotoService {
+struct Inner {
     pub max_file_size: u64,
-    pub pool: Arc<CpuPool>,
-    pub objects: Arc<Mutex<Box<Objects>>>,
-    pub index: Arc<Mutex<Box<Index>>>,
+    pub objects: Mutex<Box<dyn Objects>>,
+    pub index: Mutex<Box<dyn Index>>,
 }
 
-type EncodingFn = fn(&Cursor<Vec<u8>>) -> Box<Read>;
+#[derive(Clone)]
+pub struct ReprotoService {
+    inner: Arc<Inner>,
+}
+
+type EncodingFn = fn(&Cursor<Vec<u8>>) -> Box<dyn Read>;
 
 impl ReprotoService {
-    fn no_encoding(input: &Cursor<Vec<u8>>) -> Box<Read> {
+    pub fn new(
+        max_file_size: u64,
+        objects: Mutex<Box<dyn Objects>>,
+        index: Mutex<Box<dyn Index>>,
+    ) -> Self {
+        Self {
+            inner: Arc::new(Inner {
+                max_file_size,
+                objects,
+                index,
+            }),
+        }
+    }
+
+    fn no_encoding(input: &Cursor<Vec<u8>>) -> Box<dyn Read> {
         Box::new(input.clone())
     }
 
-    fn gzip_encoding(input: &Cursor<Vec<u8>>) -> Box<Read> {
+    fn gzip_encoding(input: &Cursor<Vec<u8>>) -> Box<dyn Read> {
         Box::new(GzDecoder::new(input.clone()))
     }
 
@@ -58,129 +73,102 @@ impl ReprotoService {
         Ok(())
     }
 
-    fn get_index(&self) -> BoxFut {
+    async fn get_index(&self) -> Result<Response<Body>, Error> {
         let mut m = String::new();
-
-        if let Err(e) = self.build_index(&mut m) {
-            return Box::new(err(e.into()));
-        }
-
+        self.build_index(&mut m)?;
         let response = Response::new(Body::from(m));
-        Box::new(ok(response))
+        Ok(response)
     }
 
     /// Get an object from an object repository.
-    fn get_objects(&self, id: &str) -> BoxFut {
+    async fn get_objects(&self, id: &str) -> Result<Response<Body>, Error> {
         let checksum = match Checksum::from_str(id) {
             Ok(checksum) => checksum,
             Err(_) => {
-                return Box::new(err(Error::BadRequest(
-                    format!("bad object id: {}", id).into(),
-                )));
+                return Err(Error::BadRequest(format!("bad object id: {}", id).into()));
             }
         };
 
-        let mut objects = match self.objects.lock() {
-            Ok(objects) => objects,
-            Err(_) => return Box::new(err(Error::InternalServerError("lock poisoned".into()))),
+        let path = {
+            let mut objects = match self.inner.objects.lock() {
+                Ok(objects) => objects,
+                Err(_) => return Err(Error::InternalServerError("lock poisoned".into())),
+            };
+
+            let object = objects.get_object(&checksum)?;
+
+            match object {
+                Some(object) => match object.path() {
+                    Some(path) => path.to_owned(),
+                    None => {
+                        return Err(Error::InternalServerError(
+                            "object does not have a path".into(),
+                        ));
+                    }
+                },
+                None => return Err(Error::NotFound),
+            }
         };
 
-        let object = match objects.get_object(&checksum) {
-            Ok(object) => object,
-            Err(e) => return Box::new(err(e.into())),
-        };
-
-        let path = match object {
-            Some(object) => match object.path() {
-                Some(path) => path.to_owned(),
-                None => {
-                    return Box::new(err(Error::InternalServerError(
-                        "object does not have a path".into(),
-                    )));
-                }
-            },
-            None => return Box::new(err(Error::NotFound)),
-        };
-
-        let fut = tokio_fs::file::File::open(path).or_else(|_| Box::new(err(Error::NotFound)));
-
-        let fut = fut.and_then(|file| {
-            let buf: Vec<u8> = Vec::new();
-
-            let fut = tokio_io::io::read_to_end(file, buf)
-                .and_then(|item| Ok(Response::new(item.1.into())))
-                .or_else(|_| Err(Error::InternalServerError("error sending file".into())));
-
-            Box::new(fut)
-        });
-
-        Box::new(fut)
+        let mut file = tokio::fs::File::open(path)
+            .await
+            .map_err(|_| Error::NotFound)?;
+        let mut buf: Vec<u8> = Vec::new();
+        file.read_to_end(&mut buf)
+            .await
+            .map_err(|_| Error::InternalServerError("error sending file".into()))?;
+        Ok(Response::new(Body::from(buf)))
     }
 
     /// Put the uploaded object into the object repository.
-    fn put_uploaded_object(
+    async fn put_uploaded_object(
         &self,
-        body: impl 'static + Future<Item = Cursor<Vec<u8>>, Error = Error> + Send,
+        mut body: Cursor<Vec<u8>>,
         checksum: Checksum,
         encoding: EncodingFn,
-    ) -> BoxFut {
-        let pool = self.pool.clone();
-        let objects = self.objects.clone();
+    ) -> Result<Response<Body>, Error> {
+        let inner = self.inner.clone();
 
-        let upload = body.and_then(move |mut tmp| {
-            pool.spawn_fn(move || {
-                if let Err(e) = tmp.seek(SeekFrom::Start(0)) {
-                    return Box::new(err(e.into()));
+        let result = tokio::task::spawn_blocking(move || {
+            body.seek(SeekFrom::Start(0))?;
+
+            let mut checksum_read = encoding(&body);
+
+            let actual = to_checksum(&mut checksum_read)?;
+
+            if actual != checksum {
+                info!("{} != {}", actual, checksum);
+                return Err(Error::BadRequest(CHECKSUM_MISMATCH.into()));
+            }
+
+            info!("Uploading object: {}", checksum);
+
+            body.seek(SeekFrom::Start(0))?;
+
+            let mut read = encoding(&body);
+
+            let mut objects = match inner.objects.lock() {
+                Ok(objects) => objects,
+                Err(_) => {
+                    return Err(Error::InternalServerError("lock poisoned".into()));
                 }
+            };
 
-                let mut checksum_read = encoding(&tmp);
+            objects.put_object(&checksum, &mut read, false)?;
+            Ok::<Response<Body>, Error>(Response::new(Body::empty()))
+        })
+        .await;
 
-                let actual = match to_checksum(&mut checksum_read) {
-                    Ok(actual) => actual,
-                    Err(e) => return Box::new(err(e.into())),
-                };
-
-                if actual != checksum {
-                    info!("{} != {}", actual, checksum);
-                    return Box::new(err(Error::BadRequest(CHECKSUM_MISMATCH.into())));
-                }
-
-                info!("Uploading object: {}", checksum);
-
-                if let Err(e) = tmp.seek(SeekFrom::Start(0)) {
-                    return Box::new(err(e.into()));
-                }
-
-                let mut read = encoding(&tmp);
-
-                let mut objects = match objects.lock() {
-                    Ok(objects) => objects,
-                    Err(_) => {
-                        return Box::new(err(Error::InternalServerError("lock poisoned".into())));
-                    }
-                };
-
-                if let Err(e) = objects.put_object(&checksum, &mut read, false) {
-                    return Box::new(err(e.into()));
-                }
-
-                Box::new(ok(Response::new(Body::empty())))
-            })
-        });
-
-        Box::new(upload)
+        result.map_err(|_| Error::InternalServerError("task failed".into()))?
     }
 
-    fn put_objects(&self, id: &str, req: Request<Body>) -> BoxFut {
-        let checksum = match Checksum::from_str(id) {
-            Ok(checksum) => checksum,
-            Err(e) => return Box::new(err(e.into())),
-        };
+    async fn put_objects(&self, id: &str, mut req: Request<Body>) -> Result<Response<Body>, Error> {
+        let checksum = Checksum::from_str(id)?;
 
         {
             let len = match req.headers().get(header::CONTENT_LENGTH) {
                 Some(len) => len,
-                None => return Box::new(err(Error::BadRequest("missing content-length".into()))),
+                None => return Err(Error::BadRequest("missing content-length".into())),
             };
 
             let len = match len
@@ -190,14 +178,14 @@ impl ReprotoService {
             {
                 Ok(len) => len,
                 Err(e) => {
-                    return Box::new(err(Error::BadRequest(
+                    return Err(Error::BadRequest(
                         format!("bad content-length: {}", e).into(),
-                    )));
+                    ));
                 }
             };
 
-            if len > self.max_file_size {
-                return Box::new(err(Error::BadRequest("file too large".into())));
+            if len > self.inner.max_file_size {
+                return Err(Error::BadRequest("file too large".into()));
             }
         }
 
@@ -205,25 +193,22 @@ impl ReprotoService {
 
         info!("Creating temporary file");
 
-        let out = Vec::<u8>::new();
+        let mut out = Vec::<u8>::new();
+        let body = req.body_mut();
 
-        let body = req.into_body().fold(out, |mut out, chunk| {
-            out.extend(chunk.as_ref());
-            ok::<_, hyper::Error>(out)
-        });
+        while let Some(chunk) = body.next().await.transpose()? {
+            out.extend(&chunk);
+        }
 
-        let body = body
-            .map(Cursor::new)
-            .map_err(|e| Error::InternalServerError(format!("error receiving body: {}", e).into()));
-
-        self.put_uploaded_object(body, checksum, encoding)
+        self.put_uploaded_object(Cursor::new(out), checksum, encoding)
+            .await
     }
 
-    fn inner_call<'a>(
+    async fn inner_call<'a>(
         &self,
         req: Request<Body>,
-        path: impl IntoIterator<Item = &'a str>,
-    ) -> BoxFut {
+        path: impl IntoIterator<Item = &str>,
+    ) -> Result<Response<Body>, Error> {
         let mut it = path.into_iter();
 
         let a = it.next();
@@ -232,21 +217,21 @@ impl ReprotoService {
 
         match (req.method(), a, b, c) {
             (&Method::GET, Some(""), None, None) => {
-                return self.get_index();
+                return self.get_index().await;
             }
             (&Method::GET, Some("objects"), Some(id), None) => {
-                return self.get_objects(id);
+                return self.get_objects(id).await;
             }
             (&Method::PUT, Some("objects"), Some(id), None) => {
-                return self.put_objects(id, req);
+                return self.put_objects(id, req).await;
             }
             _ => {}
         }
 
-        Box::new(err(Error::NotFound))
+        Err(Error::NotFound)
     }
 
-    fn handle_error(e: Error) -> Box<Future<Item = Response<Body>, Error = hyper::Error> + Send> {
+    fn handle_error(e: Error) -> Response<Body> {
         let mut response = Response::new(Body::empty());
 
         response
@@ -284,25 +269,30 @@ impl ReprotoService {
             }
         }
 
-        return Box::new(ok(response));
+        response
     }
 }
 
-impl Service for ReprotoService {
-    type ReqBody = Body;
-    type ResBody = Body;
+impl Service<Request<Body>> for ReprotoService {
+    type Response = Response<Body>;
     type Error = hyper::Error;
-    type Future = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
+    type Future =
+        Pin<Box<dyn Future<Output = Result<Response<Body>, hyper::Error>> + 'static + Send>>;
+
+    fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let full_path = String::from(req.uri().path());
+        let this = self.clone();
 
-        let path = full_path.split('/').skip(1);
+        Box::pin(async move {
+            let path = req.uri().path().to_owned();
 
-        let fut = self
-            .inner_call(req, path)
-            .or_else(|e| Self::handle_error(e));
-
-        Box::new(fut)
+            match this.inner_call(req, path.split('/').skip(1)).await {
+                Ok(response) => Ok(response),
+                Err(e) => Ok(Self::handle_error(e)),
+            }
+        })
     }
 }

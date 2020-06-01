@@ -1,8 +1,7 @@
-use self::cmark::{Event, Options, Parser, Tag, OPTION_ENABLE_FOOTNOTES, OPTION_ENABLE_TABLES};
-use core::errors::*;
-use doc_builder::DocBuilder;
+use self::cmark::{CodeBlockKind, Event, Options, Parser, Tag};
+use crate::core::errors::*;
+use crate::doc_builder::DocBuilder;
 use pulldown_cmark as cmark;
-use std::borrow::Cow::{Borrowed, Owned};
 use syntect::easy::HighlightLines;
 use syntect::highlighting::Theme;
 use syntect::html::{
@@ -19,20 +18,20 @@ pub fn markdown_to_html(
     let mut highlighter: Option<HighlightLines> = None;
 
     let mut opts = Options::empty();
-    opts.insert(OPTION_ENABLE_TABLES);
-    opts.insert(OPTION_ENABLE_FOOTNOTES);
+    opts.insert(Options::ENABLE_TABLES);
+    opts.insert(Options::ENABLE_FOOTNOTES);
 
     let parser = Parser::new_ext(content, opts).map(|event| match event {
         Event::Text(text) => {
             if let Some(ref mut highlighter) = highlighter {
                 let highlighted = &highlighter.highlight(&text, syntax_set);
                 let html = styled_line_to_highlighted_html(highlighted, IncludeBackground::Yes);
-                return Event::Html(Owned(html));
+                return Event::Html(html.into());
             }
 
             Event::Text(text)
         }
-        Event::Start(Tag::CodeBlock(ref info)) => {
+        Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(ref info))) => {
             let syntax = info
                 .split(' ')
                 .next()
@@ -42,11 +41,11 @@ pub fn markdown_to_html(
             highlighter = Some(HighlightLines::new(syntax, theme));
 
             let (snippet, _) = start_highlighted_html_snippet(theme);
-            Event::Html(Owned(format!("<div class=\"code\">{}", snippet)))
+            Event::Html(format!("<div class=\"code\">{}", snippet).into())
         }
         Event::End(Tag::CodeBlock(_)) => {
             highlighter = None;
-            Event::Html(Borrowed("</pre></div>"))
+            Event::Html("</pre></div>".into())
         }
         _ => event,
     });

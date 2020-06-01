@@ -1,20 +1,20 @@
-use backend::PackageProcessor;
-use core::errors::*;
-use core::{self, Handle, Loc};
-use flavored::{
+use crate::backend::PackageProcessor;
+use crate::core::errors::*;
+use crate::core::{self, Handle, Loc};
+use crate::flavored::{
     JavaScriptFlavor, JavaScriptName, RpEnumBody, RpField, RpInterfaceBody, RpTupleBody, RpTypeBody,
 };
+use crate::naming::{self, Naming};
+use crate::trans::{self, Translated};
+use crate::utils::{is_defined, is_not_defined};
+use crate::{FileSpec, Options, EXT};
 use genco::{Element, JavaScript, Quoted, Tokens};
-use naming::{self, Naming};
 use std::rc::Rc;
-use trans::{self, Translated};
-use utils::{is_defined, is_not_defined};
-use {FileSpec, Options, EXT};
 
 pub struct Compiler<'el> {
     pub env: &'el Translated<JavaScriptFlavor>,
     variant_field: &'el Loc<RpField>,
-    handle: &'el Handle,
+    handle: &'el dyn Handle,
     to_lower_snake: naming::ToLowerSnake,
     values: Tokens<'static, JavaScript<'static>>,
     enum_name: Tokens<'static, JavaScript<'static>>,
@@ -25,7 +25,7 @@ impl<'el> Compiler<'el> {
         env: &'el Translated<JavaScriptFlavor>,
         variant_field: &'el Loc<RpField>,
         _: Options,
-        handle: &'el Handle,
+        handle: &'el dyn Handle,
     ) -> Compiler<'el> {
         Compiler {
             env,
@@ -331,7 +331,7 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
         self.env.decl_iter()
     }
 
-    fn handle(&self) -> &'el Handle {
+    fn handle(&self) -> &'el dyn Handle {
         self.handle
     }
 

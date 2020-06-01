@@ -1,13 +1,13 @@
-use core::errors::*;
-use core::{
+use crate::core::errors::*;
+use crate::core::{
     Flavor, Handle, Loc, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody,
     RpName, RpPackage, RpServiceBody, RpTupleBody, RpTypeBody,
 };
+use crate::IntoBytes;
 use std::cmp;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::io::Write;
-use IntoBytes;
 
 pub trait Name<F>: Clone + fmt::Display + fmt::Debug + cmp::Eq
 where
@@ -42,7 +42,7 @@ where
     /// Iterate over all existing declarations.
     fn decl_iter(&self) -> Self::DeclIter;
 
-    fn handle(&self) -> &'el Handle;
+    fn handle(&self) -> &'el dyn Handle;
 
     fn default_process(&self, _: &mut Self::Out, name: &'el F::Name) -> Result<()> {
         warn!("not supported: {}", name);
@@ -117,7 +117,7 @@ where
             let parent = full_path.parent().unwrap_or(RelativePath::new("."));
 
             if !handle.is_dir(&parent) {
-                debug!("+dir: {}", parent.display());
+                debug!("+dir: {}", parent);
                 handle.create_dir_all(&parent)?;
             }
         }
@@ -131,7 +131,7 @@ where
         for (package, out) in files {
             let full_path = self.setup_module_path(&package)?;
 
-            debug!("+module: {}", full_path.display());
+            debug!("+module: {}", full_path);
 
             let mut f = handle.create(&full_path)?;
             let bytes = out.into_bytes(self, &package)?;

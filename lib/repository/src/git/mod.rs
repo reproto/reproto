@@ -1,8 +1,8 @@
 mod git_repo;
 
 pub use self::git_repo::GitRepo;
-use core::errors::*;
-use sha256;
+use crate::core::errors::*;
+use crate::sha256;
 use std::path::Path;
 use url::Url;
 

@@ -1,8 +1,8 @@
-use checksum::Checksum;
-use core::errors::*;
-use core::{Range, RelativePath, RpPackage, Version};
-use index::{Deployment, Index};
-use objects::{FileObjects, Objects};
+use crate::checksum::Checksum;
+use crate::core::errors::*;
+use crate::core::{Range, RelativePath, RpPackage, Version};
+use crate::index::{Deployment, Index};
+use crate::objects::{FileObjects, Objects};
 use serde_json;
 use std::collections::VecDeque;
 use std::fs::{self, File};
@@ -222,7 +222,7 @@ impl Index for FileIndex {
             .map(|r| r.0)
     }
 
-    fn objects_from_index(&self, relative_path: &RelativePath) -> Result<Box<Objects>> {
+    fn objects_from_index(&self, relative_path: &RelativePath) -> Result<Box<dyn Objects>> {
         let path = relative_path.to_path(&self.path);
         Ok(Box::new(FileObjects::new(&path)))
     }

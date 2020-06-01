@@ -2,18 +2,18 @@
 
 #![allow(unused)]
 
-use core::errors::Result;
-use core::{
+use crate::core::errors::Result;
+use crate::core::{
     self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberKind,
     RpNumberType, RpStringType, Translate, Translator,
 };
+use crate::trans::Packages;
+use crate::{SCOPE_SEP, TYPE_SEP};
 use genco::rust;
 use genco::{Cons, Rust};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
-use trans::Packages;
-use {SCOPE_SEP, TYPE_SEP};
 
 #[derive(Debug, Clone)]
 pub struct RustEndpoint {
@@ -161,7 +161,7 @@ impl FlavorTranslator for RustFlavorTranslator {
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
-        use core::RpEnumType::*;
+        use crate::core::RpEnumType::*;
 
         match enum_type {
             String(_) => Ok(rust::local("str").reference(rust::StaticRef)),

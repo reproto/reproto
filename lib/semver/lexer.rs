@@ -196,7 +196,7 @@ impl<'input> Lexer<'input> {
     /// A component can either be an alphanumeric or numeric.
     /// Does not permit leading zeroes if numeric.
     fn component(&mut self, start: usize) -> Result<Token<'input>, Error> {
-        let end = scan_while!(self, start, '0'...'9' | 'A'...'Z' | 'a'...'z');
+        let end = scan_while!(self, start, '0'..='9' | 'A'..='Z' | 'a'..='z');
         let input = &self.input[start..end];
 
         let mut it = input.chars();
@@ -259,7 +259,7 @@ impl<'input> Iterator for Lexer<'input> {
                 ',' => Comma,
                 '-' => Hyphen,
                 '+' => Plus,
-                '0'...'9' | 'a'...'z' | 'A'...'Z' => {
+                '0'..='9' | 'a'..='z' | 'A'..='Z' => {
                     self.step();
                     return Some(self.component(start));
                 }

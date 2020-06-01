@@ -1,13 +1,13 @@
 //! Filesystem abstractions.
 
-use errors::Result;
+use crate::errors::Result;
+use crate::{RelativePath, RelativePathBuf};
 use linked_hash_map::LinkedHashMap;
 use std::cell::RefCell;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use {RelativePath, RelativePathBuf};
 
 pub trait Handle {
     /// Check if the given path is a directory or not.
@@ -20,13 +20,13 @@ pub trait Handle {
     fn create_dir_all(&self, path: &RelativePath) -> Result<()>;
 
     /// Create the given file (for writing).
-    fn create(&self, path: &RelativePath) -> Result<Box<io::Write>>;
+    fn create(&self, path: &RelativePath) -> Result<Box<dyn io::Write>>;
 }
 
 /// Filesystem abstraction.
 pub trait Filesystem {
     /// Open the filesystem from the given root path.
-    fn open_root(&self, root: Option<&Path>) -> Result<Box<Handle>>;
+    fn open_root(&self, root: Option<&Path>) -> Result<Box<dyn Handle>>;
 }
 
 /// Real filesystem implementation.
@@ -40,7 +40,7 @@ impl RealFilesystem {
 }
 
 impl Filesystem for RealFilesystem {
-    fn open_root(&self, root: Option<&Path>) -> Result<Box<Handle>> {
+    fn open_root(&self, root: Option<&Path>) -> Result<Box<dyn Handle>> {
         let root = root
             .ok_or_else(|| {
                 "Missing root directory, specify using `--out`, or `output` key in manifest"
@@ -68,7 +68,7 @@ impl Filesystem for RealFilesystem {
                 Ok(())
             }
 
-            fn create(&self, path: &RelativePath) -> Result<Box<io::Write>> {
+            fn create(&self, path: &RelativePath) -> Result<Box<dyn io::Write>> {
                 let path = path.to_path(&self.root);
                 Ok(Box::new(fs::File::create(&path)?))
             }
@@ -92,7 +92,7 @@ impl CapturingFilesystem {
     }
 
     /// Create a new filesystem handle that can be passed into `Context`.
-    pub fn filesystem(&self) -> Box<Filesystem> {
+    pub fn filesystem(&self) -> Box<dyn Filesystem> {
         Box::new(CapturingFilesystem {
             files: self.files.clone(),
         })
@@ -105,7 +105,7 @@ impl CapturingFilesystem {
 }
 
 impl Filesystem for CapturingFilesystem {
-    fn open_root(&self, _root: Option<&Path>) -> Result<Box<Handle>> {
+    fn open_root(&self, _root: Option<&Path>) -> Result<Box<dyn Handle>> {
         Ok(Box::new(CapturingHandle {
             files: self.files.clone(),
         }))
@@ -130,7 +130,7 @@ impl Handle for CapturingHandle {
         Ok(())
     }
 
-    fn create(&self, path: &RelativePath) -> Result<Box<io::Write>> {
+    fn create(&self, path: &RelativePath) -> Result<Box<dyn io::Write>> {
         Ok(Box::new(CapturingFileCreate {
             files: self.files.clone(),
             path: path.to_owned(),

@@ -1,21 +1,21 @@
 //! Python Compiler
 
-use backend::PackageProcessor;
-use codegen::{ServiceAdded, ServiceCodegen};
-use core::errors::*;
-use core::{self, Handle, Loc, RelativePathBuf};
-use flavored::{
+use crate::backend::PackageProcessor;
+use crate::codegen::{ServiceAdded, ServiceCodegen};
+use crate::core::errors::*;
+use crate::core::{self, Handle, Loc, RelativePathBuf};
+use crate::flavored::{
     PythonFlavor, PythonName, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpServiceBody,
     RpTupleBody, RpTypeBody,
 };
+use crate::naming::{self, Naming};
+use crate::trans::{self, Translated};
+use crate::{FileSpec, Options, EXT, INIT_PY};
 use genco::python::{imported, Python};
 use genco::{Element, Quoted, Tokens};
-use naming::{self, Naming};
 use std::collections::BTreeMap;
 use std::iter;
 use std::rc::Rc;
-use trans::{self, Translated};
-use {FileSpec, Options, EXT, INIT_PY};
 
 pub struct Compiler<'el> {
     pub env: &'el Translated<PythonFlavor>,
@@ -23,8 +23,8 @@ pub struct Compiler<'el> {
     to_lower_snake: naming::ToLowerSnake,
     dict: Element<'static, Python<'static>>,
     enum_enum: Python<'static>,
-    service_generators: Vec<Box<ServiceCodegen>>,
-    handle: &'el Handle,
+    service_generators: Vec<Box<dyn ServiceCodegen>>,
+    handle: &'el dyn Handle,
 }
 
 impl<'el> Compiler<'el> {
@@ -32,7 +32,7 @@ impl<'el> Compiler<'el> {
         env: &'el Translated<PythonFlavor>,
         variant_field: &'el Loc<RpField>,
         options: Options,
-        handle: &'el Handle,
+        handle: &'el dyn Handle,
     ) -> Compiler<'el> {
         Compiler {
             env,
@@ -364,7 +364,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
         self.env.decl_iter()
     }
 
-    fn handle(&self) -> &'el Handle {
+    fn handle(&self) -> &'el dyn Handle {
         self.handle
     }
 
@@ -692,14 +692,14 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
             }
 
             if !handle.is_dir(&full_path) {
-                debug!("+dir: {}", full_path.display());
+                debug!("+dir: {}", full_path);
                 handle.create_dir_all(&full_path)?;
             }
 
             let init_path = full_path.join(INIT_PY);
 
             if !handle.is_file(&init_path) {
-                debug!("+init: {}", init_path.display());
+                debug!("+init: {}", init_path);
                 handle.create(&init_path)?;
             }
         }

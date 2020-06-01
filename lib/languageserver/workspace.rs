@@ -1,26 +1,26 @@
 //! A dynamically compiled and updated environment.
 
-use ast;
-use core::errors::{Error, Result};
-use core::{
+use crate::ast;
+use crate::core::errors::{Error, Result};
+use crate::core::{
     self, Encoding, Filesystem, Handle, Loc, Reported, Resolved, Resolver, RpPackage,
     RpRequiredPackage, RpVersionedPackage, Source,
 };
-use env;
-use loaded_file::LoadedFile;
-use manifest;
-use models::{Completion, Jump, Prefix, Range, Rename, RenameResult, Symbol};
-use parser;
-use repository::{path_to_package, Packages, EXT};
+use crate::env;
+use crate::loaded_file::LoadedFile;
+use crate::manifest;
+use crate::models::{Completion, Jump, Prefix, Range, Rename, RenameResult, Symbol};
+use crate::parser;
+use crate::repository::{path_to_package, Packages, EXT};
+use crate::ty;
 use std::collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use ty;
 use url::Url;
 
 pub struct Workspace {
-    pub filesystem: Box<Filesystem>,
+    pub filesystem: Box<dyn Filesystem>,
     /// Path of the workspace.
     pub root_path: PathBuf,
     /// Path to manifest.
@@ -49,7 +49,7 @@ pub struct Workspace {
 
 impl Workspace {
     /// Create a new workspace from the given path.
-    pub fn new<P: AsRef<Path>>(filesystem: Box<Filesystem>, root_path: P) -> Self {
+    pub fn new<P: AsRef<Path>>(filesystem: Box<dyn Filesystem>, root_path: P) -> Self {
         Self {
             filesystem,
             root_path: root_path.as_ref().to_owned(),
@@ -82,13 +82,16 @@ impl Workspace {
     }
 
     /// Initialize the current project.
-    pub fn initialize(&mut self, handle: &Handle) -> Result<()> {
+    pub fn initialize(&mut self, handle: &dyn Handle) -> Result<()> {
         env::initialize(handle)?;
         Ok(())
     }
 
     /// Open a new path resolver.
-    fn open_files_resolver(&self, manifest: &manifest::Manifest) -> Result<Option<Box<Resolver>>> {
+    fn open_files_resolver(
+        &self,
+        manifest: &manifest::Manifest,
+    ) -> Result<Option<Box<dyn Resolver>>> {
         // layer edited files to resolver
         if self.open_files.is_empty() {
             return Ok(None);
@@ -150,7 +153,7 @@ impl Workspace {
         let mut manifest = manifest::Manifest::default();
         let url = self.manifest_url()?;
 
-        let reader: Box<Read> = {
+        let reader: Box<dyn Read> = {
             match self.open_files.get(&url) {
                 // use the rope.
                 Some(source) => source.read()?,
@@ -297,7 +300,7 @@ impl Workspace {
     /// Try to compile the current environment.
     fn try_compile(
         &mut self,
-        resolver: &mut Resolver,
+        resolver: &mut dyn Resolver,
         manifest: manifest::Manifest,
         sources: Vec<manifest::Source>,
     ) -> Result<()> {
@@ -348,7 +351,7 @@ impl Workspace {
     /// Will be resolved if needed, and cached in `lookup_required`.
     fn process_required(
         &mut self,
-        resolver: &mut Resolver,
+        resolver: &mut dyn Resolver,
         imported_from: Option<&RpVersionedPackage>,
         package: &RpRequiredPackage,
     ) -> Result<Option<(RpVersionedPackage, bool)>> {
@@ -386,7 +389,7 @@ impl Workspace {
     /// read-only or not.
     fn process_package(
         &mut self,
-        resolver: &mut Resolver,
+        resolver: &mut dyn Resolver,
         versioned: &RpVersionedPackage,
         imported_from: Option<&RpVersionedPackage>,
         source: Source,
@@ -433,7 +436,7 @@ impl Workspace {
     /// Inner process of a file.
     fn process_file(
         &mut self,
-        resolver: &mut Resolver,
+        resolver: &mut dyn Resolver,
         versioned: &RpVersionedPackage,
         loaded: &mut LoadedFile,
     ) -> Result<()> {
@@ -596,7 +599,7 @@ impl Workspace {
         content: &str,
         decl: &ast::Decl<'input>,
     ) -> Result<()> {
-        use ast::Decl::*;
+        use crate::ast::Decl::*;
 
         let (_, span) = Loc::take_pair(decl.name());
 
@@ -789,7 +792,7 @@ impl Workspace {
     }
 
     /// Build a package completion.
-    fn package_completion(&self, content: &str, resolver: &mut Resolver) -> Result<Completion> {
+    fn package_completion(&self, content: &str, resolver: &mut dyn Resolver) -> Result<Completion> {
         debug!("package completion from {:?}", content);
 
         let mut parts = content.split(|c: char| c.is_whitespace());

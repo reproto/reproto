@@ -29,10 +29,10 @@ mod initialize;
 
 pub use self::config_env::ConfigEnvironment;
 pub use self::initialize::initialize;
-use core::errors::Result;
-use core::{RelativePath, Resolver};
-use manifest::{Lang, Language, Manifest};
-use repository::{
+use crate::core::errors::Result;
+use crate::core::{RelativePath, Resolver};
+use crate::manifest::{Lang, Language, Manifest};
+use crate::repository::{
     index_from_path, index_from_url, objects_from_path, objects_from_url, Index, IndexConfig,
     NoIndex, NoObjects, Objects, ObjectsConfig, Paths, Repository, Resolvers,
 };
@@ -43,7 +43,12 @@ use std::time::Duration;
 pub const DEFAULT_INDEX: &'static str = "git+https://github.com/reproto/reproto-index";
 pub const MANIFEST_NAME: &'static str = "reproto.toml";
 
-fn load_index(base: &Path, url: &str, publishing: bool, config: IndexConfig) -> Result<Box<Index>> {
+fn load_index(
+    base: &Path,
+    url: &str,
+    publishing: bool,
+    config: IndexConfig,
+) -> Result<Box<dyn Index>> {
     let index_path = Path::new(url);
 
     if index_path.is_dir() {
@@ -66,12 +71,12 @@ fn load_index(base: &Path, url: &str, publishing: bool, config: IndexConfig) -> 
 }
 
 fn load_objects(
-    index: &Index,
+    index: &dyn Index,
     index_publishing: bool,
     index_url: &str,
     objects: Option<String>,
     config: ObjectsConfig,
-) -> Result<Box<Objects>> {
+) -> Result<Box<dyn Objects>> {
     let (objects_url, publishing) = if let Some(ref objects) = objects {
         (objects.as_ref(), true)
     } else {
@@ -170,7 +175,7 @@ pub fn repository(manifest: &Manifest) -> Result<Repository> {
 }
 
 /// Setup the path-based resolver from a manifest.
-pub fn path_resolver(manifest: &Manifest) -> Result<Option<Box<Resolver>>> {
+pub fn path_resolver(manifest: &Manifest) -> Result<Option<Box<dyn Resolver>>> {
     if manifest.paths.is_empty() {
         return Ok(None);
     }
@@ -190,16 +195,16 @@ pub fn path_resolver(manifest: &Manifest) -> Result<Option<Box<Resolver>>> {
 }
 
 /// Set up the all resolvers based on this manifest.
-pub fn resolver(manifest: &manifest::Manifest) -> Result<Box<Resolver>> {
+pub fn resolver(manifest: &manifest::Manifest) -> Result<Box<dyn Resolver>> {
     resolver_with_extra(manifest, None)
 }
 
 /// Resolver with an extra resolver prepended to it.
 pub fn resolver_with_extra(
     manifest: &manifest::Manifest,
-    extra: Option<Box<Resolver>>,
-) -> Result<Box<Resolver>> {
-    let mut resolvers = Vec::<Box<Resolver>>::new();
+    extra: Option<Box<dyn Resolver>>,
+) -> Result<Box<dyn Resolver>> {
+    let mut resolvers = Vec::<Box<dyn Resolver>>::new();
 
     resolvers.extend(extra);
     resolvers.extend(path_resolver(manifest)?);
@@ -209,20 +214,20 @@ pub fn resolver_with_extra(
 }
 
 /// Convert the manifest language to an actual language implementation.
-pub fn convert_lang(input: Language) -> Box<Lang> {
+pub fn convert_lang(input: Language) -> Box<dyn Lang> {
     use self::Language::*;
 
     match input {
-        Csharp => Box::new(::csharp::CsharpLang),
-        Dart => Box::new(::dart::DartLang),
-        Go => Box::new(::go::GoLang),
-        Java => Box::new(::java::JavaLang),
-        Js => Box::new(::js::JsLang),
-        Json => Box::new(::json::JsonLang),
-        Python => Box::new(::python::PythonLang),
-        Reproto => Box::new(::reproto::ReprotoLang),
-        Rust => Box::new(::rust::RustLang),
-        Swift => Box::new(::swift::SwiftLang),
-        OpenApi => Box::new(::openapi::OpenApiLang),
+        Csharp => Box::new(crate::csharp::CsharpLang),
+        Dart => Box::new(crate::dart::DartLang),
+        Go => Box::new(crate::go::GoLang),
+        Java => Box::new(crate::java::JavaLang),
+        Js => Box::new(crate::js::JsLang),
+        Json => Box::new(crate::json::JsonLang),
+        Python => Box::new(crate::python::PythonLang),
+        Reproto => Box::new(crate::reproto::ReprotoLang),
+        Rust => Box::new(crate::rust::RustLang),
+        Swift => Box::new(crate::swift::SwiftLang),
+        OpenApi => Box::new(crate::openapi::OpenApiLang),
     }
 }

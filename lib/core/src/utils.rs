@@ -1,6 +1,6 @@
-use errors::Result;
+use crate::errors::Result;
+use crate::Span;
 use std::io::Read;
-use Span;
 
 const NL: u8 = b'\n';
 const CR: u8 = b'\r';
@@ -13,7 +13,7 @@ pub struct Position {
 }
 
 /// Find the line corresponding to the given position.
-pub fn find_line<'a, R: AsMut<Read + 'a>>(
+pub fn find_line<'a, R: AsMut<dyn Read + 'a>>(
     mut reader: R,
     span: (usize, usize),
 ) -> Result<(String, usize, (usize, usize))> {
@@ -59,7 +59,7 @@ pub fn find_line<'a, R: AsMut<Read + 'a>>(
 }
 
 /// Find the range corresponding to the given position.
-pub fn find_range<'a, R: AsMut<Read + 'a>, S: Into<Span>>(
+pub fn find_range<'a, R: AsMut<dyn Read + 'a>, S: Into<Span>>(
     mut reader: R,
     span: S,
     encoding: Encoding,

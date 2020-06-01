@@ -3,9 +3,9 @@ extern crate clap;
 extern crate reproto;
 extern crate reproto_core as core;
 
+use crate::core::errors::Result;
+use crate::core::RealFilesystem;
 use clap::{App, Arg, ArgMatches};
-use core::errors::Result;
-use core::RealFilesystem;
 use reproto::{ops, output, VERSION};
 use std::io;
 
@@ -30,7 +30,7 @@ fn setup_opts<'a, 'b>() -> App<'a, 'b> {
         )
 }
 
-fn entry(matches: &ArgMatches, output: &output::Output) -> Result<()> {
+fn entry(matches: &ArgMatches, output: &dyn output::Output) -> Result<()> {
     let fs = RealFilesystem::new();
     let mut reporter = Vec::new();
 
@@ -48,7 +48,8 @@ fn entry(matches: &ArgMatches, output: &output::Output) -> Result<()> {
     Ok(())
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let opts = setup_opts();
     let opts = ops::options(opts);
     let matches = opts.get_matches();
@@ -61,7 +62,7 @@ fn main() {
         _ => output::OutputFormat::Human,
     };
 
-    let mut output: Box<output::Output> = match output_format {
+    let mut output: Box<dyn output::Output> = match output_format {
         output::OutputFormat::Json => Box::new(output::Json::new(io::stdout())),
         _ if colored => Box::new(output::Colored::new(io::stdout())),
         _ => Box::new(output::NonColored::new(io::stdout())),

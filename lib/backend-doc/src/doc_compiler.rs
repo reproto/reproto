@@ -1,17 +1,20 @@
 //! Compiler for generating documentation.
 
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
-use core::errors::*;
-use core::flavored::{RpDecl, RpFile, RpVersionedPackage};
-use core::{AsPackage, CoreFlavor};
-use doc_builder::DocBuilder;
-use enum_processor::EnumProcessor;
+use crate::core::errors::*;
+use crate::core::flavored::{RpDecl, RpFile, RpVersionedPackage};
+use crate::core::{AsPackage, CoreFlavor};
+use crate::doc_builder::DocBuilder;
+use crate::enum_processor::EnumProcessor;
+use crate::index_processor::{Data as IndexData, IndexProcessor};
+use crate::interface_processor::InterfaceProcessor;
+use crate::package_processor::{Data as PackageData, PackageProcessor};
+use crate::processor::Processor;
+use crate::service_processor::ServiceProcessor;
+use crate::trans::Translated;
+use crate::tuple_processor::TupleProcessor;
+use crate::type_processor::TypeProcessor;
 use genco::IoFmt;
-use index_processor::{Data as IndexData, IndexProcessor};
-use interface_processor::InterfaceProcessor;
-use package_processor::{Data as PackageData, PackageProcessor};
-use processor::Processor;
-use service_processor::ServiceProcessor;
 use std::cell::RefCell;
 use std::fs;
 use std::fs::File;
@@ -19,9 +22,6 @@ use std::io::Write;
 use std::path::PathBuf;
 use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
-use trans::Translated;
-use tuple_processor::TupleProcessor;
-use type_processor::TypeProcessor;
 
 const NORMALIZE_CSS: &[u8] = include_bytes!("static/normalize.css");
 
@@ -58,7 +58,7 @@ impl<'a> DocCompiler<'a> {
 
     /// Process a single declaration.
     fn process_decl(&self, decl: &RpDecl) -> Result<()> {
-        use core::RpDecl::*;
+        use crate::core::RpDecl::*;
 
         let package = decl.name().package.try_as_package()?;
 

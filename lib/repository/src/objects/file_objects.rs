@@ -1,10 +1,10 @@
 //! ## Load objects through a local directory
 
 use super::Objects;
-use checksum::Checksum;
-use core::errors::*;
-use core::Source;
-use hex_slice::HexSlice;
+use crate::checksum::Checksum;
+use crate::core::errors::*;
+use crate::core::Source;
+use crate::hex_slice::HexSlice;
 use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
@@ -40,7 +40,12 @@ impl FileObjects {
 }
 
 impl Objects for FileObjects {
-    fn put_object(&mut self, checksum: &Checksum, source: &mut Read, force: bool) -> Result<bool> {
+    fn put_object(
+        &mut self,
+        checksum: &Checksum,
+        source: &mut dyn Read,
+        force: bool,
+    ) -> Result<bool> {
         let target = self.get_path(checksum)?;
 
         // no need to write same file again

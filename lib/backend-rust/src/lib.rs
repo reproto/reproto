@@ -21,19 +21,19 @@ mod module;
 mod rust_file_spec;
 mod utils;
 
-use backend::Initializer;
-use compiler::Compiler;
-use core::errors::*;
-use core::{CoreFlavor, Handle};
-use flavored::RpPackage;
+use crate::backend::Initializer;
+use crate::compiler::Compiler;
+use crate::core::errors::*;
+use crate::core::{CoreFlavor, Handle};
+use crate::flavored::RpPackage;
+use crate::manifest::{Lang, Manifest, NoModule, TryFromToml};
+use crate::rust_file_spec::RustFileSpec;
+use crate::trans::{Packages, Session};
 use genco::{Cons, Rust, Tokens};
-use manifest::{Lang, Manifest, NoModule, TryFromToml};
-use rust_file_spec::RustFileSpec;
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::rc::Rc;
-use trans::{Packages, Session};
 
 const LIB: &str = "lib";
 const MOD: &str = "mod";
@@ -145,8 +145,8 @@ impl TryFromToml for RustModule {
 
 pub struct Options {
     pub datetime: Option<Rust<'static>>,
-    pub root: Vec<Box<RootCodegen>>,
-    pub service: Vec<Box<ServiceCodegen>>,
+    pub root: Vec<Box<dyn RootCodegen>>,
+    pub service: Vec<Box<dyn ServiceCodegen>>,
     pub packages: Rc<Packages>,
 }
 
@@ -184,7 +184,7 @@ fn options(modules: Vec<RustModule>, packages: Rc<Packages>) -> Result<Options> 
     for m in modules {
         debug!("+module: {:?}", m);
 
-        let initializer: Box<Initializer<Options = Options>> = match m {
+        let initializer: Box<dyn Initializer<Options = Options>> = match m {
             Chrono => Box::new(module::Chrono::new()),
             Grpc => Box::new(module::Grpc::new()),
             Reqwest => Box::new(module::Reqwest::new()),
@@ -196,7 +196,7 @@ fn options(modules: Vec<RustModule>, packages: Rc<Packages>) -> Result<Options> 
     Ok(options)
 }
 
-fn compile(handle: &Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &dyn Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let modules = manifest::checked_modules(manifest.modules)?;
     let packages = session.packages()?;
     let options = options(modules, packages.clone())?;

@@ -1,9 +1,9 @@
 //! Chrono module for Rust.
 
-use backend::Initializer;
-use core::errors::*;
+use crate::backend::Initializer;
+use crate::core::errors::*;
+use crate::Options;
 use genco::rust::imported;
-use Options;
 
 pub struct Module {}
 

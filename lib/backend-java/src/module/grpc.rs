@@ -1,15 +1,15 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use codegen::{Configure, ServiceAdded, ServiceCodegen};
-use core::errors::*;
-use core::Loc;
-use flavored::JavaEndpoint;
+use crate::codegen::{Configure, ServiceAdded, ServiceCodegen};
+use crate::core::errors::*;
+use crate::core::Loc;
+use crate::flavored::JavaEndpoint;
+use crate::naming::{self, Naming};
+use crate::utils::Override;
 use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier, VOID};
 use genco::{Cons, IntoTokens, Java, Quoted, Tokens};
-use naming::{self, Naming};
 use std::borrow::Borrow;
 use std::rc::Rc;
-use utils::Override;
 
 const CLIENT_STUB_NAME: &'static str = "ClientStub";
 const SERVER_STUB_NAME: &'static str = "ServerStub";
@@ -228,7 +228,7 @@ impl GrpcClient {
 
     /// Get the MethodType variant for the given endpoint.
     fn method_type(&self, e: &Loc<JavaEndpoint>) -> Result<MethodType> {
-        use core::RpChannel::*;
+        use crate::core::RpChannel::*;
 
         let request = e.request.as_ref().map(|v| Loc::borrow(&v.channel));
         let response = e.response.as_ref().map(|v| Loc::borrow(v));

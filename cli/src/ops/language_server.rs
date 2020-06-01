@@ -3,8 +3,8 @@
 #[cfg(feature = "languageserver")]
 extern crate reproto_languageserver as ls;
 
+use crate::core::errors::Result;
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::errors::Result;
 use log;
 use std::fs;
 use std::io;

@@ -1,27 +1,27 @@
 //! C# backend for reproto
 
-use codegen::{
+use crate::codegen::{
     ClassAdded, EndpointExtra, EnumAdded, InterfaceAdded, ServiceAdded, TupleAdded, TypeField,
     TypeFieldAdded,
 };
-use core::errors::*;
-use core::{self, Handle, Loc, RpContext, RpSubTypeStrategy};
-use csharp_field::CsharpField;
-use csharp_file::CsharpFile;
-use flavored::{
+use crate::core::errors::*;
+use crate::core::{self, Handle, Loc, RpContext, RpSubTypeStrategy};
+use crate::csharp_field::CsharpField;
+use crate::csharp_file::CsharpFile;
+use crate::flavored::{
     CsharpFlavor, RpDecl, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody, RpTupleBody,
     RpTypeBody,
 };
+use crate::naming::{self, Naming};
+use crate::processor::Processor;
+use crate::trans::Translated;
+use crate::Options;
 use genco::csharp::{
     self, local, optional, using, Argument, Class, Constructor, Enum, Field, Method, Modifier,
     BOOLEAN, INT32,
 };
 use genco::{Cons, Csharp, Element, Quoted, Tokens};
-use naming::{self, Naming};
-use processor::Processor;
 use std::rc::Rc;
-use trans::Translated;
-use Options;
 
 pub struct Compiler {
     env: Rc<Translated<CsharpFlavor>>,
@@ -52,7 +52,7 @@ impl Compiler {
         }
     }
 
-    pub fn compile(&self, handle: &Handle) -> Result<()> {
+    pub fn compile(&self, handle: &dyn Handle) -> Result<()> {
         for generator in &self.options.root_generators {
             generator.generate(handle)?;
         }
@@ -64,7 +64,7 @@ impl Compiler {
         Ok(())
     }
 
-    fn compile_decl(&self, handle: &Handle, decl: &RpDecl) -> Result<()> {
+    fn compile_decl(&self, handle: &dyn Handle, decl: &RpDecl) -> Result<()> {
         let package_name = decl.name().package.join(".");
 
         CsharpFile::new(package_name.as_str(), decl.ident(), |out| {
@@ -605,7 +605,7 @@ impl Compiler {
         depth: usize,
         container: &mut Tokens<'el, Csharp<'el>>,
     ) -> Result<()> {
-        use core::RpDecl::*;
+        use crate::core::RpDecl::*;
 
         match *decl {
             Interface(ref interface) => {

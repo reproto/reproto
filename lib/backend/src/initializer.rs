@@ -1,4 +1,4 @@
-use core::errors::Result;
+use crate::core::errors::Result;
 
 pub trait Initializer {
     type Options;
@@ -9,7 +9,7 @@ pub trait Initializer {
 }
 
 /// A vector of listeners is a valid listener.
-impl<O> Initializer for Vec<Box<Initializer<Options = O>>> {
+impl<O> Initializer for Vec<Box<dyn Initializer<Options = O>>> {
     type Options = O;
 
     fn initialize(&self, options: &mut Self::Options) -> Result<()> {

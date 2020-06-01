@@ -1,18 +1,18 @@
 //! Backend for Swift
 
-use backend::PackageProcessor;
-use core::errors::*;
-use core::{Handle, Loc};
-use flavored::{
+use crate::backend::PackageProcessor;
+use crate::core::errors::*;
+use crate::core::{Handle, Loc};
+use crate::flavored::{
     RpEnumBody, RpField, RpInterfaceBody, RpTupleBody, RpTypeBody, SwiftFlavor, SwiftName,
 };
-use genco::swift::Swift;
-use genco::{IntoTokens, Tokens};
-use trans::{self, Packages, Translated};
-use {
+use crate::trans::{self, Packages, Translated};
+use crate::{
     EnumAdded, FileSpec, InterfaceAdded, InterfaceModelAdded, Options, PackageAdded,
     StructModelAdded, TupleAdded, TypeAdded, EXT,
 };
+use genco::swift::Swift;
+use genco::{IntoTokens, Tokens};
 
 /// Documentation comments.
 pub struct Comments<'el, S: 'el>(pub &'el [S]);
@@ -32,14 +32,14 @@ impl<'el, S: 'el + AsRef<str>> IntoTokens<'el, Swift<'el>> for Comments<'el, S> 
 pub struct Compiler<'el> {
     pub env: &'el Translated<SwiftFlavor>,
     options: Options,
-    handle: &'el Handle,
+    handle: &'el dyn Handle,
 }
 
 impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Translated<SwiftFlavor>,
         options: Options,
-        handle: &'el Handle,
+        handle: &'el dyn Handle,
     ) -> Result<Compiler<'el>> {
         let c = Compiler {
             env,
@@ -174,7 +174,7 @@ impl<'el> PackageProcessor<'el, SwiftFlavor, SwiftName> for Compiler<'el> {
         self.env.decl_iter()
     }
 
-    fn handle(&self) -> &'el Handle {
+    fn handle(&self) -> &'el dyn Handle {
         self.handle
     }
 

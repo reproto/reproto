@@ -11,8 +11,8 @@
 //! The `version` module gives you tools to create and compare SemVer-compliant
 //! versions.
 
-use errors::Error;
-use parser;
+use crate::errors::Error;
+use crate::parser;
 #[cfg(feature = "serde")]
 use serde::de::{self, Deserialize, Deserializer, Visitor};
 #[cfg(feature = "serde")]
@@ -235,23 +235,23 @@ impl Version {
 impl fmt::Display for Version {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{}.{}.{}", self.major, self.minor, self.patch));
+        r#try!(write!(f, "{}.{}.{}", self.major, self.minor, self.patch));
         if !self.pre.is_empty() {
-            try!(write!(f, "-"));
+            r#try!(write!(f, "-"));
             for (i, x) in self.pre.iter().enumerate() {
                 if i != 0 {
-                    try!(write!(f, "."))
+                    r#try!(write!(f, "."))
                 }
-                try!(write!(f, "{}", x));
+                r#try!(write!(f, "{}", x));
             }
         }
         if !self.build.is_empty() {
-            try!(write!(f, "+"));
+            r#try!(write!(f, "+"));
             for (i, x) in self.build.iter().enumerate() {
                 if i != 0 {
-                    try!(write!(f, "."))
+                    r#try!(write!(f, "."))
                 }
-                try!(write!(f, "{}", x));
+                r#try!(write!(f, "{}", x));
             }
         }
         Ok(())
@@ -325,7 +325,7 @@ impl From<(u64, u64, u64)> for Version {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use range::Range;
+    use crate::range::Range;
 
     #[test]
     fn test_parse() {
@@ -942,7 +942,7 @@ mod tests {
             // ("<=7.x", "7.9.9"),
         ];
 
-        for (i, &SemverTest(req, version, loose)) in input.into_iter().enumerate() {
+        for (i, &SemverTest(req, version, loose)) in input.iter().enumerate() {
             // NOTE: loose mode not supported.
             if loose {
                 continue;

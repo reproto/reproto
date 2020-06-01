@@ -1,7 +1,7 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use codegen::{ClassAdded, ClassCodegen, Configure};
-use core::errors::*;
+use crate::codegen::{ClassAdded, ClassCodegen, Configure};
+use crate::core::errors::*;
 use genco::java::{imported, local, Argument, Class, Field, Method, Modifier};
 use genco::{Java, Quoted, Tokens};
 use std::rc::Rc;

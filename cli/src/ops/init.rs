@@ -1,9 +1,9 @@
 //! Initialize a new project.
 
+use crate::core::errors::*;
+use crate::core::Filesystem;
+use crate::env;
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::errors::*;
-use core::Filesystem;
-use env;
 use std::path::Path;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
@@ -19,7 +19,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     out
 }
 
-pub fn entry(fs: &Filesystem, matches: &ArgMatches) -> Result<()> {
+pub fn entry(fs: &dyn Filesystem, matches: &ArgMatches) -> Result<()> {
     let path = if let Some(path) = matches.value_of("path") {
         Path::new(path).to_owned()
     } else {

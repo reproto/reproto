@@ -1,16 +1,16 @@
 //! IntoModel is the trait that performs AST to RpIR translation.
 
-use ast::*;
-use attributes;
-use core::errors::Error;
-use core::flavored::*;
-use core::{
+use crate::ast::*;
+use crate::attributes;
+use crate::core::errors::Error;
+use crate::core::flavored::*;
+use crate::core::{
     self, BigInt, Diagnostics, EnabledFeature, Import, Loc, Range, RpNumberKind, RpNumberType,
     RpNumberValidate, RpStringType, RpStringValidate, Span, SymbolKind, WithSpan,
 };
+use crate::naming::{self, Naming};
+use crate::scope::Scope;
 use linked_hash_map::LinkedHashMap;
-use naming::{self, Naming};
-use scope::Scope;
 use std::borrow::Cow;
 use std::collections::{hash_map, BTreeSet, HashMap};
 use std::option;
@@ -595,7 +595,7 @@ where
 fn build_safe_ident<I, N>(scope: &mut Scope<I>, ident: &str, naming: N) -> Option<String>
 where
     I: Import,
-    N: for<'a> FnOnce(&'a Scope<I>) -> Option<&'a Naming>,
+    N: for<'a> FnOnce(&'a Scope<I>) -> Option<&'a dyn Naming>,
 {
     if let Some(ident_naming) = naming(scope) {
         let converted = ident_naming.convert(ident);
@@ -619,8 +619,8 @@ fn build_item_name<I, A, B>(
     default_ident_naming: B,
 ) -> (String, Option<String>, Option<String>)
 where
-    A: for<'a> FnOnce(&'a Scope<I>) -> Option<&'a Naming>,
-    B: for<'a> FnOnce(&'a Scope<I>) -> Option<&'a Naming>,
+    A: for<'a> FnOnce(&'a Scope<I>) -> Option<&'a dyn Naming>,
+    B: for<'a> FnOnce(&'a Scope<I>) -> Option<&'a dyn Naming>,
     I: Import,
 {
     let safe_ident = build_safe_ident(scope, ident, default_ident_naming);
@@ -940,8 +940,8 @@ impl<'input> IntoModel for File<'input> {
         /// Parse a naming option.
         ///
         /// Since lower_camel is default, do nothing on that case.
-        fn parse_naming(naming: &str) -> result::Result<Option<Box<Naming>>, Error> {
-            let result: Option<Box<Naming>> = match naming {
+        fn parse_naming(naming: &str) -> result::Result<Option<Box<dyn Naming>>, Error> {
+            let result: Option<Box<dyn Naming>> = match naming {
                 "upper_camel" => Some(Box::new(naming::to_upper_camel())),
                 "lower_camel" => Some(Box::new(naming::to_lower_camel())),
                 "upper_snake" => Some(Box::new(naming::to_upper_snake())),

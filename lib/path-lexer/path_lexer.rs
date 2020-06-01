@@ -1,7 +1,7 @@
 //! Lexer for paths.
 
-use errors::{Error, Result};
-use path_token::PathToken;
+use crate::errors::{Error, Result};
+use crate::path_token::PathToken;
 use std::str::CharIndices;
 
 pub struct PathLexer<'input> {
@@ -61,7 +61,7 @@ impl<'input> PathLexer<'input> {
     }
 
     fn identifier(&mut self, start: usize) -> Result<(usize, PathToken<'input>, usize)> {
-        let (end, content) = take!(self, start, 'a'...'z' | '0'...'9' | '_');
+        let (end, content) = take!(self, start, 'a'..='z' | '0'..='9' | '_');
         Ok((start, PathToken::Identifier(content.into()), end))
     }
 
@@ -85,7 +85,7 @@ impl<'input> PathLexer<'input> {
                     self.step_n(2);
                     true
                 }
-                'a'...'z' if self.variable_mode => {
+                'a'..='z' if self.variable_mode => {
                     return Some(self.identifier(pos));
                 }
                 c if !self.variable_mode => {

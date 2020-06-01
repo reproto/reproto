@@ -22,7 +22,7 @@ impl<'el> IntoTokens<'el, Java<'el>> for Observer {
 
         let throwable = imported("java.lang", "Throwable");
 
-        c.methods.push({ Method::new("onCompleted") });
+        c.methods.push(Method::new("onCompleted"));
         c.methods.push({
             let mut m = Method::new("onError");
             m.arguments.push(Argument::new(throwable.clone(), "error"));

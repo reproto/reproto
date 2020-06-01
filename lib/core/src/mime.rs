@@ -1,5 +1,5 @@
-use errors::{Error, Result};
-use extern_mime;
+use crate::errors::{Error, Result};
+use crate::extern_mime;
 use serde;
 use std::fmt;
 use std::result;

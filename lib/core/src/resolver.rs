@@ -1,6 +1,6 @@
-use errors::Result;
+use crate::errors::Result;
+use crate::{RpPackage, RpRequiredPackage, RpVersionedPackage, Source, Version};
 use std::fmt;
-use {RpPackage, RpRequiredPackage, RpVersionedPackage, Source, Version};
 
 /// A resolved package.
 #[derive(Debug)]

@@ -83,7 +83,7 @@ macro_rules! define_processor {
     );
 
     (@tail $slf:ident current_package => $expr:expr; $($tail:tt)*) => (
-        fn current_package(&$slf) -> Option<&'session ::core::RpVersionedPackage> { Some($expr) }
+        fn current_package(&$slf) -> Option<&'session crate::core::RpVersionedPackage> { Some($expr) }
 
         define_processor!(@tail $slf $($tail)*);
     );

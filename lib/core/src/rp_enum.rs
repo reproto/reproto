@@ -1,13 +1,13 @@
 //! Model for enums
 
-use errors::Result;
-use serde::Serialize;
-use std::fmt;
-use std::vec;
-use {
+use crate::errors::Result;
+use crate::{
     Diagnostics, Flavor, Loc, RpCode, RpNumber, RpNumberType, RpReg, RpStringType, RpValue, Span,
     Translate, Translator,
 };
+use serde::Serialize;
+use std::fmt;
+use std::vec;
 
 decl_body!(
     pub struct RpEnumBody<F> {

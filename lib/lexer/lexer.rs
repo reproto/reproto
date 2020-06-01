@@ -1,12 +1,12 @@
 /// Lexer for reproto IDL.
-use core::RpNumber;
-use errors::{Error, Result};
+use crate::core::RpNumber;
+use crate::errors::{Error, Result};
+use crate::token::Token;
 use num_bigint::BigInt;
 use num_traits::Zero;
 use std::borrow::Cow;
 use std::result;
 use std::str::CharIndices;
-use token::Token;
 
 pub struct Lexer<'input> {
     source: CharIndices<'input>,
@@ -100,7 +100,7 @@ impl<'input> Lexer<'input> {
     fn identifier(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
         // strip leading _, since keywords are lowercase this is how we can escape identifiers.
         let (stripped, _) = take!(self, start, '_');
-        let (end, content) = take!(self, stripped, 'a'...'z' | '_' | '0'...'9');
+        let (end, content) = take!(self, stripped, 'a'..='z' | '_' | '0'..='9');
 
         if stripped != start {
             return Ok((start, Token::Identifier(content.into()), end));
@@ -117,7 +117,7 @@ impl<'input> Lexer<'input> {
     }
 
     fn type_identifier(&mut self, start: usize) -> Result<(usize, Token<'input>, usize)> {
-        let (end, content) = take!(self, start, 'A'...'Z' | 'a'...'z' | '0'...'9');
+        let (end, content) = take!(self, start, 'A'..='Z' | 'a'..='z' | '0'..='9');
         Ok((start, Token::TypeIdentifier(content.into()), end))
     }
 
@@ -188,7 +188,7 @@ impl<'input> Lexer<'input> {
         };
 
         let (mut end, mut digits) = {
-            let (end, whole) = take!(self, offset, '0'...'9');
+            let (end, whole) = take!(self, offset, '0'..='9');
             (
                 end,
                 whole
@@ -203,7 +203,7 @@ impl<'input> Lexer<'input> {
             let offset = self.step_n(1);
 
             {
-                let (e, fraction) = take!(self, offset, '0'...'9');
+                let (e, fraction) = take!(self, offset, '0'..='9');
                 end = e;
                 let (dec, fraction) = Self::parse_fraction(fraction).map_err(|e| (e, end))?;
                 Self::apply_fraction(&mut digits, &mut decimal, dec, fraction);
@@ -212,7 +212,7 @@ impl<'input> Lexer<'input> {
             if let Some((_, 'e')) = self.one() {
                 let offset = self.step_n(1);
 
-                let (e, content) = take!(self, offset, '-' | '0'...'9');
+                let (e, content) = take!(self, offset, '-' | '0'..='9');
                 end = e;
                 let exponent: i32 = content.parse().map_err(|_| ("illegal exponent", end))?;
                 Self::apply_exponent(&mut digits, &mut decimal, exponent);
@@ -458,10 +458,10 @@ impl<'input> Lexer<'input> {
                     '#' => Token::Hash,
                     '!' => Token::Bang,
                     '=' => Token::Equal,
-                    '_' | 'a'...'z' => return Some(self.identifier(start)),
-                    'A'...'Z' => return Some(self.type_identifier(start)),
+                    '_' | 'a'..='z' => return Some(self.identifier(start)),
+                    'A'..='Z' => return Some(self.type_identifier(start)),
                     '"' => return Some(self.string(start)),
-                    '-' | '0'...'9' => return Some(self.number(start)),
+                    '-' | '0'..='9' => return Some(self.number(start)),
                     // ignore whitespace
                     ' ' | '\n' | '\r' | '\t' => {
                         self.step();

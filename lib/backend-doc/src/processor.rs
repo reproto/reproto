@@ -1,17 +1,17 @@
 //! Processor trait.
 
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
-use core::errors::*;
-use core::flavored::{RpDecl, RpField, RpName, RpType, RpVersionedPackage};
-use core::{self, AsPackage, CoreFlavor, Loc};
-use doc_builder::DocBuilder;
-use escape::Escape;
-use macros::FormatAttribute;
-use rendering::markdown_to_html;
+use crate::core::errors::*;
+use crate::core::flavored::{RpDecl, RpField, RpName, RpType, RpVersionedPackage};
+use crate::core::{self, AsPackage, CoreFlavor, Loc};
+use crate::doc_builder::DocBuilder;
+use crate::escape::Escape;
+use crate::macros::FormatAttribute;
+use crate::rendering::markdown_to_html;
+use crate::trans::Translated;
 use std::ops::DerefMut;
 use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
-use trans::Translated;
 
 pub trait Processor<'session> {
     /// Access the current builder.
@@ -106,7 +106,7 @@ pub trait Processor<'session> {
     }
 
     fn write_type(&self, ty: &RpType) -> Result<()> {
-        use core::RpType::*;
+        use crate::core::RpType::*;
 
         write!(self.out(), "<span class=\"ty\">")?;
 
@@ -284,7 +284,7 @@ pub trait Processor<'session> {
 
         for c in url.chars() {
             let encode = match c {
-                'a'...'z' | 'A'...'Z' | '0'...'9' => false,
+                'a'..='z' | 'A'..='Z' | '0'..='9' => false,
                 '!' | '$' | '&' | '\'' | '(' | ')' | '*' | '+' | ',' | ';' => false,
                 '-' | '.' | '_' | '~' | ':' | '@' | '/' | '?' => false,
                 _ => true,

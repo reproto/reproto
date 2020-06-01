@@ -1,7 +1,7 @@
 //! Model for services.
 
-use errors::Result;
-use {Diagnostics, Flavor, Loc, RpReg, Translate, Translator};
+use crate::errors::Result;
+use crate::{Diagnostics, Flavor, Loc, RpReg, Translate, Translator};
 
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct RpServiceBodyHttp {

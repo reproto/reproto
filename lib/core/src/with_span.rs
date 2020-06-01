@@ -1,6 +1,6 @@
 //! Report errors into the context.
-use errors::Error;
-use {Diagnostics, Span};
+use crate::errors::Error;
+use crate::{Diagnostics, Span};
 
 pub trait WithSpan<T> {
     /// Report the span to the diagnostics and convert the result into a unit error if failed.

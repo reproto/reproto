@@ -2,18 +2,18 @@
 
 #![allow(unused)]
 
-use core::errors::Result;
-use core::{
+use crate::core::errors::Result;
+use crate::core::{
     self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberKind,
     RpNumberType, RpNumberValidate, RpStringType, Translate, Translator,
 };
+use crate::naming::{self, Naming};
+use crate::trans::Packages;
 use genco::csharp::{self, array, struct_, using};
 use genco::{Cons, Csharp};
-use naming::{self, Naming};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
-use trans::Packages;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CsharpFlavor;
@@ -140,7 +140,7 @@ impl FlavorTranslator for CsharpFlavorTranslator {
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
-        use core::RpEnumType::*;
+        use crate::core::RpEnumType::*;
 
         match enum_type {
             String(string) => self.translate_string(string),

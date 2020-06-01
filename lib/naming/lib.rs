@@ -22,7 +22,7 @@ pub trait Naming {
     fn convert(&self, input: &str) -> String;
 
     /// Copy the given naming policy.
-    fn copy(&self) -> Box<Naming>;
+    fn copy(&self) -> Box<dyn Naming>;
 }
 
 #[derive(Clone, Copy)]
@@ -33,7 +33,7 @@ impl Naming for ToLowerCamel {
         operate::<Self>(input)
     }
 
-    fn copy(&self) -> Box<Naming> {
+    fn copy(&self) -> Box<dyn Naming> {
         Box::new(*self)
     }
 }
@@ -68,7 +68,7 @@ impl Naming for ToUpperCamel {
         operate::<Self>(input)
     }
 
-    fn copy(&self) -> Box<Naming> {
+    fn copy(&self) -> Box<dyn Naming> {
         Box::new(*self)
     }
 }
@@ -103,7 +103,7 @@ impl Naming for ToLowerSnake {
         operate::<Self>(input)
     }
 
-    fn copy(&self) -> Box<Naming> {
+    fn copy(&self) -> Box<dyn Naming> {
         Box::new(*self)
     }
 }
@@ -138,7 +138,7 @@ impl Naming for ToUpperSnake {
         operate::<Self>(input)
     }
 
-    fn copy(&self) -> Box<Naming> {
+    fn copy(&self) -> Box<dyn Naming> {
         Box::new(*self)
     }
 }

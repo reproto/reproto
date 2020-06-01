@@ -1,17 +1,17 @@
 //! gRPC module for Rust.
 
-use backend::Initializer;
-use compiler::Comments;
-use core::errors::Result;
-use core::{self, Loc};
-use flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpSubType, SwiftName};
-use genco::swift::{imported, Swift};
-use genco::{Cons, IntoTokens, Quoted, Tokens};
-use std::rc::Rc;
-use {
+use crate::backend::Initializer;
+use crate::compiler::Comments;
+use crate::core::errors::Result;
+use crate::core::{self, Loc};
+use crate::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpSubType, SwiftName};
+use crate::{
     Compiler, EnumAdded, EnumCodegen, FileSpec, InterfaceAdded, InterfaceCodegen, Options,
     PackageAdded, PackageCodegen, TupleAdded, TupleCodegen, TypeAdded, TypeCodegen,
 };
+use genco::swift::{imported, Swift};
+use genco::{Cons, IntoTokens, Quoted, Tokens};
+use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Simple<'el> {

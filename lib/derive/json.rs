@@ -1,11 +1,11 @@
-use core;
-use core::errors::Result;
-use format;
+use crate::core;
+use crate::core::errors::Result;
+use crate::format;
+use crate::sir::{FieldSir, Sir};
+use crate::utils::is_datetime;
+use crate::Opaque;
 use linked_hash_map::LinkedHashMap;
 use serde_json as json;
-use sir::{FieldSir, Sir};
-use utils::is_datetime;
-use Opaque;
 
 #[derive(Debug)]
 pub struct Json;
@@ -35,9 +35,9 @@ impl format::Object for json::Map<String, json::Value> {
 }
 
 impl format::Value for json::Value {
-    fn as_object(&self) -> Option<&format::Object<Value = Self>> {
+    fn as_object(&self) -> Option<&dyn format::Object<Value = Self>> {
         match *self {
-            json::Value::Object(ref object) => Some(object as &format::Object<Value = Self>),
+            json::Value::Object(ref object) => Some(object as &dyn format::Object<Value = Self>),
             _ => None,
         }
     }

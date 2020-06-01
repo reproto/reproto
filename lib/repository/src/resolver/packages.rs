@@ -1,7 +1,7 @@
 //! # Resolver where we know an exact set of packages to resolve.
 
-use core::errors::Result;
-use core::{
+use crate::core::errors::Result;
+use crate::core::{
     Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage, Source,
 };
 use std::collections::BTreeMap;

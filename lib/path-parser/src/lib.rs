@@ -5,8 +5,8 @@ extern crate reproto_path_lexer as path_lexer;
 
 mod parser;
 
-use ast::PathSpec;
-use core::errors::{Error, Result};
+use crate::ast::PathSpec;
+use crate::core::errors::{Error, Result};
 
 pub fn parse(input: &str) -> Result<PathSpec> {
     use self::path_lexer::Error::*;

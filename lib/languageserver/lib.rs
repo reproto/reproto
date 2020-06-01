@@ -1,5 +1,4 @@
-extern crate languageserver_types as ty;
-extern crate linked_hash_map;
+extern crate lsp_types as ty;
 #[macro_use]
 extern crate log;
 extern crate reproto_ast as ast;
@@ -9,12 +8,7 @@ extern crate reproto_lexer as lexer;
 extern crate reproto_manifest as manifest;
 extern crate reproto_parser as parser;
 extern crate reproto_repository as repository;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 extern crate serde_json as json;
-extern crate url;
-extern crate url_serde;
 
 mod envelope;
 mod loaded_file;
@@ -26,8 +20,8 @@ use self::loaded_file::LoadedFile;
 use self::models::{Completion, Jump, Range, RenameResult};
 use self::workspace::Workspace;
 use self::ContentType::*;
-use core::errors::Result;
-use core::{Diagnostic, Encoding, Filesystem, RealFilesystem, Reported, Rope, Source};
+use crate::core::errors::Result;
+use crate::core::{Diagnostic, Encoding, Filesystem, RealFilesystem, Reported, Rope, Source};
 use serde::Deserialize;
 use std::cell::RefCell;
 use std::collections::{BTreeSet, Bound, HashMap};
@@ -38,10 +32,6 @@ use std::path::Path;
 use std::result;
 use std::sync::{Arc, Mutex};
 use url::Url;
-
-/// newtype to serialize URLs
-#[derive(Debug, Serialize)]
-pub struct SerdeUrl(#[serde(with = "url_serde")] Url);
 
 #[derive(Debug)]
 enum ContentType {
@@ -683,8 +673,7 @@ where
 
                 let manifest_url = workspace.manifest_url()?;
 
-                self.channel
-                    .notification::<OpenUrl>(SerdeUrl(manifest_url))?;
+                self.channel.notification::<OpenUrl>(manifest_url)?;
             }
         }
 
@@ -702,15 +691,14 @@ where
         };
 
         if let Some(workspace) = self.workspace.as_ref() {
-            let mut workspace = workspace
+            let workspace = workspace
                 .try_borrow()
                 .map_err(|_| "failed to access mutable workspace")?;
 
             if response.title == "Open project manifest" {
                 let manifest_url = workspace.manifest_url()?;
 
-                self.channel
-                    .notification::<OpenUrl>(SerdeUrl(manifest_url))?;
+                self.channel.notification::<OpenUrl>(manifest_url)?;
             }
         }
 
@@ -727,6 +715,8 @@ where
         request_id: Option<envelope::RequestId>,
         params: ty::InitializeParams,
     ) -> Result<()> {
+        // TODO: make use of root_uri instead.
+        #[allow(deprecated)]
         if let Some(path) = params.root_path.as_ref() {
             let path = Path::new(path.as_str());
 
@@ -754,6 +744,10 @@ where
                 references_provider: Some(true),
                 ..ty::ServerCapabilities::default()
             },
+            server_info: Some(ty::ServerInfo {
+                name: String::from("reproto"),
+                version: None,
+            }),
         };
 
         self.channel.send(request_id, result)?;
@@ -890,7 +884,7 @@ where
         request_id: Option<envelope::RequestId>,
         params: ty::ReferenceParams,
     ) -> Result<()> {
-        let url = params.text_document.uri;
+        let url = params.text_document_position.text_document.uri;
 
         let mut locations: Vec<ty::Location> = Vec::new();
 
@@ -899,7 +893,9 @@ where
                 .try_borrow()
                 .map_err(|_| "failed to access workspace immutably")?;
 
-            if let Some(references) = workspace.find_reference(&url, params.position) {
+            if let Some(references) =
+                workspace.find_reference(&url, params.text_document_position.position)
+            {
                 for (url, ranges) in references {
                     for r in ranges {
                         locations.push(ty::Location {
@@ -1001,6 +997,7 @@ where
             .notification::<ty::notification::PublishDiagnostics>(ty::PublishDiagnosticsParams {
                 uri: url,
                 diagnostics: diagnostics,
+                version: None,
             })?;
 
         Ok(())
@@ -1055,6 +1052,7 @@ where
             .notification::<ty::notification::PublishDiagnostics>(ty::PublishDiagnosticsParams {
                 uri: url.clone(),
                 diagnostics: out,
+                version: None,
             })?;
 
         Ok(())
@@ -1193,7 +1191,7 @@ where
 
                     let message = format!(
                         "This file is not part of project, consider updating the [packages] \
-                         section in reproto.toml"
+             section in reproto.toml"
                     );
 
                     let id = self.channel.request::<ty::request::ShowMessageRequest>(
@@ -1314,7 +1312,7 @@ where
         params: ty::CompletionParams,
         list: &mut ty::CompletionList,
     ) -> Result<()> {
-        let url = params.text_document.uri;
+        let url = params.text_document_position.text_document.uri;
 
         let workspace = match self.workspace.as_ref() {
             Some(workspace) => workspace,
@@ -1325,10 +1323,11 @@ where
             .try_borrow()
             .map_err(|_| "failed to access immutable workspace")?;
 
-        let (file, value) = match workspace.find_completion(&url, params.position) {
-            Some(v) => v,
-            None => return Ok(()),
-        };
+        let (file, value) =
+            match workspace.find_completion(&url, params.text_document_position.position) {
+                Some(v) => v,
+                None => return Ok(()),
+            };
 
         debug!("type completion: {:?}", value);
 
@@ -1360,7 +1359,7 @@ where
                     });
                 }
 
-                let mut path = vec![];
+                let path = vec![];
                 push_items(&mut list.items, &file, &path, suffix)?;
             }
             Completion::Absolute {
@@ -1436,7 +1435,7 @@ where
         request_id: Option<envelope::RequestId>,
         params: ty::TextDocumentPositionParams,
     ) -> Result<()> {
-        let mut response: Option<ty::request::GotoDefinitionResponse> = None;
+        let mut response = None::<ty::GotoDefinitionResponse>;
         self.definition(params, &mut response)?;
         self.channel.send(request_id, response)?;
         Ok(())
@@ -1457,12 +1456,12 @@ where
             .try_borrow()
             .map_err(|_| "failed to access immutable workspace")?;
 
-        let url = params.text_document.uri;
+        let url = params.text_document_position.text_document.uri;
         let new_name = params.new_name;
 
         let mut edit: Option<ty::WorkspaceEdit> = None;
 
-        if let Some(rename) = workspace.find_rename(&url, params.position) {
+        if let Some(rename) = workspace.find_rename(&url, params.text_document_position.position) {
             match rename {
                 // all edits in the same file as where the rename was requested.
                 RenameResult::Local { ranges } => {
@@ -1545,7 +1544,7 @@ where
     fn definition(
         &self,
         params: ty::TextDocumentPositionParams,
-        response: &mut Option<ty::request::GotoDefinitionResponse>,
+        response: &mut Option<ty::GotoDefinitionResponse>,
     ) -> Result<()> {
         let url = params.text_document.uri;
 
@@ -1593,7 +1592,7 @@ where
                 let range = convert_range((start, end));
                 let location = ty::Location { uri, range };
 
-                *response = Some(ty::request::GotoDefinitionResponse::Scalar(location));
+                *response = Some(ty::GotoDefinitionResponse::Scalar(location));
             }
             Jump::Package { ref package } => {
                 let uri = match workspace.packages.get(package) {
@@ -1603,7 +1602,7 @@ where
 
                 let range = ty::Range::default();
                 let location = ty::Location { uri, range };
-                *response = Some(ty::request::GotoDefinitionResponse::Scalar(location));
+                *response = Some(ty::GotoDefinitionResponse::Scalar(location));
             }
             Jump::Prefix { ref prefix } => {
                 let prefix = match file.prefixes.get(prefix) {
@@ -1618,7 +1617,7 @@ where
                     range,
                 };
 
-                *response = Some(ty::request::GotoDefinitionResponse::Scalar(location));
+                *response = Some(ty::GotoDefinitionResponse::Scalar(location));
             }
         }
 
@@ -1658,7 +1657,7 @@ pub enum Expected {
 pub enum OpenUrl {}
 
 impl ty::notification::Notification for OpenUrl {
-    type Params = SerdeUrl;
+    type Params = Url;
 
     const METHOD: &'static str = "$/openUrl";
 }

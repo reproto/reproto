@@ -19,15 +19,15 @@ mod utils;
 mod compiler;
 mod flavored;
 
-use backend::IntoBytes;
-use compiler::Compiler;
-use core::errors::Result;
-use core::{CoreFlavor, Handle, Loc, RpField, RpPackage, Span};
+use crate::backend::IntoBytes;
+use crate::compiler::Compiler;
+use crate::core::errors::Result;
+use crate::core::{CoreFlavor, Handle, Loc, RpField, RpPackage, Span};
+use crate::manifest::{Lang, Manifest, NoModule, TryFromToml};
+use crate::trans::Session;
 use genco::{JavaScript, Tokens};
-use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
-use trans::Session;
 
 const TYPE_SEP: &str = "_";
 const EXT: &str = "js";
@@ -157,7 +157,7 @@ impl<'el> IntoBytes<Compiler<'el>> for FileSpec<'el> {
     }
 }
 
-fn compile(handle: &Handle, env: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
+fn compile(handle: &dyn Handle, env: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let packages = env.packages()?;
 
     let variant_field = Loc::new(

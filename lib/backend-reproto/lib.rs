@@ -10,18 +10,18 @@ extern crate reproto_manifest as manifest;
 extern crate reproto_trans as trans;
 extern crate toml;
 
-use core::errors::Result;
-use core::flavored::{
+use crate::core::errors::Result;
+use crate::core::flavored::{
     RpDecl, RpEndpoint, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody, RpTupleBody,
     RpTypeBody, RpVariantRef,
 };
-use core::{CoreFlavor, Handle, RelativePathBuf, DEFAULT_TAG};
+use crate::core::{CoreFlavor, Handle, RelativePathBuf, DEFAULT_TAG};
+use crate::manifest::{Lang, Manifest, NoModule, TryFromToml};
+use crate::trans::Session;
 use genco::{Custom, Formatter, IntoTokens, IoFmt, Quoted, Tokens, WriteTokens};
-use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::fmt::{self, Write};
 use std::path::Path;
-use trans::Session;
 
 pub struct Comments<'el, S: 'el>(&'el [S]);
 
@@ -100,13 +100,13 @@ impl Custom for Reproto {
 }
 
 /// Compile to a reproto manifest.
-fn compile(handle: &Handle, env: Session<CoreFlavor>, _manifest: Manifest) -> Result<()> {
+fn compile(handle: &dyn Handle, env: Session<CoreFlavor>, _manifest: Manifest) -> Result<()> {
     let env = env.translate_default()?;
 
     let root = RelativePathBuf::from(".");
 
     for (package, file) in env.for_each_file() {
-        let mut path = package
+        let path = package
             .package
             .parts()
             .fold(root.clone(), |path, part| path.join(part));
@@ -117,14 +117,14 @@ fn compile(handle: &Handle, env: Session<CoreFlavor>, _manifest: Manifest) -> Re
             .unwrap_or_else(|| root.clone());
 
         if !handle.is_dir(&parent) {
-            debug!("+dir: {}", parent.display());
+            debug!("+dir: {}", parent);
             handle.create_dir_all(&parent)?;
         }
 
         let path = if let Some(version) = package.version.as_ref() {
             let stem = path
                 .file_stem()
-                .ok_or_else(|| format!("Missing file stem: {}", path.display()))?;
+                .ok_or_else(|| format!("Missing file stem: {}", path))?;
 
             let file_name = format!("{}-{}.reproto", stem, version);
             path.with_file_name(file_name)
@@ -140,7 +140,7 @@ fn compile(handle: &Handle, env: Session<CoreFlavor>, _manifest: Manifest) -> Re
 
         let body = body.join_line_spacing();
 
-        debug!("+file: {}", path.display());
+        debug!("+file: {}", path);
         IoFmt(&mut handle.create(&path)?).write_file(body, &mut ())?;
     }
 

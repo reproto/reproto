@@ -1,4 +1,4 @@
-use core::RpNumber;
+use crate::core::RpNumber;
 use std::borrow::Cow;
 
 #[derive(Clone, Debug, PartialEq, Eq)]

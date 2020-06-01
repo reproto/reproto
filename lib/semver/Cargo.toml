@@ -3,6 +3,7 @@ name = "reproto-semver"
 version = "0.3.39"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
+edition = "2018"
 readme = "README.md"
 repository = "https://github.com/reproto/reproto"
 homepage = "https://github.com/reproto/reproto"
@@ -14,7 +15,7 @@ Semantic Versioning Parts
 """
 
 [dependencies]
-serde = { version = "1.0.79", optional = true }
+serde = { version = "1.0.111", optional = true }
 
 [lib]
 path = "lib.rs"

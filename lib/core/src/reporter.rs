@@ -1,6 +1,6 @@
 //! Reporter of diagnostics.
 
-use {Diagnostic, Diagnostics, Source, SourceDiagnostics};
+use crate::{Diagnostic, Diagnostics, Source, SourceDiagnostics};
 
 pub trait Reporter {
     /// Report a collection of diagnostics.

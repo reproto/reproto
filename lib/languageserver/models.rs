@@ -1,8 +1,8 @@
 //! Data models that are shared for the language server.
 
-use core::{Position, RpVersionedPackage};
+use crate::core::{Position, RpVersionedPackage};
+use crate::ty;
 use std::collections::BTreeSet;
-use ty;
 use url::Url;
 
 /// Specifies a rename.

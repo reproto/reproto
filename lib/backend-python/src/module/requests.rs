@@ -1,13 +1,13 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use backend::Initializer;
-use codegen::{ServiceAdded, ServiceCodegen};
-use core;
-use core::errors::Result;
+use crate::backend::Initializer;
+use crate::codegen::{ServiceAdded, ServiceCodegen};
+use crate::core;
+use crate::core::errors::Result;
+use crate::utils::{BlockComment, IfNoneRaise, IfNoneThen};
+use crate::Options;
 use genco::python::imported;
 use genco::{Python, Quoted, Tokens};
-use utils::{BlockComment, IfNoneRaise, IfNoneThen};
-use Options;
 
 #[derive(Debug, Default, Deserialize)]
 pub struct Config {}

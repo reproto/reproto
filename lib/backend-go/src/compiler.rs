@@ -1,15 +1,15 @@
 //! Backend for Go
 
-use backend::PackageProcessor;
-use core::errors::*;
-use core::{Handle, Loc, RelativePathBuf};
-use flavored::{
+use crate::backend::PackageProcessor;
+use crate::core::errors::*;
+use crate::core::{Handle, Loc, RelativePathBuf};
+use crate::flavored::{
     GoFlavor, GoName, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody, RpTypeBody,
 };
+use crate::trans::{self, Translated};
+use crate::{EnumAdded, FieldAdded, FileSpec, InterfaceAdded, Options, Tags, TupleAdded, EXT};
 use genco::go::Go;
 use genco::{IntoTokens, Tokens};
-use trans::{self, Translated};
-use {EnumAdded, FieldAdded, FileSpec, InterfaceAdded, Options, Tags, TupleAdded, EXT};
 
 /// Documentation comments.
 pub struct Comments<'el, S: 'el>(pub &'el [S]);
@@ -29,14 +29,14 @@ impl<'el, S: 'el + AsRef<str>> IntoTokens<'el, Go<'el>> for Comments<'el, S> {
 pub struct Compiler<'el> {
     pub env: &'el Translated<GoFlavor>,
     options: Options,
-    handle: &'el Handle,
+    handle: &'el dyn Handle,
 }
 
 impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Translated<GoFlavor>,
         options: Options,
-        handle: &'el Handle,
+        handle: &'el dyn Handle,
     ) -> Result<Compiler<'el>> {
         let c = Compiler {
             env,
@@ -114,7 +114,7 @@ impl<'el> PackageProcessor<'el, GoFlavor, GoName> for Compiler<'el> {
         self.env.decl_iter()
     }
 
-    fn handle(&self) -> &'el Handle {
+    fn handle(&self) -> &'el dyn Handle {
         self.handle
     }
 
@@ -153,7 +153,7 @@ impl<'el> PackageProcessor<'el, GoFlavor, GoName> for Compiler<'el> {
                         toks![f.ty.clone()]
                     };
 
-                    let mut tags = Tags::new();
+                    let tags = Tags::new();
 
                     let mut base = toks![f.safe_ident(), ty];
                     base.append_unless_empty(tags);

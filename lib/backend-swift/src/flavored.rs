@@ -2,22 +2,22 @@
 
 #![allow(unused)]
 
-use backend::package_processor;
-use core::errors::Result;
-use core::{
+use crate::backend::package_processor;
+use crate::core::errors::Result;
+use crate::core::{
     self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberKind,
     RpNumberType, RpStringType, Translate, Translator,
 };
+use crate::module::simple::Simple;
+use crate::naming::{self, Naming};
+use crate::trans::Packages;
+use crate::{Options, TYPE_SEP};
 use genco::swift::{self, Swift};
 use genco::{Cons, Element, IntoTokens, Tokens};
-use module::simple::Simple;
-use naming::{self, Naming};
 use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
-use trans::Packages;
-use {Options, TYPE_SEP};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SwiftType<'el> {
@@ -252,7 +252,7 @@ impl FlavorTranslator for SwiftFlavorTranslator {
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
-        use core::RpEnumType::*;
+        use crate::core::RpEnumType::*;
 
         match enum_type {
             String(string) => self.translate_string(string),

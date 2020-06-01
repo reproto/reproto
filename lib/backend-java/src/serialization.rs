@@ -1,6 +1,6 @@
 //! Serialization strategy used for services.
 
-use core::errors::Result;
+use crate::core::errors::Result;
 use genco::java::{self, Field};
 use genco::{Java, Tokens};
 use std::fmt;

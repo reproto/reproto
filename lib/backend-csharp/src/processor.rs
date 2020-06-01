@@ -1,7 +1,7 @@
 //! Helper utilities for processors.
 
-use core::errors::Result;
-use core::flavored::{RpChannel, RpEndpoint};
+use crate::core::errors::Result;
+use crate::core::flavored::{RpChannel, RpEndpoint};
 
 pub trait Processor {
     /// Extract endpoint request.

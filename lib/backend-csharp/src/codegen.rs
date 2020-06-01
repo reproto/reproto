@@ -1,13 +1,13 @@
 //! Code generator for the given path.
 
-use core::errors::Result;
-use core::Handle;
-use csharp_field::CsharpField;
-use flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
+use crate::core::errors::Result;
+use crate::core::Handle;
+use crate::csharp_field::CsharpField;
+use crate::flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
+use crate::{Compiler, Options};
 use genco::csharp::{Argument, Class, Enum, Field};
 use genco::{Cons, Csharp};
 use std::rc::Rc;
-use {Compiler, Options};
 
 #[derive(Clone)]
 pub struct TypeField<'el> {
@@ -67,14 +67,14 @@ pub struct Configure<'a> {
 
 pub trait Codegen {
     /// Build the given piece of code in the given handle.
-    fn generate(&self, handle: &Handle) -> Result<()>;
+    fn generate(&self, handle: &dyn Handle) -> Result<()>;
 }
 
 impl<T> Codegen for Rc<T>
 where
     T: Codegen,
 {
-    fn generate(&self, handle: &Handle) -> Result<()> {
+    fn generate(&self, handle: &dyn Handle) -> Result<()> {
         self.as_ref().generate(handle)
     }
 }

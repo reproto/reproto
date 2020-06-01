@@ -1,11 +1,11 @@
 //! A versioned package declaration
 
-use errors::Result;
-use rp_package::Parts;
+use crate::errors::Result;
+use crate::rp_package::Parts;
+use crate::{AsPackage, RpPackage, RpPackageFormat, Version};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
-use {AsPackage, RpPackage, RpPackageFormat, Version};
 
 #[derive(Default, Debug, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RpVersionedPackage {
