@@ -1,9 +1,9 @@
-use crate::codegen::Configure;
+use crate::Options;
 
 pub struct Module;
 
 impl Module {
-    pub fn initialize(self, e: Configure) {
-        e.options.immutable = false;
+    pub fn initialize(self, options: &mut Options) {
+        options.immutable = false;
     }
 }

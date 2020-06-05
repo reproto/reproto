@@ -1,0 +1,4 @@
+name: csharp
+lang: csharp
+output: generated
+args: ["-m", "Json.NET"]

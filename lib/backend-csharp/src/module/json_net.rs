@@ -1,672 +1,272 @@
-use crate::codegen::{
-    ClassAdded, ClassCodegen, Configure, EnumAdded, EnumCodegen, InterfaceAdded, InterfaceCodegen,
-    TupleAdded, TupleCodegen, TypeField, TypeFieldAdded, TypeFieldCodegen,
-};
-use crate::core::errors::Result;
-use crate::core::{self, RpSubTypeStrategy};
-use crate::flavored::RpInterfaceBody;
-use genco::csharp::{self, using, Argument};
-use genco::{Cons, Csharp, Element, IntoTokens, Quoted, Tokens};
+use crate::codegen;
+use crate::flavored::{Field, RpSubType, RpSubTypeStrategy, RpVariantValue, RpVariants};
+use crate::Options;
+use core::Loc;
+use genco::prelude::*;
 use std::rc::Rc;
 
-pub struct Module;
-
-impl Module {
-    pub fn initialize(self, e: Configure) {
-        let json_net = Rc::new(JsonNet::new());
-
-        e.options
-            .class_generators
-            .push(Box::new(Rc::clone(&json_net)));
-
-        e.options
-            .enum_generators
-            .push(Box::new(Rc::clone(&json_net)));
-
-        e.options
-            .interface_generators
-            .push(Box::new(Rc::clone(&json_net)));
-
-        e.options
-            .type_field_generators
-            .push(Box::new(Rc::clone(&json_net)));
-
-        e.options
-            .tuple_generators
-            .push(Box::new(Rc::clone(&json_net)));
-    }
+pub fn initialize(opt: &mut Options) {
+    let codegen = Rc::new(Codegen::new());
+    opt.gen.class.push(codegen.clone());
+    opt.gen.class_field.push(codegen.clone());
+    opt.gen.class_constructor.push(codegen.clone());
+    opt.gen.class_constructor_arg.push(codegen.clone());
+    opt.gen.enum_type.push(codegen.clone());
+    opt.gen.enum_variant.push(codegen.clone());
+    opt.gen.tuple.push(codegen.clone());
+    opt.gen.interface.push(codegen.clone());
+    opt.gen.interface_tag_constructor_arg.push(codegen.clone());
 }
 
-/// Apply attributes.
-struct JsonNet {
-    object: Csharp<'static>,
-    type_: Csharp<'static>,
-    invalid_operation: Csharp<'static>,
-    enumerator: Csharp<'static>,
-    j_array: Csharp<'static>,
-    j_object: Csharp<'static>,
-    j_token: Csharp<'static>,
-    json_reader: Csharp<'static>,
-    json_writer: Csharp<'static>,
-    json_serializer: Csharp<'static>,
+struct Codegen {
+    object: csharp::Import,
+    invalid_operation_exception: csharp::Import,
+    i_enumerator: csharp::Import,
+
+    json_object: csharp::Import,
+    json_property: csharp::Import,
+    json_constructor: csharp::Import,
+    null_value_handling: csharp::Import,
+
+    json_converter: csharp::Import,
+    enum_member: csharp::Import,
+    string_enum_converter: csharp::Import,
+
+    j_object: csharp::Import,
+    j_array: csharp::Import,
+    j_token: csharp::Import,
+    json_reader: csharp::Import,
+    json_writer: csharp::Import,
+    json_serializer: csharp::Import,
+
+    json_sub_types: csharp::Import,
 }
 
-impl JsonNet {
+impl Codegen {
     pub fn new() -> Self {
         Self {
-            object: using("System", "Object"),
-            type_: using("System", "Type").qualified(),
-            invalid_operation: using("System", "InvalidOperationException"),
-            enumerator: using("System.Collections.Generic", "IEnumerator"),
-            j_array: using("Newtonsoft.Json.Linq", "JArray"),
-            j_object: using("Newtonsoft.Json.Linq", "JObject"),
-            j_token: using("Newtonsoft.Json.Linq", "JToken"),
-            json_reader: using("Newtonsoft.Json", "JsonReader"),
-            json_writer: using("Newtonsoft.Json", "JsonWriter"),
-            json_serializer: using("Newtonsoft.Json", "JsonSerializer"),
+            object: csharp::import("System", "Object"),
+            invalid_operation_exception: csharp::import("System", "InvalidOperationException"),
+            i_enumerator: csharp::import("System.Collections.Generic", "IEnumerator"),
+
+            json_object: csharp::import("Newtonsoft.Json", "JsonObject"),
+            json_property: csharp::import("Newtonsoft.Json", "JsonProperty"),
+            json_constructor: csharp::import("Newtonsoft.Json", "JsonConstructor"),
+            null_value_handling: csharp::import("Newtonsoft.Json", "NullValueHandling"),
+
+            json_converter: csharp::import("Newtonsoft.Json", "JsonConverter"),
+            enum_member: csharp::import("System.Runtime.Serialization", "EnumMember"),
+            string_enum_converter: csharp::import(
+                "Newtonsoft.Json.Converters",
+                "StringEnumConverter",
+            ),
+
+            j_object: csharp::import("Newtonsoft.Json.Linq", "JObject"),
+            j_array: csharp::import("Newtonsoft.Json.Linq", "JArray"),
+            j_token: csharp::import("Newtonsoft.Json.Linq", "JToken"),
+            json_reader: csharp::import("Newtonsoft.Json", "JsonReader"),
+            json_writer: csharp::import("Newtonsoft.Json", "JsonWriter"),
+            json_serializer: csharp::import("Newtonsoft.Json", "JsonSerializer"),
+
+            json_sub_types: csharp::import("JsonSubTypes", "JsonSubtypes"),
+        }
+    }
+
+    pub(crate) fn read_field<'a>(&'a self, f: &'a Loc<Field>) -> impl FormatInto<Csharp> + 'a {
+        quote_fn! {
+            if (!enumerator.MoveNext()) {
+                throw new #(&self.invalid_operation_exception)("expected more items in array");
+            }
+
+            #(&f.ty) #(f.safe_ident()) = enumerator.Current.ToObject<#(&f.ty)>(serializer);
+        }
+    }
+
+    pub(crate) fn try_read_untagged_sub_type<'a>(
+        &'a self,
+        sub_type: &'a RpSubType,
+    ) -> impl FormatInto<Csharp> + 'a {
+        quote_fn! {
+            if (#(for f in sub_type.discriminating_fields() join ( && ) => o.ContainsKey(#(quoted(f.name()))))) {
+                _isInsideRead = true;
+                try {
+                    return serializer.Deserialize(o.CreateReader(), typeof(#(&sub_type.ident)));
+                } finally {
+                    _isInsideRead = false;
+                }
+            }
         }
     }
 }
 
-impl ClassCodegen for JsonNet {
-    fn generate(&self, e: ClassAdded) -> Result<()> {
-        let mut type_field = e.type_field;
-        let names = &e.names;
-        let spec = e.spec;
-        let fields = e.fields;
-
-        spec.attribute(JsonObject);
-
-        // Annotate all constructors.
-        for c in &mut spec.constructors {
-            c.attribute(JsonConstructor);
-
-            for (field, (argument, name)) in
-                fields.iter().zip(c.arguments.iter_mut().zip(names.iter()))
-            {
-                let required = if field.optional {
-                    Required::Default
-                } else {
-                    Required::DisallowNull
-                };
-
-                argument.attribute(JsonProperty(name.clone(), required));
-            }
-
-            // Modify the class to deserialize, and pass type field into the super class.
-            if let Some(&mut TypeField {
-                ref mut field,
-                ref tag,
-            }) = type_field.as_mut()
-            {
-                let mut a = Argument::new(field.ty(), field.var());
-                a.attribute(JsonProperty(tag.clone(), Required::DisallowNull));
-                c.arguments.insert(0, a);
-                c.base = Some(toks!["base(", field.var(), ")"]);
-            }
-        }
-
-        // Add field attribute.
-        for (field, (spec, name)) in fields.iter().zip(spec.fields.iter_mut().zip(names.iter())) {
-            let required = if field.optional {
-                Required::Default
-            } else {
-                Required::DisallowNull
-            };
-
-            spec.attribute(JsonProperty(name.clone(), required));
-        }
-
-        Ok(())
+impl codegen::class::Codegen for Codegen {
+    fn generate(&self, e: codegen::class::Args<'_>) {
+        e.annotations.push(quote! {
+            [#(&self.json_object)(ItemNullValueHandling = #(&self.null_value_handling).Ignore)]
+        })
     }
 }
 
-impl EnumCodegen for JsonNet {
-    fn generate(&self, e: EnumAdded) -> Result<()> {
-        let EnumAdded {
-            body, spec, names, ..
-        } = e;
-
-        match body.variants {
-            core::RpVariants::String { .. } => {
-                spec.attribute(StringEnumConverter);
-            }
-            _ => {}
-        }
-
-        if let Some(names) = names {
-            let mut variants = Tokens::new();
-
-            for (v, name) in spec.variants.clone().into_iter().zip(names.iter().cloned()) {
-                let mut annotated = Tokens::new();
-                annotated.push(EnumMember(name));
-                annotated.push(v);
-                variants.push(annotated);
-            }
-
-            spec.variants = variants;
-        }
-
-        Ok(())
+impl codegen::class_field::Codegen for Codegen {
+    fn generate(&self, e: codegen::class_field::Args<'_>) {
+        e.annotations.push(quote! {
+            [#(&self.json_property)(#(quoted(e.field.name())))]
+        })
     }
 }
 
-impl JsonNet {
-    fn untagged<'el>(
-        &self,
-        spec: &mut csharp::Class<'el>,
-        body: &'el RpInterfaceBody,
-    ) -> Result<()> {
-        use genco::csharp::{local, Class, Field, Method, Modifier, BOOLEAN};
+impl codegen::class_constructor::Codegen for Codegen {
+    fn generate(&self, e: codegen::class_constructor::Args<'_>) {
+        e.annotations.push(quote! {
+            [#(&self.json_constructor)]
+        })
+    }
+}
 
-        let converter = Rc::new(format!("{}.Json_Net_Converter", spec.name().as_ref()));
-        spec.attribute(JsonConverter(local(converter)));
+impl codegen::class_constructor_arg::Codegen for Codegen {
+    fn generate(&self, e: codegen::class_constructor_arg::Args<'_>) {
+        e.annotations.push(quote! {
+            [#(&self.json_property)(#(quoted(e.field.name())))]
+        })
+    }
+}
 
-        let body = {
-            let mut c = Class::new("Json_Net_Converter");
-            let converter = using("Newtonsoft.Json", "JsonConverter");
-            c.implements = vec![converter];
+impl codegen::enum_type::Codegen for Codegen {
+    fn generate(&self, e: codegen::enum_type::Args<'_>) {
+        match e.variants {
+            RpVariants::String { .. } => e.annotations.push(quote! {
+                [#(&self.json_converter)(typeof(#(&self.string_enum_converter)))]
+            }),
+            _ => (),
+        }
+    }
+}
 
-            // NB: Json.NET there is no way to avoid using the current converter to deserialize
-            // sub-types, so we guard deserialization using a thread-local.
-            c.fields.push({
-                let mut f = Field::new(BOOLEAN, "_isInsideRead");
-                f.attribute("[ThreadStatic]");
-                f.modifiers = vec![Modifier::Private, Modifier::Static];
-                f
-            });
-
-            c.body.push(CanConvert(self, &spec));
-            c.fields.push(can_write());
-            c.fields.push(can_read());
-            c.body.push(WriteJson(self, &spec, body));
-            c.body.push(ReadJson(self, &spec, body));
-
-            c
-        };
-
-        // Converter for this tuple.
-        spec.body.push(body);
-
-        return Ok(());
-
-        struct CanConvert<'a, 'el: 'a>(&'a JsonNet, &'a Class<'el>);
-
-        impl<'a, 'el> IntoTokens<'el, Csharp<'el>> for CanConvert<'a, 'el> {
-            fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
-                let mut m = Method::new("CanConvert");
-                m.arguments
-                    .push(Argument::new(self.0.type_.clone(), "objectType"));
-                m.modifiers = vec![Modifier::Public, Modifier::Override];
-                m.returns = BOOLEAN;
-
-                m.body.push(toks!["return false;"]);
-
-                m.into_tokens()
+impl codegen::enum_variant::Codegen for Codegen {
+    fn generate(&self, e: codegen::enum_variant::Args<'_>) {
+        match e.variant.value {
+            RpVariantValue::String(string) => e.annotations.push(quote! {
+                [#(&self.enum_member)(Value = #(quoted(string)))]
+            }),
+            RpVariantValue::Number(number) => {
+                *e.value = Some(quote!(#(display(number))));
             }
         }
+    }
+}
 
-        fn can_write<'el>() -> Field<'el> {
-            let mut t = Field::new(BOOLEAN, "CanWrite");
-            t.modifiers = vec![Modifier::Public, Modifier::Override];
-            t.block = Some(toks!["get { return false; }"]);
-            t
-        }
+impl codegen::tuple::Codegen for Codegen {
+    fn generate(&self, args: codegen::tuple::Args<'_>) {
+        let object = &self.object;
+        let i_enumerator = &self.i_enumerator;
 
-        fn can_read<'el>() -> Field<'el> {
-            let mut t = Field::new(BOOLEAN, "CanRead");
+        let j_array = &self.j_array;
+        let j_token = &self.j_token;
+        let json_writer = &self.json_writer;
+        let json_reader = &self.json_reader;
+        let json_serializer = &self.json_serializer;
+        let json_converter = &self.json_converter;
 
-            t.modifiers = vec![Modifier::Public, Modifier::Override];
+        args.annotations.push(quote! {
+            [#json_converter(typeof(#(args.ident).Json_Net_Converter))]
+        });
 
-            t.block = Some({
-                let mut t = Tokens::new();
-
-                push!(t, "get {");
-                nested!(t, "return !_isInsideRead;");
-                push!(t, "}");
-
-                t
-            });
-
-            t
-        }
-
-        // public override bool WriteJson impl
-        struct WriteJson<'a, 'el: 'a>(&'a JsonNet, &'a Class<'el>, &'a RpInterfaceBody);
-
-        impl<'a, 'el> IntoTokens<'el, Csharp<'el>> for WriteJson<'a, 'el> {
-            fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
-                let mut m = Method::new("WriteJson");
-                m.arguments
-                    .push(Argument::new(self.0.json_writer.clone(), "writer"));
-                m.arguments
-                    .push(Argument::new(self.0.object.clone(), "obj"));
-                m.arguments
-                    .push(Argument::new(self.0.json_serializer.clone(), "serializer"));
-                m.modifiers = vec![Modifier::Public, Modifier::Override];
-
-                m.body.push_into(|t| {
-                    let m = "not implemented".quoted();
-                    push!(t, "throw new ", self.0.invalid_operation, "(", m, ");");
-                });
-
-                m.into_tokens()
-            }
-        }
-
-        // public override bool ReadJson impl
-        struct ReadJson<'a, 'el: 'a>(&'a JsonNet, &'a Class<'el>, &'el RpInterfaceBody);
-
-        impl<'a, 'el> IntoTokens<'el, Csharp<'el>> for ReadJson<'a, 'el> {
-            fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
-                let j_object = self.0.j_object.clone();
-                let body = self.2;
-
-                let mut m = Method::new("ReadJson");
-                m.arguments
-                    .push(Argument::new(self.0.json_reader.clone(), "reader"));
-                m.arguments
-                    .push(Argument::new(self.0.type_.clone(), "objectType"));
-                m.arguments
-                    .push(Argument::new(self.0.object.clone(), "existingValue"));
-                m.arguments
-                    .push(Argument::new(self.0.json_serializer.clone(), "serializer"));
-                m.modifiers = vec![Modifier::Public, Modifier::Override];
-                m.returns = self.0.object.clone();
-
-                push!(m.body, j_object, " o = ", j_object, ".Load(reader);",);
-
-                for sub_type in &body.sub_types {
-                    let mut checks = Tokens::new();
-
-                    for f in sub_type.discriminating_fields() {
-                        checks.append(toks!["o.ContainsKey(", f.name().quoted(), ")"]);
-                    }
-
-                    m.body.push_into(|t| {
-                        push!(t, "if (", checks.join(" && "), ") {");
-
-                        t.nested_into(|t| {
-                            push!(t, "_isInsideRead = true;");
-                            push!(t, "try {");
-
-                            nested!(
-                                t,
-                                "return serializer.Deserialize(o.CreateReader(), typeof(",
-                                sub_type.ident,
-                                "));"
-                            );
-
-                            push!(t, "} finally {");
-                            nested!(t, "_isInsideRead = false;");
-                            push!(t, "}");
-                        });
-
-                        push!(t, "}");
-                    });
+        args.inner.push(quote!{
+            public class Json_Net_Converter : #json_converter {
+                public override bool CanConvert(System.Type objectType) {
+                    return objectType == typeof(#(args.ident));
                 }
 
-                m.body.push_into(|t| {
-                    let m = "no legal combination of fields".quoted();
-                    push!(t, "throw new ", self.0.invalid_operation, "(", m, ");");
-                });
+                public override void WriteJson(#json_writer writer, #object obj, #json_serializer serializer) {
+                    #(args.ident) o = (#(args.ident))obj;
+                    #j_array array = new #j_array();
 
-                m.body = m.body.join_line_spacing();
-                m.into_tokens()
+                    #(for f in args.fields join (#<line>) {
+                        array.Add(#j_token.FromObject(o.#(f.safe_ident()), serializer));
+                    })
+
+                    array.WriteTo(writer);
+                }
+
+                public override #object ReadJson(#json_reader reader, System.Type objectType, #object existingValue, #json_serializer serializer) {
+                    #j_array array = #j_array.Load(reader);
+                    #i_enumerator<#j_token> enumerator = array.GetEnumerator();
+
+                    #(for f in args.fields join (#<line>) {
+                        #(self.read_field(f))
+                    })
+
+                    return new #(args.ident)(#(for f in args.fields join (, ) => #(f.safe_ident())));
+                }
             }
-        }
+        });
     }
 }
 
-impl InterfaceCodegen for JsonNet {
-    fn generate(&self, InterfaceAdded { mut spec, body, .. }: InterfaceAdded) -> Result<()> {
-        match body.sub_type_strategy {
-            RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                let tag = Rc::new(tag.to_string()).into();
-                spec.attribute(JsonSubTypes(tag));
+impl codegen::interface::Codegen for Codegen {
+    fn generate(&self, args: codegen::interface::Args<'_>) {
+        match args.sub_type_strategy {
+            RpSubTypeStrategy::Tagged { tag } => {
+                args.tag_annotations.push(quote! {
+                    [JsonProperty(#(quoted(tag)), Required = Required.DisallowNull)]
+                });
 
-                for sub_type in &body.sub_types {
-                    let v = toks![spec.name(), ".", sub_type.ident.as_str()];
-                    spec.attribute(JsonSubType(sub_type.name().into(), v));
+                args.annotations.push(quote! {
+                    [#(&self.json_converter)(typeof(#(&self.json_sub_types)), #(quoted(tag)))]
+                });
+
+                for sub_type in args.sub_types {
+                    args.annotations.push(quote!{
+                        [#(&self.json_sub_types).KnownSubType(typeof(#(args.ident).#(&sub_type.ident)), #(quoted(sub_type.name())))]
+                    });
                 }
             }
             RpSubTypeStrategy::Untagged => {
-                self.untagged(&mut spec, body)?;
-            }
-        }
-
-        return Ok(());
-
-        struct JsonSubTypes<'el>(Cons<'el>);
-
-        impl<'el> IntoTokens<'el, Csharp<'el>> for JsonSubTypes<'el> {
-            fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
-                let converter = using("Newtonsoft.Json", "JsonConverter");
-                let sub_types = using("JsonSubTypes", "JsonSubtypes");
-
-                let mut args = Tokens::new();
-                args.append(toks!["typeof(", sub_types, ")"]);
-                args.append(Element::from(self.0.quoted()));
-
-                toks!["[", converter, "(", args.join(", "), ")]"]
-            }
-        }
-
-        struct JsonSubType<'el>(Cons<'el>, Tokens<'el, Csharp<'el>>);
-
-        impl<'el> IntoTokens<'el, Csharp<'el>> for JsonSubType<'el> {
-            fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
-                let sub_types = using("JsonSubTypes", "JsonSubtypes");
-
-                let mut args = Tokens::new();
-                args.append(toks!["typeof(", self.1, ")"]);
-                args.append(Element::from(self.0.quoted()));
-
-                toks!["[", sub_types, ".KnownSubType(", args.join(", "), ")]"]
-            }
-        }
-    }
-}
-
-impl TypeFieldCodegen for JsonNet {
-    fn generate(&self, TypeFieldAdded { field, tag }: TypeFieldAdded) -> Result<()> {
-        field.attribute(JsonProperty(tag.clone(), Required::DisallowNull));
-        Ok(())
-    }
-}
-
-impl TupleCodegen for JsonNet {
-    fn generate(&self, TupleAdded { spec }: TupleAdded) -> Result<()> {
-        use genco::csharp::{local, Class, Method, Modifier, BOOLEAN};
-
-        let converter = Rc::new(format!("{}.Json_Net_Converter", spec.name().as_ref()));
-        spec.attribute(JsonConverter(local(converter)));
-
-        let body = {
-            let mut c = Class::new("Json_Net_Converter");
-            let converter = using("Newtonsoft.Json", "JsonConverter");
-            c.implements = vec![converter];
-
-            c.body.push(CanConvert(self, &spec));
-            c.body.push(WriteJson(self, &spec));
-            c.body.push(ReadJson(self, &spec));
-
-            c
-        };
-
-        // Converter for this tuple.
-        spec.body.push(body);
-
-        return Ok(());
-
-        struct CanConvert<'a, 'el: 'a>(&'a JsonNet, &'a Class<'el>);
-
-        impl<'a, 'el> IntoTokens<'el, Csharp<'el>> for CanConvert<'a, 'el> {
-            fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
-                let cls = local(self.1.name());
-
-                let mut can_convert = Method::new("CanConvert");
-                can_convert
-                    .arguments
-                    .push(Argument::new(self.0.type_.clone(), "objectType"));
-                can_convert.modifiers = vec![Modifier::Public, Modifier::Override];
-                can_convert.returns = BOOLEAN;
-
-                can_convert.body.push({
-                    let ck = toks!["objectType == typeof(", cls.clone(), ")"];
-                    toks!["return ", ck, ";"]
+                args.annotations.push(quote! {
+                    [#(&self.json_converter)(typeof(#(args.ident).Json_Net_Converter))]
                 });
 
-                can_convert.into_tokens()
-            }
-        }
+                args.inner.push(quote!{
+                    public class Json_Net_Converter : #(&self.json_converter) {
+                        [ThreadStatic]
+                        private static bool _isInsideRead;
+                        public override bool CanWrite {
+                            get { return false; }
+                        }
+                        public override bool CanRead {
+                          get {
+                            return !_isInsideRead;
+                          }
+                        }
 
-        // public override bool WriteJson impl
-        struct WriteJson<'a, 'el: 'a>(&'a JsonNet, &'a Class<'el>);
+                        public override bool CanConvert(System.Type objectType) {
+                            return false;
+                        }
 
-        impl<'a, 'el> IntoTokens<'el, Csharp<'el>> for WriteJson<'a, 'el> {
-            fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
-                let mut read_json = Method::new("WriteJson");
-                read_json
-                    .arguments
-                    .push(Argument::new(self.0.json_writer.clone(), "writer"));
-                read_json
-                    .arguments
-                    .push(Argument::new(self.0.object.clone(), "obj"));
-                read_json
-                    .arguments
-                    .push(Argument::new(self.0.json_serializer.clone(), "serializer"));
-                read_json.modifiers = vec![Modifier::Public, Modifier::Override];
+                        public override void WriteJson(#(&self.json_writer) writer, #(&self.object) obj, #(&self.json_serializer) serializer) {
+                            throw new #(&self.invalid_operation_exception)("not implemented");
+                        }
 
-                read_json.body.push({
-                    let mut t = Tokens::new();
+                        public override #(&self.object) ReadJson(#(&self.json_reader) reader, System.Type objectType, #(&self.object) existingValue, #(&self.json_serializer) serializer) {
+                            #(&self.j_object) o = #(&self.j_object).Load(reader);
 
-                    let ty = local(self.1.name());
+                            #(for sub_type in args.sub_types {
+                                #(self.try_read_untagged_sub_type(sub_type))
+                            })
 
-                    t.push(toks![ty.clone(), " o = (", ty.clone(), ")obj;"]);
-
-                    t.push(toks![
-                        self.0.j_array.clone(),
-                        " array = new ",
-                        self.0.j_array.clone(),
-                        "();",
-                    ]);
-
-                    for f in &self.1.fields {
-                        let ser = toks![
-                            self.0.j_token.clone(),
-                            ".FromObject(o.",
-                            f.var(),
-                            ", serializer)",
-                        ];
-
-                        t.push(toks!["array.Add(", ser, ");"]);
+                            throw new #(&self.invalid_operation_exception)("no legal combination of fields");
+                        }
                     }
-
-                    t.push("array.WriteTo(writer);");
-
-                    t
                 });
-
-                read_json.into_tokens()
-            }
-        }
-
-        // public override bool ReadJson impl
-        struct ReadJson<'a, 'el: 'a>(&'a JsonNet, &'a Class<'el>);
-
-        impl<'a, 'el> IntoTokens<'el, Csharp<'el>> for ReadJson<'a, 'el> {
-            fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
-                let cls = local(self.1.name());
-
-                let mut read_json = Method::new("ReadJson");
-                read_json
-                    .arguments
-                    .push(Argument::new(self.0.json_reader.clone(), "reader"));
-                read_json
-                    .arguments
-                    .push(Argument::new(self.0.type_.clone(), "objectType"));
-                read_json
-                    .arguments
-                    .push(Argument::new(self.0.object.clone(), "existingValue"));
-                read_json
-                    .arguments
-                    .push(Argument::new(self.0.json_serializer.clone(), "serializer"));
-                read_json.modifiers = vec![Modifier::Public, Modifier::Override];
-                read_json.returns = self.0.object.clone();
-
-                read_json.body.push(toks![
-                    self.0.j_array.clone(),
-                    " array = ",
-                    self.0.j_array.clone(),
-                    ".Load(reader);",
-                ]);
-
-                read_json.body.push(toks![
-                    self.0
-                        .enumerator
-                        .with_arguments(vec![self.0.j_token.clone()]),
-                    " enumerator = array.GetEnumerator();",
-                ]);
-
-                let mut args = Tokens::new();
-
-                for f in &self.1.fields {
-                    read_json.body.push("if (!enumerator.MoveNext()) {");
-                    let msg = "expected more items in array";
-                    read_json.body.nested(toks![
-                        "throw new ",
-                        self.0.invalid_operation.clone(),
-                        "(",
-                        msg.quoted(),
-                        ");",
-                    ]);
-                    read_json.body.push("}");
-
-                    let to_object = toks!["enumerator.Current.ToObject<", f.ty(), ">(serializer);"];
-
-                    read_json
-                        .body
-                        .push(toks![f.ty(), " ", f.var(), " = ", to_object, ";",]);
-
-                    args.append(f.var());
-                }
-
-                read_json.body.push(toks![
-                    "return new ",
-                    cls.clone(),
-                    "(",
-                    args.join(", "),
-                    ");",
-                ]);
-
-                read_json.into_tokens()
             }
         }
     }
 }
 
-#[allow(unused)]
-#[derive(Clone, Copy, Debug)]
-enum Required {
-    Default,
-    Always,
-    AllowNull,
-    DisallowNull,
-}
-
-impl<'el> IntoTokens<'el, Csharp<'el>> for Required {
-    fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
-        let required = using("Newtonsoft.Json", "Required");
-
-        let out = match self {
-            Required::Default => "Default",
-            Required::Always => "Always",
-            Required::AllowNull => "AllowNull",
-            Required::DisallowNull => "DisallowNull",
-        };
-
-        toks![required, ".", out]
-    }
-}
-
-#[allow(unused)]
-#[derive(Clone, Copy, Debug)]
-enum NullValueHandling {
-    Include,
-    Ignore,
-}
-
-impl<'el> IntoTokens<'el, Csharp<'el>> for NullValueHandling {
-    fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
-        let null_value_handling = using("Newtonsoft.Json", "NullValueHandling");
-
-        let out = match self {
-            NullValueHandling::Include => "Include",
-            NullValueHandling::Ignore => "Ignore",
-        };
-
-        toks![null_value_handling, ".", out]
-    }
-}
-
-/// [JsonObject(..)] attribute
-pub struct JsonObject;
-
-impl<'el> IntoTokens<'el, Csharp<'el>> for JsonObject {
-    fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
-        let object = using("Newtonsoft.Json", "JsonObject");
-
-        let mut args: Tokens<'el, Csharp<'el>> = Tokens::new();
-
-        args.append(toks![
-            "ItemNullValueHandling = ",
-            NullValueHandling::Ignore.into_tokens(),
-        ]);
-
-        toks!["[", object, "(", args.join(", "), ")]"]
-    }
-}
-
-/// [JsonProperty(..)] attribute
-pub struct JsonProperty<'el>(Cons<'el>, Required);
-
-impl<'el> IntoTokens<'el, Csharp<'el>> for JsonProperty<'el> {
-    fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
-        let property = using("Newtonsoft.Json", "JsonProperty");
-
-        let mut args: Tokens<'el, Csharp<'el>> = Tokens::new();
-
-        args.append(self.0.quoted());
-
-        match self.1 {
-            Required::Default => {}
-            other => args.append(toks!["Required = ", other.into_tokens()]),
-        }
-
-        toks!["[", property, "(", args.join(", "), ")]"]
-    }
-}
-
-/// [JsonConstructor] attribute
-pub struct JsonConstructor;
-
-impl<'el> IntoTokens<'el, Csharp<'el>> for JsonConstructor {
-    fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
-        let constructor = using("Newtonsoft.Json", "JsonConstructor");
-        toks!["[", constructor, "]"]
-    }
-}
-
-/// [EnumMember(..)] attribute
-pub struct EnumMember<'el>(Cons<'el>);
-
-impl<'el> IntoTokens<'el, Csharp<'el>> for EnumMember<'el> {
-    fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
-        let enum_member = using("System.Runtime.Serialization", "EnumMember");
-
-        let mut args: Tokens<'el, Csharp<'el>> = Tokens::new();
-        args.append(toks!["Value = ", self.0.quoted()]);
-        toks!["[", enum_member, "(", args.join(", "), ")]"]
-    }
-}
-
-/// [EnumAttribute(..)] attribute
-pub struct StringEnumConverter;
-
-impl<'el> IntoTokens<'el, Csharp<'el>> for StringEnumConverter {
-    fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
-        JsonConverter(using("Newtonsoft.Json.Converters", "StringEnumConverter")).into_tokens()
-    }
-}
-
-/// [JsonCoverter(..)] attribute
-pub struct JsonConverter<'el>(Csharp<'el>);
-
-impl<'el> IntoTokens<'el, Csharp<'el>> for JsonConverter<'el> {
-    fn into_tokens(self) -> Tokens<'el, Csharp<'el>> {
-        let converter = using("Newtonsoft.Json", "JsonConverter");
-
-        toks!["[", converter, "(typeof(", self.0, "))]"]
+impl codegen::interface_tag_constructor_arg::Codegen for Codegen {
+    fn generate(&self, args: codegen::interface_tag_constructor_arg::Args<'_>) {
+        args.annotations.push(quote! {
+            [#(&self.json_property)(#(quoted(args.tag)), Required = Required.DisallowNull)]
+        });
     }
 }

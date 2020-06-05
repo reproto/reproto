@@ -3,7 +3,6 @@ use crate::format;
 use crate::Opaque;
 use linked_hash_map::LinkedHashMap;
 use std::collections::HashSet;
-use std::mem;
 
 /// Results from calling `Sir::test_interface`.
 struct InterfaceTestResult {
@@ -102,7 +101,7 @@ impl Sir {
         };
 
         if let Some(replace) = replace {
-            mem::replace(self, replace);
+            *self = replace;
             return Ok(());
         }
 

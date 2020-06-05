@@ -1,3 +1,3 @@
 use crate::CoreFlavor;
 
-decl_flavor!(CoreFlavor, super);
+decl_flavor!(pub CoreFlavor, super);

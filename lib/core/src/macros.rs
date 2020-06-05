@@ -1,8 +1,8 @@
 /// Build a declaration body including common fields.
 macro_rules! decl_body {
     (pub struct $name:ident<$f:ident> { $($rest:tt)* }) => {
-        #[derive(Debug, Clone, Serialize)]
-        #[serde(bound = "F: ::serde::Serialize, F::Field: ::serde::Serialize, F::Endpoint: ::serde::Serialize, F::Package: ::serde::Serialize, F::Name: ::serde::Serialize, F::EnumType: ::serde::Serialize")]
+        #[derive(Debug, Clone, serde::Serialize)]
+        #[serde(bound = "F: serde::Serialize, F::Field: serde::Serialize, F::Endpoint: serde::Serialize, F::Package: serde::Serialize, F::Name: serde::Serialize, F::EnumType: serde::Serialize")]
         pub struct $name<$f: 'static> where $f: $crate::flavor::Flavor {
             pub name: $f::Name,
             pub ident: String,
@@ -16,51 +16,53 @@ macro_rules! decl_body {
 
 #[macro_export]
 macro_rules! decl_flavor {
-    ($flavor:ident, $source:ident) => {
-        pub type RpAccept = $source::RpAccept;
-        pub type RpCode = $source::RpCode;
-        pub type RpContext = $source::RpContext;
-        pub type RpDecl = $source::RpDecl<$flavor>;
-        pub type RpEndpoint = $source::RpEndpoint<$flavor>;
-        pub type RpEndpointArgument = $source::RpEndpointArgument<$flavor>;
-        pub type RpEndpointHttp = $source::RpEndpointHttp<$flavor>;
-        pub type RpEndpointHttp1 = $source::RpEndpointHttp1<$flavor>;
-        pub type RpEnumBody = $source::RpEnumBody<$flavor>;
-        pub type RpField = $source::RpField<$flavor>;
-        pub type RpFile = $source::RpFile<$flavor>;
-        pub type RpHttpMethod = $source::RpHttpMethod;
-        pub type RpInterfaceBody = $source::RpInterfaceBody<$flavor>;
-        pub type RpPathPart = $source::RpPathPart<$flavor>;
-        pub type RpPathSpec = $source::RpPathSpec<$flavor>;
-        pub type RpPathStep = $source::RpPathStep<$flavor>;
-        pub type RpReg = $source::RpReg;
-        pub type RpNamed<'a> = $source::RpNamed<'a, $flavor>;
-        pub type RpSubType = $source::RpSubType<$flavor>;
-        pub type RpTupleBody = $source::RpTupleBody<$flavor>;
-        pub type RpTypeBody = $source::RpTypeBody<$flavor>;
-        pub type RpChannel = $source::RpChannel<$flavor>;
-        pub type RpEnumType = $source::RpEnumType;
-        pub type RpName = $source::RpName<$flavor>;
-        pub type RpNumber = $source::RpNumber;
-        pub type RpPackage = $source::RpPackage;
-        pub type RpRequiredPackage = $source::RpRequiredPackage;
-        pub type RpServiceBody = $source::RpServiceBody<$flavor>;
-        pub type RpServiceBodyHttp = $source::RpServiceBodyHttp;
-        pub type RpSubTypeStrategy = $source::RpSubTypeStrategy;
-        pub type RpType = $source::RpType<$flavor>;
-        pub type RpValue = $source::RpValue<$flavor>;
-        pub type RpVariant<V> = $source::RpVariant<$flavor, V>;
-        pub type RpVariantRef<'a> = $source::RpVariantRef<'a, $flavor>;
-        pub type RpVersionedPackage = $source::RpVersionedPackage;
-        pub type Attributes = $source::Attributes<$flavor>;
-        pub type Selection = $source::Selection<$flavor>;
+    ($vis:vis $flavor:ident, $source:ident) => {
+        $vis type RpAccept = $source::RpAccept;
+        $vis type RpCode = $source::RpCode;
+        $vis type RpContext = $source::RpContext;
+        $vis type RpDecl = $source::RpDecl<$flavor>;
+        $vis type RpEndpoint = $source::RpEndpoint<$flavor>;
+        $vis type RpEndpointArgument = $source::RpEndpointArgument<$flavor>;
+        $vis type RpEndpointHttp = $source::RpEndpointHttp<$flavor>;
+        $vis type RpEndpointHttp1 = $source::RpEndpointHttp1<$flavor>;
+        $vis type RpEnumBody = $source::RpEnumBody<$flavor>;
+        $vis type RpField = $source::RpField<$flavor>;
+        $vis type RpFile = $source::RpFile<$flavor>;
+        $vis type RpHttpMethod = $source::RpHttpMethod;
+        $vis type RpInterfaceBody = $source::RpInterfaceBody<$flavor>;
+        $vis type RpPathPart = $source::RpPathPart<$flavor>;
+        $vis type RpPathSpec = $source::RpPathSpec<$flavor>;
+        $vis type RpPathStep = $source::RpPathStep<$flavor>;
+        $vis type RpReg = $source::RpReg;
+        $vis type RpNamed<'a> = $source::RpNamed<'a, $flavor>;
+        $vis type RpSubType = $source::RpSubType<$flavor>;
+        $vis type RpTupleBody = $source::RpTupleBody<$flavor>;
+        $vis type RpTypeBody = $source::RpTypeBody<$flavor>;
+        $vis type RpChannel = $source::RpChannel<$flavor>;
+        $vis type RpEnumType = $source::RpEnumType;
+        $vis type RpName = $source::RpName<$flavor>;
+        $vis type RpNumber = $source::RpNumber;
+        $vis type RpPackage = $source::RpPackage;
+        $vis type RpRequiredPackage = $source::RpRequiredPackage;
+        $vis type RpServiceBody = $source::RpServiceBody<$flavor>;
+        $vis type RpServiceBodyHttp = $source::RpServiceBodyHttp;
+        $vis type RpSubTypeStrategy = $source::RpSubTypeStrategy;
+        $vis type RpType = $source::RpType<$flavor>;
+        $vis type RpValue = $source::RpValue<$flavor>;
+        $vis type RpVariants = $source::RpVariants<$flavor>;
+        $vis type RpVariant<V> = $source::RpVariant<$flavor, V>;
+        $vis type RpVariantRef<'a> = $source::RpVariantRef<'a, $flavor>;
+        $vis type RpVariantValue<'a> = $source::RpVariantValue<'a>;
+        $vis type RpVersionedPackage = $source::RpVersionedPackage;
+        $vis type Attributes = $source::Attributes<$flavor>;
+        $vis type Selection = $source::Selection<$flavor>;
     };
 }
 
 #[macro_export]
 macro_rules! translator_defaults {
     ($slf:ident $($rest:tt)*) => {
-        translator_defaults!(@internal $slf $($rest)*);
+        $crate::translator_defaults!(@internal $slf $($rest)*);
     };
 
     (@internal $slf:ident, local_name $($rest:tt)*) => {
@@ -77,7 +79,7 @@ macro_rules! translator_defaults {
             name.translate(diag, translator)
         }
 
-        translator_defaults!(@internal $slf $($rest)*);
+        $crate::translator_defaults!(@internal $slf $($rest)*);
     };
 
     (@internal $slf:ident, field $($rest:tt)*) => {
@@ -93,7 +95,7 @@ macro_rules! translator_defaults {
             field.translate(diag, translator)
         }
 
-        translator_defaults!(@internal $slf $($rest)*);
+        $crate::translator_defaults!(@internal $slf $($rest)*);
     };
 
     (@internal $slf:ident, endpoint $($rest:tt)*) => {
@@ -109,7 +111,7 @@ macro_rules! translator_defaults {
             endpoint.translate(diag, translator)
         }
 
-        translator_defaults!(@internal $slf $($rest)*);
+        $crate::translator_defaults!(@internal $slf $($rest)*);
     };
 
     (@internal $slf:ident, rp_type $($rest:tt)*) => {
@@ -171,7 +173,7 @@ macro_rules! translator_defaults {
             Ok(RpType::Name { name })
         }
 
-        translator_defaults!(@internal $slf $($rest)*);
+        $crate::translator_defaults!(@internal $slf $($rest)*);
     };
 
     (@internal $slf:ident, enum_type $($rest:tt)*) => {
@@ -187,7 +189,7 @@ macro_rules! translator_defaults {
             Ok(enum_type)
         }
 
-        translator_defaults!(@internal $slf $($rest)*);
+        $crate::translator_defaults!(@internal $slf $($rest)*);
     };
 
     (@internal $slf:ident) => {

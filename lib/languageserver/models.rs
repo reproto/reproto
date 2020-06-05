@@ -1,7 +1,6 @@
 //! Data models that are shared for the language server.
 
-use crate::core::{Position, RpVersionedPackage};
-use crate::ty;
+use core::{Position, RpVersionedPackage};
 use std::collections::BTreeSet;
 use url::Url;
 

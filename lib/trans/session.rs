@@ -1,17 +1,16 @@
-use crate::ast;
-use crate::core::errors::{Error, Result};
-use crate::core::{
+use crate::features::Features;
+use crate::into_model::IntoModel;
+use crate::scope::Scope;
+use crate::translated::Translated;
+use core::errors::{Error, Result};
+use core::{
     translator, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Import, Loc, PackageTranslator,
     Reporter, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg, RpRequiredPackage,
     RpVersionedPackage, Source, Translate, Version,
 };
-use crate::features::Features;
-use crate::into_model::IntoModel;
-use crate::naming::Naming;
-use crate::parser;
-use crate::scope::Scope;
-use crate::translated::Translated;
 use linked_hash_map::LinkedHashMap;
+use naming::Naming;
+use parser;
 use std::cell::RefCell;
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet};
 use std::path::Path;
@@ -493,8 +492,8 @@ impl<'a> Session<'a, CoreFlavor> {
             Rc::clone(&self.features),
             package.clone(),
             self.keywords.clone(),
-            self.field_ident_naming.as_ref().map(|n| n.copy()),
-            self.endpoint_ident_naming.as_ref().map(|n| n.copy()),
+            self.field_ident_naming.as_ref().map(|n| n.clone_box()),
+            self.endpoint_ident_naming.as_ref().map(|n| n.clone_box()),
             self,
         );
 
@@ -524,7 +523,7 @@ impl<'a> Session<'a, CoreFlavor> {
             let (key, span) = Loc::borrow_pair(key);
             let key = key.clone().without_prefix();
 
-            debug!("new reg ty: {}", key);
+            log::debug!("new reg ty: {}", key);
 
             let types = match Rc::get_mut(&mut self.types) {
                 None => {
@@ -558,10 +557,10 @@ impl<'a> Session<'a, CoreFlavor> {
 impl<'e> Import for Session<'e, CoreFlavor> {
     /// Import a package based on a package and version criteria.
     fn import(&mut self, required: &RpRequiredPackage) -> Result<Option<RpVersionedPackage>> {
-        debug!("import: {}", required);
+        log::debug!("import: {}", required);
 
         if let Some(existing) = self.lookup_required.get(required) {
-            debug!("already loaded: {:?} ({})", existing, required);
+            log::debug!("already loaded: {:?} ({})", existing, required);
             return Ok(existing.clone());
         }
 
@@ -576,9 +575,11 @@ impl<'e> Import for Session<'e, CoreFlavor> {
 
         let package = RpVersionedPackage::new(required.package.clone(), version);
 
-        debug!(
+        log::debug!(
             "found `{}` in {} as package `{}`",
-            required, source, package
+            required,
+            source,
+            package
         );
 
         let mut diag = Diagnostics::new(source.clone());

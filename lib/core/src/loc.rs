@@ -1,5 +1,6 @@
 use crate::Span;
 use serde;
+use serde::Serialize;
 use std::borrow;
 use std::cmp;
 use std::fmt;
@@ -72,7 +73,7 @@ impl<T> Loc<T> {
     }
 }
 
-impl<T: serde::Serialize> serde::Serialize for Loc<T> {
+impl<T: Serialize> Serialize for Loc<T> {
     fn serialize<S>(&self, serializer: S) -> result::Result<S::Ok, S::Error>
     where
         S: serde::Serializer,

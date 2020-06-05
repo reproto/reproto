@@ -1,8 +1,7 @@
-use crate::core::errors::*;
-use crate::core::{Reporter, RpRequiredPackage, RpVersionedPackage, Version};
-use crate::env;
 use crate::utils::{load_manifest, matches, publish_matches, semck_check, simple_config, Match};
 use clap::{App, Arg, ArgMatches, SubCommand};
+use core::errors::{Error, Result};
+use core::{Reporter, RpRequiredPackage, RpVersionedPackage, Version};
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("check").about("Check specifications");

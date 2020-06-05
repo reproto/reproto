@@ -131,13 +131,13 @@ impl Range {
     ///
     /// This example demonstrates error handling, and will panic.
     ///
-    /// ```should-panic
+    /// ```should_panic
     /// use reproto_semver::Range;
     ///
     /// let version = match Range::parse("not a version") {
     ///     Ok(version) => version,
     ///     Err(e) => panic!("There was a problem parsing: {}", e),
-    /// }
+    /// };
     /// ```
     pub fn parse(input: &str) -> Result<Range, Error> {
         let mut parser = parser::Parser::new(input)?;

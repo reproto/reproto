@@ -1,28 +1,26 @@
 //! Python Compiler
 
-use crate::backend::PackageProcessor;
 use crate::codegen::{ServiceAdded, ServiceCodegen};
-use crate::core::errors::*;
-use crate::core::{self, Handle, Loc, RelativePathBuf};
 use crate::flavored::{
-    PythonFlavor, PythonName, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpServiceBody,
+    Name, PythonFlavor, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpServiceBody,
     RpTupleBody, RpTypeBody,
 };
-use crate::naming::{self, Naming};
-use crate::trans::{self, Translated};
+use crate::utils::BlockComment;
 use crate::{FileSpec, Options, EXT, INIT_PY};
-use genco::python::{imported, Python};
-use genco::{Element, Quoted, Tokens};
+use backend::PackageProcessor;
+use core::errors::*;
+use core::{self, Handle, Loc, RelativePathBuf};
+use genco::prelude::*;
+use naming::{self, Naming};
 use std::collections::BTreeMap;
-use std::iter;
-use std::rc::Rc;
+use std::slice;
+use trans::{self, Translated};
 
 pub struct Compiler<'el> {
     pub env: &'el Translated<PythonFlavor>,
-    variant_field: &'el Loc<RpField>,
+    variant_field: Loc<RpField>,
     to_lower_snake: naming::ToLowerSnake,
-    dict: Element<'static, Python<'static>>,
-    enum_enum: Python<'static>,
+    enum_enum: python::Import,
     service_generators: Vec<Box<dyn ServiceCodegen>>,
     handle: &'el dyn Handle,
 }
@@ -30,7 +28,7 @@ pub struct Compiler<'el> {
 impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Translated<PythonFlavor>,
-        variant_field: &'el Loc<RpField>,
+        variant_field: Loc<RpField>,
         options: Options,
         handle: &'el dyn Handle,
     ) -> Compiler<'el> {
@@ -38,8 +36,7 @@ impl<'el> Compiler<'el> {
             env,
             variant_field,
             to_lower_snake: naming::to_lower_snake(),
-            dict: "dict".into(),
-            enum_enum: imported("enum").name("Enum"),
+            enum_enum: python::import("enum", "Enum").qualified(),
             service_generators: options.service_generators,
             handle,
         }
@@ -47,313 +44,241 @@ impl<'el> Compiler<'el> {
 
     /// Compile the given backend.
     pub fn compile(&self) -> Result<()> {
-        self.write_files(self.populate_files()?)
-    }
+        use genco::fmt;
 
-    /// Build a function that raises an exception if the given value `toks` is None.
-    fn raise_if_none(
-        &self,
-        toks: Tokens<'el, Python<'el>>,
-        field: &RpField,
-    ) -> Tokens<'el, Python<'el>> {
-        let mut raise_if_none = Tokens::new();
-        let required_error = format!("{}: is a required field", field.name()).quoted();
+        let files = self.populate_files()?;
 
-        raise_if_none.push(toks!["if ", toks, " is None:"]);
-        raise_if_none.nested(toks!["raise Exception(", required_error, ")"]);
+        let handle = self.handle();
 
-        raise_if_none
-    }
+        for (package, out) in files {
+            let full_path = self.setup_module_path(&package)?;
 
-    fn encode_method<I>(
-        &self,
-        fields: I,
-        builder: Tokens<'el, Python<'el>>,
-        extra: Option<Tokens<'el, Python<'el>>>,
-    ) -> Result<Tokens<'el, Python<'el>>>
-    where
-        I: IntoIterator<Item = &'el Loc<RpField>>,
-    {
-        let mut encode_body = Tokens::new();
+            log::debug!("+module: {}", full_path);
 
-        encode_body.push(toks!["data = ", builder.clone(), "()"]);
+            let mut w = fmt::IoWriter::new(handle.create(&full_path)?);
+            let config = python::Config::default();
+            let fmt =
+                fmt::Config::from_lang::<Python>().with_indentation(fmt::Indentation::Space(2));
 
-        if let Some(extra) = extra {
-            encode_body.push(extra);
+            out.0.format_file(&mut w.as_formatter(&fmt), &config)?;
         }
 
-        for field in fields {
-            let var_string = field.name().quoted();
-            let field_toks = toks!["self.", field.safe_ident()];
+        Ok(())
+    }
 
-            let value_toks = field.ty.encode(field_toks.clone());
+    fn encode_method(
+        &self,
+        t: &mut python::Tokens,
+        fields: &[Loc<RpField>],
+        builder: python::Tokens,
+        extra: Option<python::Tokens>,
+    ) {
+        quote_in! { *t =>
+            def encode(self):
+                data = #(builder.clone())()
 
-            if field.is_optional() {
-                let mut check_if_none = Tokens::new();
+                #(if let Some(extra) = extra {
+                    #extra
+                })
 
-                check_if_none.push(toks!["if ", field_toks, " is not None:"]);
+                #(for field in fields join (#<line>) =>
+                    #(ref t => {
+                        let v = &quote!(self.#(field.safe_ident()));
 
-                let toks = toks!["data[", var_string, "] = ", value_toks];
+                        if field.is_optional() {
+                            quote_in! { *t =>
+                                if #v is not None:
+                                    data[#(quoted(field.name()))] = #(field.ty.encode(v.clone()))
+                            }
+                        } else {
+                            quote_in! { *t =>
+                                if #v is None:
+                                    raise Exception(#(quoted(format!("missing required field: {}", field.ident))))
 
-                check_if_none.nested(toks);
+                                data[#(quoted(field.name()))] = #(field.ty.encode(v.clone()))
+                            }
+                        }
+                    })
+                )
 
-                encode_body.push(check_if_none);
-            } else {
-                encode_body.push(self.raise_if_none(field_toks, field));
+                return data
+        }
+    }
 
-                let toks = toks!["data[", var_string, "] = ", value_toks];
+    fn encode_tuple_method<'a, I>(&self, t: &mut python::Tokens, fields: I)
+    where
+        I: IntoIterator<Item = &'a Loc<RpField>>,
+    {
+        let mut args = Vec::new();
 
-                encode_body.push(toks);
+        quote_in! { *t =>
+            def encode(self):
+                #(for field in fields.into_iter() join (#<line>) {
+                    if self.#(field.safe_ident()) is None:
+                        raise Exception(#(quoted(format!("missing required field: {}", field.ident))))
+
+                    #(field.safe_ident()) = #(field.ty.encode(quote!(self.#(field.safe_ident()))))
+                    #(ref _ => args.push(field.safe_ident()))
+                })
+
+                return (#(for v in args join (, ) => #v))
+        }
+    }
+
+    fn repr_method(&self, t: &mut python::Tokens, name: &Name, fields: &[Loc<RpField>]) {
+        use std::fmt::Write;
+
+        let mut it = fields.into_iter().peekable();
+
+        if it.peek().is_none() {
+            quote_in! { *t =>
+                def __repr__(self):
+                    return #_(<#name>)
+            };
+
+            return;
+        }
+
+        let mut vars = Vec::<python::Tokens>::new();
+        let mut format = String::new();
+
+        write!(format, "<{} ", name.ident).unwrap();
+
+        while let Some(field) = it.next() {
+            write!(format, "{}:{{!r}}", field.ident).unwrap();
+            vars.push(quote!(self.#(field.safe_ident())));
+
+            if it.peek().is_some() {
+                format.push_str(", ");
             }
         }
 
-        encode_body.push(toks!["return data"]);
+        write!(format, "{}", ">").unwrap();
 
-        let mut encode = Tokens::new();
-        encode.push("def encode(self):");
-        encode.nested(encode_body.join_line_spacing());
-        Ok(encode)
-    }
-
-    fn encode_tuple_method<I>(&self, fields: I) -> Result<Tokens<'el, Python<'el>>>
-    where
-        I: IntoIterator<Item = &'el Loc<RpField>>,
-    {
-        let mut values = Tokens::new();
-        let mut encode_body = Tokens::new();
-
-        for field in fields.into_iter() {
-            let toks = toks!["self.", field.safe_ident()];
-            encode_body.push(self.raise_if_none(toks.clone(), field));
-            values.append(field.ty.encode(toks));
-        }
-
-        encode_body.push(toks!["return (", values.join(", "), ")"]);
-
-        let mut encode = Tokens::new();
-        encode.push("def encode(self):");
-        encode.nested(encode_body.join_line_spacing());
-        Ok(encode)
-    }
-
-    fn repr_method<I>(&self, name: &'el PythonName, fields: I) -> Tokens<'el, Python<'el>>
-    where
-        I: IntoIterator<Item = &'el Loc<RpField>>,
-    {
-        let mut args = Vec::new();
-        let mut vars = Tokens::new();
-
-        for field in fields {
-            args.push(format!("{}:{{!r}}", field.ident.as_str()));
-            vars.append(toks!["self.", field.safe_ident()]);
-        }
-
-        let format = if !args.is_empty() {
-            format!("<{} {}>", name, args.join(", "))
-        } else {
-            format!("<{}>", name)
+        quote_in! { *t =>
+            def __repr__(self):
+                return #(quoted(format)).format(#(for v in vars join (, ) => #v))
         };
-
-        let mut repr = Tokens::new();
-        repr.push("def __repr__(self):");
-        repr.nested(toks![
-            "return ",
-            format.quoted(),
-            ".format(",
-            vars.join(", "),
-            ")",
-        ]);
-        repr
     }
 
     fn decode_method<F, I>(
         &self,
-        name: &'el PythonName,
+        out: &mut python::Tokens,
+        name: &'el Name,
         fields: I,
         variable_fn: F,
-    ) -> Result<Tokens<'el, Python<'el>>>
-    where
-        F: Fn(usize, &'el RpField) -> Tokens<'el, Python<'el>>,
+    ) where
+        F: Fn(usize, &'el RpField) -> python::Tokens,
         I: IntoIterator<Item = &'el Loc<RpField>>,
     {
-        let mut t = Tokens::new();
-        let mut args = Tokens::new();
+        let mut args = Vec::new();
 
-        for (i, field) in fields.into_iter().enumerate() {
-            let n = Rc::new(format!("f_{}", field.ident));
-            let var = variable_fn(i, field);
+        quote_in! { *out =>
+            @staticmethod
+            def decode(data):
+                #(for (i, field) in fields.into_iter().enumerate() join (#<line>) =>
+                    #(ref t =>
+                        let n = &format!("f_{}", field.ident);
+                        let var = &variable_fn(i, field);
 
-            if field.is_optional() {
-                t.push({
-                    let mut t = Tokens::new();
+                        if field.is_optional() {
+                            quote_in! { *t =>
+                                #n = None
 
-                    push!(t, n, " = None");
+                                if #var in data:
+                                    #n = data[#var]
 
-                    t.push_into(|t| {
-                        push!(t, "if ", var, " in data:");
-
-                        t.nested({
-                            let mut t = Tokens::new();
-
-                            push!(t, n.clone(), " = data[", var, "]");
-
-                            if let Some(d) = field.ty.decode(n.clone(), 0) {
-                                t.push_into(|t| {
-                                    push!(t, "if ", n.clone(), " is not None:");
-                                    t.nested(d);
-                                });
+                                    #(if let Some(d) = field.ty.decode(n.clone(), 0) {
+                                        if #n is not None:
+                                            #d
+                                    })
                             }
+                        } else {
+                            quote_in! { *t =>
+                                #n = data[#(variable_fn(i, field))]
 
-                            t.join_line_spacing()
-                        });
-                    });
+                                #(if let Some(d) = field.ty.decode(n.clone(), 0) {
+                                    #d
+                                })
+                            }
+                        }
 
-                    t.join_line_spacing()
-                });
-            } else {
-                push!(t, n.clone(), " = data[", var.clone(), "]");
-
-                if let Some(d) = field.ty.decode(n.clone(), 0) {
-                    t.push(d);
-                }
-            }
-
-            args.append(toks!(n));
+                        args.push(n.clone());
+                    )
+                    #<line>
+                )
+                return #name(#(for a in args join (, ) => #a))
         }
-
-        let args = args.join(", ");
-        push!(t, "return ", name, "(", args, ")");
-
-        Ok({
-            let mut m = Tokens::new();
-            m.push("@staticmethod");
-            m.push("def decode(data):");
-            m.nested(t.join_line_spacing());
-            m
-        })
     }
 
-    fn build_constructor<I>(&self, fields: I) -> Tokens<'el, Python<'el>>
-    where
-        I: IntoIterator<Item = &'el Loc<RpField>>,
-    {
-        let mut args = Tokens::new();
-        let mut assign = Tokens::new();
-
-        args.append("self");
-
-        for field in fields {
-            args.append(field.safe_ident());
-
-            assign.push(toks![
-                "self.",
-                field.safe_ident(),
-                " = ",
-                field.safe_ident(),
-            ]);
+    fn build_constructor(&self, t: &mut python::Tokens, fields: &[Loc<RpField>]) {
+        quote_in! { *t =>
+            def __init__(self#(for f in fields => , #(f.safe_ident()))):
+                #(if fields.is_empty() {
+                    pass
+                } else {
+                    #(for f in fields join (#<push>) {
+                        self.__#(&f.ident) = #(f.safe_ident())
+                    })
+                })
         }
-
-        let mut constructor = Tokens::new();
-        constructor.push(toks!["def __init__(", args.join(", "), "):"]);
-
-        if assign.is_empty() {
-            constructor.nested("pass");
-        } else {
-            constructor.nested(assign);
-        }
-
-        constructor
     }
 
-    fn build_getters<I>(&self, fields: I) -> Result<Vec<Tokens<'el, Python<'el>>>>
-    where
-        I: IntoIterator<Item = &'el Loc<RpField>>,
-    {
-        let mut result = Vec::new();
+    /// Construct property accessors for reading and mutating the underlying value.
+    ///
+    /// This allows documentation to be generated and be made accessible for the various fields.
+    fn build_accessors(&self, t: &mut python::Tokens, fields: &[Loc<RpField>]) {
+        quote_in! { *t =>
+            #(for field in fields join (#<line>) {
+                #(ref t {
+                    let var = field.safe_ident();
+                    let name = &self.to_lower_snake.convert(var);
 
-        for field in fields {
-            let name = Rc::new(self.to_lower_snake.convert(field.ident.as_str()));
-            let mut body = Tokens::new();
-            body.push("@property");
-            body.push(toks!("def ", name, "(self):"));
+                    quote_in! { *t =>
+                        @property
+                        def #name(self):
+                            #(BlockComment(&field.comment))
+                            return self.__#(&field.ident)
 
-            body.nested({
-                let mut t = Tokens::new();
-
-                if !field.comment.is_empty() {
-                    t.push("\"\"\"");
-
-                    for c in &field.comment {
-                        t.push(Element::from(c.clone()));
+                        @#name.setter
+                        def #name(self, #var):
+                            self.__#(&field.ident) = #var
                     }
-
-                    t.push("\"\"\"");
-                }
-
-                t.push(toks!["return self.", field.safe_ident()]);
-                t
-            });
-
-            result.push(body);
+                })
+            })
         }
-
-        Ok(result)
     }
 
-    pub fn enum_variants(&self, body: &'el RpEnumBody) -> Result<Tokens<'el, Python<'el>>> {
+    pub fn enum_variants(&self, t: &mut python::Tokens, body: &RpEnumBody) {
         let mut args = Tokens::new();
 
-        for v in &body.variants {
-            let mut a = Tokens::new();
+        let mut it = body.variants.iter().peekable();
 
-            a.append(v.ident().quoted());
-
-            match v.value {
-                core::RpVariantValue::String(ref string) => {
-                    a.append(string.quoted());
-                }
-                core::RpVariantValue::Number(ref number) => {
-                    a.append(number.to_string());
-                }
+        while let Some(v) = it.next() {
+            quote_in! { args =>
+                (#(quoted(v.ident())), #(match &v.value {
+                    core::RpVariantValue::String(string) => {
+                        #(quoted(*string))
+                    }
+                    core::RpVariantValue::Number(number) => {
+                        #(number.to_string())
+                    }
+                }))
             }
 
-            args.append(toks!["(", a.join(", "), ")"]);
+            if it.peek().is_some() {
+                args.append(", ");
+            }
         }
 
-        Ok(toks![
-            &body.name,
-            " = ",
-            self.enum_enum.clone(),
-            "(",
-            body.name.to_string().quoted(),
-            ", [",
-            args.join(", "),
-            "], type=",
-            &body.name,
-            ")",
-        ])
-    }
-
-    fn as_class(
-        &self,
-        name: &'el PythonName,
-        body: Tokens<'el, Python<'el>>,
-    ) -> Tokens<'el, Python<'el>> {
-        let mut class = Tokens::new();
-        class.push(toks!("class ", name, ":"));
-
-        if body.is_empty() {
-            class.nested("pass");
-        } else {
-            class.nested(body.join_line_spacing());
-        }
-
-        class
+        quote_in!( *t =>
+            #(&body.name) = #(&self.enum_enum)(#(quoted(&body.name)), [#args], type=#(&body.name))
+        )
     }
 }
 
-impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
-    type Out = FileSpec<'el>;
+impl<'el> PackageProcessor<'el, PythonFlavor, Name> for Compiler<'el> {
+    type Out = FileSpec;
     type DeclIter = trans::translated::DeclIter<'el, PythonFlavor>;
 
     fn ext(&self) -> &str {
@@ -369,294 +294,233 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
     }
 
     fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
-        let mut tuple_body = Tokens::new();
+        quote_in! { out.0 =>
+            class #(&body.name):
+                #(ref t => self.build_constructor(t, &body.fields))
 
-        tuple_body.push(self.build_constructor(&body.fields));
+                #(ref t => self.build_accessors(t, &body.fields))
 
-        for getter in self.build_getters(&body.fields)? {
-            tuple_body.push(getter);
+                #(ref t => self.decode_method(t, &body.name, &body.fields, |i, _| quote!(#i)))
+
+                #(ref t => self.encode_tuple_method(t, &body.fields))
+
+                #(ref t => self.repr_method(t, &body.name, &body.fields))
+
+                #(if backend::code_contains!(&body.codes, core::RpContext::Python) =>
+                    #(ref t => backend::code_in!(t, &body.codes, core::RpContext::Python))
+                )
         }
 
-        tuple_body.push_unless_empty(code!(&body.codes, core::RpContext::Python));
-
-        let decode = self.decode_method(&body.name, &body.fields, |i, _| i.to_string().into())?;
-        tuple_body.push(decode);
-
-        let encode = self.encode_tuple_method(&body.fields)?;
-        tuple_body.push(encode);
-
-        let repr_method = self.repr_method(&body.name, &body.fields);
-        tuple_body.push(repr_method);
-
-        let class = self.as_class(&body.name, tuple_body);
-
-        out.0.push(class);
         Ok(())
     }
 
     fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
-        let mut class_body = Tokens::new();
+        quote_in! { out.0 =>
+            class #(&body.name):
+                #(ref t => self.build_constructor(t, slice::from_ref(&self.variant_field)))
 
-        class_body.push(self.build_constructor(iter::once(self.variant_field)));
+                #(ref t => self.build_accessors(t, slice::from_ref(&self.variant_field)))
 
-        for getter in self.build_getters(iter::once(self.variant_field))? {
-            class_body.push(getter);
+                #(ref t => encode_method(t, &self.variant_field))
+
+                #(ref t => decode_method(t, &self.variant_field))
+
+                #(ref t => self.repr_method(t, &body.name, slice::from_ref(&self.variant_field)))
+
+                #(if backend::code_contains!(&body.codes, core::RpContext::Python) =>
+                    #(ref t => backend::code_in!(t, &body.codes, core::RpContext::Python))
+                )
         }
 
-        class_body.push_unless_empty(code!(&body.codes, core::RpContext::Python));
-
-        class_body.push(encode_method(self.variant_field)?);
-        class_body.push(decode_method(self.variant_field)?);
-
-        let repr_method = self.repr_method(&body.name, iter::once(self.variant_field));
-        class_body.push(repr_method);
-
-        let class = self.as_class(&body.name, class_body);
-        out.0.push(class);
         return Ok(());
 
-        fn encode_method<'el>(field: &'el Loc<RpField>) -> Result<Tokens<'el, Python<'el>>> {
-            let mut m = Tokens::new();
-            m.push("def encode(self):");
-            m.nested(toks!["return self.", field.safe_ident()]);
-            Ok(m)
+        fn encode_method(t: &mut python::Tokens, field: &Loc<RpField>) {
+            quote_in! { *t =>
+                def encode(self):
+                    return self.#(field.safe_ident())
+            }
         }
 
-        fn decode_method<'el>(field: &'el Loc<RpField>) -> Result<Tokens<'el, Python<'el>>> {
-            let mut decode_body = Tokens::new();
+        fn decode_method(t: &mut python::Tokens, field: &Loc<RpField>) {
+            quote_in! { *t =>
+                @classmethod
+                def decode(cls, data):
+                    for value in cls.__members__.values():
+                        if value.#(field.safe_ident()) == data:
+                            return value
 
-            let mut check = Tokens::new();
-            check.push(toks!["if value.", field.safe_ident(), " == data:"]);
-            check.nested(toks!["return value"]);
-
-            let mut member_loop = Tokens::new();
-
-            member_loop.push("for value in cls.__members__.values():");
-            member_loop.nested(check);
-
-            decode_body.push(member_loop);
-            decode_body.push(toks![
-                "raise Exception(",
-                "data does not match enum".quoted(),
-                ")",
-            ]);
-
-            let mut m = Tokens::new();
-            m.push("@classmethod");
-            m.push("def decode(cls, data):");
-            m.nested(decode_body.join_line_spacing());
-            Ok(m)
+                    raise Exception("data does not match enum")
+            }
         }
     }
 
     fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
-        let mut class_body = Tokens::new();
+        quote_in! { out.0 =>
+            class #(&body.name):
+                #(ref t => self.build_constructor(t, &body.fields))
 
-        let constructor = self.build_constructor(&body.fields);
-        class_body.push(constructor);
+                #(ref t => self.build_accessors(t, &body.fields))
 
-        for getter in self.build_getters(&body.fields)? {
-            class_body.push(getter);
+                #(ref t => self.decode_method(t, &body.name, &body.fields, |_, field| {
+                    quote!(#(quoted(field.name())))
+                }))
+
+                #(ref t => self.encode_method(t, &body.fields, quote!(dict), None))
+
+                #(ref t => self.repr_method(t, &body.name, &body.fields))
+
+                #(if backend::code_contains!(&body.codes, core::RpContext::Python) =>
+                    #(ref t => backend::code_in!(t, &body.codes, core::RpContext::Python))
+                )
         }
 
-        let decode = self.decode_method(&body.name, &body.fields, |_, field| {
-            toks!(field.name().quoted())
-        })?;
-
-        class_body.push(decode);
-
-        let encode = self.encode_method(&body.fields, self.dict.clone().into(), None)?;
-
-        class_body.push(encode);
-
-        let repr_method = self.repr_method(&body.name, &body.fields);
-        class_body.push(repr_method);
-        class_body.push_unless_empty(code!(&body.codes, core::RpContext::Python));
-
-        out.0.push(self.as_class(&body.name, class_body));
         Ok(())
     }
 
     fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
-        let mut type_body = Tokens::new();
+        quote_in! { out.0 =>
+            class #(&body.name):
+                #(match &body.sub_type_strategy {
+                    core::RpSubTypeStrategy::Tagged { tag, .. } => {
+                        #(ref t => decode_from_tag(t, &body, tag))
+                    }
+                    core::RpSubTypeStrategy::Untagged => {
+                        #(ref t => decode_from_untagged(t, &body))
+                    }
+                })
 
-        match body.sub_type_strategy {
-            core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                let tk = tag.as_str().quoted().into();
-                type_body.push(decode_from_tag(&body, &tk)?);
-            }
-            core::RpSubTypeStrategy::Untagged => {
-                type_body.push(decode_from_untagged(&body)?);
-            }
-        }
+                #(if backend::code_contains!(&body.codes, core::RpContext::Python) =>
+                    #(ref t => backend::code_in!(t, &body.codes, core::RpContext::Python))
+                )
 
-        type_body.push_unless_empty(code!(&body.codes, core::RpContext::Python));
+            #(for sub_type in &body.sub_types join (#<line>) {
+                #(ref t {
+                    let fields = body
+                        .fields
+                        .iter()
+                        .chain(sub_type.fields.iter())
+                        .cloned()
+                        .collect::<Vec<_>>();
 
-        out.0.push(self.as_class(&body.name, type_body));
+                    quote_in! { *t =>
+                        class #(&sub_type.name)(#(&body.name)):
+                            TYPE = #(quoted(sub_type.name()))
 
-        for sub_type in &body.sub_types {
-            let mut sub_type_body = Tokens::new();
+                            #(ref t => self.build_constructor(t, &fields))
 
-            sub_type_body.push(toks!["TYPE = ", sub_type.name().quoted()]);
+                            #(ref t => self.build_accessors(t, &fields))
 
-            let fields: Vec<&Loc<RpField>> =
-                body.fields.iter().chain(sub_type.fields.iter()).collect();
+                            #(ref t => self.decode_method(t, &sub_type.name, &fields, |_, field| {
+                                quote!(#(quoted(field.ident.clone())))
+                            }))
 
-            let constructor = self.build_constructor(fields.iter().cloned());
-            sub_type_body.push(constructor);
+                            #(match &body.sub_type_strategy {
+                                core::RpSubTypeStrategy::Tagged { tag, .. } => {
+                                    #(ref t => self.encode_method(
+                                        t,
+                                        &fields,
+                                        quote!(dict),
+                                        Some(quote!(data[#(quoted(tag.as_str()))] = #(quoted(sub_type.name())))),
+                                    ))
+                                }
+                                core::RpSubTypeStrategy::Untagged => {
+                                    #(ref t => self.encode_method(t, &fields, quote!(dict), None))
+                                }
+                            })
 
-            for getter in self.build_getters(fields.iter().cloned())? {
-                sub_type_body.push(getter);
-            }
+                            #(ref t => self.repr_method(t, &sub_type.name, &fields))
 
-            let decode =
-                self.decode_method(&sub_type.name, fields.iter().cloned(), |_, field| {
-                    toks!(field.ident.clone().quoted())
-                })?;
-
-            sub_type_body.push(decode);
-
-            match body.sub_type_strategy {
-                core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                    let tk: Tokens<'el, Python<'el>> = tag.as_str().quoted().into();
-
-                    let encode = self.encode_method(
-                        fields.iter().cloned(),
-                        self.dict.clone().into(),
-                        Some(toks!["data[", tk, "] = ", sub_type.name().quoted(),]),
-                    )?;
-
-                    sub_type_body.push(encode);
-                }
-                core::RpSubTypeStrategy::Untagged => {
-                    let encode =
-                        self.encode_method(fields.iter().cloned(), self.dict.clone().into(), None)?;
-
-                    sub_type_body.push(encode);
-                }
-            }
-
-            let repr_method = self.repr_method(&sub_type.name, fields.iter().cloned());
-            sub_type_body.push(repr_method);
-            sub_type_body.push_unless_empty(code!(&sub_type.codes, core::RpContext::Python));
-
-            out.0.push(self.as_class(&sub_type.name, sub_type_body));
+                            #(if backend::code_contains!(&sub_type.codes, core::RpContext::Python) =>
+                                #(ref t => backend::code_in!(t, &sub_type.codes, core::RpContext::Python))
+                            )
+                    }
+                })
+            })
         }
 
         return Ok(());
 
-        fn decode_from_tag<'el>(
-            body: &'el RpInterfaceBody,
-            tag: &Tokens<'el, Python<'el>>,
-        ) -> Result<Tokens<'el, Python<'el>>> {
-            let mut t = Tokens::new();
+        fn decode_from_tag(t: &mut python::Tokens, body: &RpInterfaceBody, tag: &str) {
+            quote_in! { *t =>
+                @staticmethod
+                def decode(data):
+                    if #(quoted(tag)) not in data:
+                        raise Exception(#_(missing tag field #(tag)))
 
-            let data = "data";
-            let f_tag = "f_tag";
-            push!(t, f_tag, " = ", data, "[", tag.clone(), "]");
+                    f_tag = data[#(quoted(tag))]
 
-            for sub_type in body.sub_types.iter() {
-                t.push_into(|t| {
-                    push!(t, "if ", f_tag, " == ", sub_type.name().quoted(), ":");
-                    nested!(t, "return ", &sub_type.name, ".decode(data)");
-                });
+                    #(for sub_type in &body.sub_types join (#<line>) =>
+                        if f_tag == #(quoted(sub_type.name())):
+                            return #(&sub_type.name).decode(data)
+                    )
+
+                    raise Exception("no sub type matching tag: " + f_tag)
             }
-
-            push!(
-                t,
-                "raise Exception(",
-                "bad type: ".quoted(),
-                " + ",
-                f_tag,
-                ")"
-            );
-
-            Ok({
-                let mut decode = Tokens::new();
-                decode.push("@staticmethod");
-                decode.push(toks!("def decode(", data, "):"));
-                decode.nested(t.join_line_spacing());
-                decode
-            })
         }
 
-        fn decode_from_untagged<'el>(
-            body: &'el RpInterfaceBody,
-        ) -> Result<Tokens<'el, Python<'el>>> {
-            let mut t = Tokens::new();
+        fn decode_from_untagged(t: &mut python::Tokens, body: &RpInterfaceBody) {
+            quote_in! { *t =>
+                @staticmethod
+                def decode(data):
+                    keys = set(data.keys())
 
-            let data = "data";
+                    #(for sub_type in &body.sub_types join (#<line>) =>
+                        if keys >= #(quoted_tags(sub_type.discriminating_fields())):
+                            return #(&sub_type.name).decode(data)
+                    )
 
-            let keys = "keys";
-            // keys of incoming data
-            push!(t, keys, " = set(", data, ".keys())");
-
-            for sub_type in body.sub_types.iter() {
-                let discriminating = quoted_tags(sub_type.discriminating_fields());
-
-                t.push_into(|t| {
-                    push!(t, "if ", keys, " >= ", discriminating, ":");
-                    nested!(t, "return ", &sub_type.name, ".decode(data)");
-                });
+                    raise Exception("no sub type matching the given fields: " + repr(keys))
             }
-
-            push!(
-                t,
-                "raise Exception(",
-                "no sub type matching the given fields: ".quoted(),
-                " + repr(",
-                keys,
-                "))"
-            );
-
-            Ok({
-                let mut decode = Tokens::new();
-                decode.push("@staticmethod");
-                decode.push(toks!("def decode(", data, "):"));
-                decode.nested(t.join_line_spacing());
-                decode
-            })
         }
 
         /// Return a set of quoted tags.
-        fn quoted_tags<'el, F>(fields: F) -> Tokens<'el, Python<'el>>
+        fn quoted_tags<'a, F>(fields: F) -> python::Tokens
         where
-            F: IntoIterator<Item = &'el Loc<RpField>>,
+            F: IntoIterator<Item = &'a Loc<RpField>>,
         {
             let mut tags = Tokens::new();
             let mut c = 0;
 
-            for field in fields {
-                tags.append(field.name().quoted());
+            let mut it = fields.into_iter().peekable();
+
+            while let Some(field) = it.next() {
+                tags.append(quoted(field.name()));
+
+                if it.peek().is_some() {
+                    tags.append(",");
+                    tags.space();
+                }
+
                 c += 1;
             }
 
             match c {
-                0 => toks!["set()"],
-                1 => toks!["set((", tags.join(", "), ",))"],
-                _ => toks!["set((", tags.join(", "), "))"],
+                0 => quote![set()],
+                1 => quote![set((#tags,))],
+                _ => quote![set((#tags))],
             }
         }
     }
 
     fn process_service(&self, out: &mut Self::Out, body: &'el RpServiceBody) -> Result<()> {
-        let mut type_body = Tokens::new();
-
         for g in &self.service_generators {
             g.generate(ServiceAdded {
-                body: body,
-                type_body: &mut type_body,
+                body,
+                type_body: &mut out.0,
             })?;
         }
 
-        out.0.push(type_body);
         Ok(())
     }
 
-    fn populate_files(&self) -> Result<BTreeMap<RpPackage, FileSpec<'el>>> {
+    fn populate_files(&self) -> Result<BTreeMap<RpPackage, FileSpec>> {
         let mut enums = Vec::new();
 
-        let mut files = self.do_populate_files(|decl| {
+        let mut files = self.do_populate_files(|decl, new, out| {
+            if !new {
+                out.0.line();
+            }
+
             if let core::RpDecl::Enum(ref body) = *decl {
                 enums.push(body);
             }
@@ -668,8 +532,9 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
         // These are added to the end of the file to declare enums:
         // https://docs.python.org/3/library/enum.html
         for body in enums {
-            if let Some(ref mut file_spec) = files.get_mut(&body.name.package) {
-                file_spec.0.push(self.enum_variants(&body)?);
+            if let Some(file_spec) = files.get_mut(&body.name.package) {
+                file_spec.0.line();
+                self.enum_variants(&mut file_spec.0, &body);
             } else {
                 return Err(format!("missing file for package: {}", &body.name.package).into());
             }
@@ -692,14 +557,14 @@ impl<'el> PackageProcessor<'el, PythonFlavor, PythonName> for Compiler<'el> {
             }
 
             if !handle.is_dir(&full_path) {
-                debug!("+dir: {}", full_path);
+                log::debug!("+dir: {}", full_path);
                 handle.create_dir_all(&full_path)?;
             }
 
             let init_path = full_path.join(INIT_PY);
 
             if !handle.is_file(&init_path) {
-                debug!("+init: {}", init_path);
+                log::debug!("+init: {}", init_path);
                 handle.create(&init_path)?;
             }
         }

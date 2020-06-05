@@ -1,120 +1,77 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use crate::codegen::{ClassAdded, ClassCodegen, Configure};
-use crate::core::errors::*;
-use genco::java::{imported, local, Argument, Class, Field, Method, Modifier};
-use genco::{Java, Quoted, Tokens};
+use crate::codegen;
+use crate::Options;
+use genco::prelude::*;
 use std::rc::Rc;
 
 pub struct Module;
 
 impl Module {
-    pub fn initialize(self, e: Configure) {
-        e.options.class_generators.push(Box::new(Builder::new()));
+    pub fn initialize(self, options: &mut Options) {
+        options.gen.class.push(Rc::new(Builder::new()));
     }
 }
 
 pub struct Builder {
-    optional: Java<'static>,
-    runtime_exception: Java<'static>,
+    optional: Rc<java::Import>,
+    runtime_exception: Rc<java::Import>,
 }
 
 impl Builder {
     pub fn new() -> Builder {
         Builder {
-            optional: imported("java.util", "Optional"),
-            runtime_exception: imported("java.lang", "RuntimeException"),
+            optional: Rc::new(java::import("java.util", "Optional")),
+            runtime_exception: Rc::new(java::import("java.lang", "RuntimeException")),
         }
     }
 }
 
-impl Builder {
-    fn builder_field<'el>(&self, field: &Field<'el>) -> Field<'el> {
-        use self::Modifier::*;
+impl codegen::class::Codegen for Builder {
+    fn generate(&self, e: codegen::class::Args<'_>) {
+        e.inner.push(quote! {
+            public static class Builder {
+                #(for f in e.fields join (#<push>) {
+                    private #(f.optional_type()) #(f.safe_ident());
+                })
 
-        let ty = match field.ty() {
-            optional @ Java::Optional(_) => optional,
-            other => self.optional.with_arguments(vec![other]),
-        };
+                private Builder() {
+                    #(for f in e.fields join (#<push>) {
+                        this.#(f.safe_ident()) = #(&*self.optional).empty();
+                    })
+                }
 
-        let mut field = Field::new(ty, field.var());
-        field.modifiers = vec![Private];
-        field.initializer(toks![self.optional.clone(), ".empty()"]);
-        field
-    }
+                public #(e.ident) build() {
+                    #(for f in e.fields join (#<push>) {
+                        #(if f.is_required() {
+                            final #(&f.ty) #(f.safe_ident()) = this.#(f.safe_ident())
+                                .orElseThrow(() -> new #(&*self.runtime_exception)(#_(#(&f.ident): missing required value)));
+                        })
+                    })
 
-    fn setter_method<'el>(&self, field: &Field<'el>) -> Method<'el> {
-        let argument = Argument::new(field.ty().as_value(), field.var());
+                    return new #(e.ident)(
+                        #(for f in e.fields join (,#<push>) {
+                            #(if f.is_optional() {
+                                this.#(f.safe_ident())
+                            } else {
+                                #(f.safe_ident())
+                            })
+                        })
+                    );
+                }
 
-        let mut setter = Method::new(field.var());
-        setter.returns = local("Builder");
-        setter.arguments.push(argument.clone());
+                #(for f in e.fields join (#<line>) {
+                    public Builder #(f.safe_ident())(final #(&f.ty) #(f.safe_ident())) {
+                        this.#(f.safe_ident()) = #(&*self.optional).of(#(f.safe_ident()));
+                        return this;
+                    }
+                })
+            }
 
-        setter.body.push(toks![
-            "this.",
-            field.var(),
-            " = ",
-            self.optional.clone(),
-            ".of(",
-            argument.var(),
-            ")",
-            ";",
-        ]);
-        setter.body.push("return this;");
-
-        setter
-    }
-}
-
-impl ClassCodegen for Builder {
-    fn generate(&self, e: ClassAdded) -> Result<()> {
-        use self::Modifier::*;
-
-        let mut builder = Class::new("Builder");
-        builder.modifiers = vec![Public, Static];
-
-        let mut build_variable_assign = Tokens::new();
-        let mut build_constructor_arguments = Tokens::new();
-
-        for field in &e.spec.fields {
-            builder.fields.push(self.builder_field(field));
-            builder.methods.push(self.setter_method(field));
-
-            let value = if !field.ty().is_optional() {
-                let message = Rc::new(format!("{}: is required", field.var().as_ref())).quoted();
-                let throw_toks = toks!["new ", self.runtime_exception.clone(), "(", message, ")"];
-
-                toks!["this.", field.var(), ".orElseThrow(() -> ", throw_toks, ")"]
-            } else {
-                toks!["this.", field.var()]
-            };
-
-            let assign: Tokens<Java> =
-                toks!["final ", field.ty(), " ", field.var(), " = ", value, ";"];
-
-            build_variable_assign.push(assign);
-            build_constructor_arguments.append(field.var());
-        }
-
-        builder.methods.push({
-            let mut build = Method::new("build");
-            build.returns = local(e.spec.name());
-
-            build.body.push(build_variable_assign);
-
-            build.body.push(toks![
-                "return new ",
-                e.spec.name(),
-                "(",
-                build_constructor_arguments.join(", "),
-                ");",
-            ]);
-
-            build.body = build.body.join_line_spacing();
-            build
+            #(java::block_comment(&["Construct a new builder."]))
+            public static Builder builder() {
+                return new Builder();
+            }
         });
-
-        e.spec.body.push(builder);
-        Ok(())
     }
 }

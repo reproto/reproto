@@ -1,10 +1,10 @@
 //! Processor for service declarations.
 
-use crate::core::errors::*;
-use crate::core::flavored::RpTupleBody;
 use crate::doc_builder::DocBuilder;
 use crate::macros::FormatAttribute;
 use crate::processor::Processor;
+use core::errors::Result;
+use core::flavored::RpTupleBody;
 
 define_processor!(TupleProcessor, RpTupleBody, self,
     process => {

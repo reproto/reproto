@@ -1,15 +1,3 @@
-extern crate lsp_types as ty;
-#[macro_use]
-extern crate log;
-extern crate reproto_ast as ast;
-extern crate reproto_core as core;
-extern crate reproto_env as env;
-extern crate reproto_lexer as lexer;
-extern crate reproto_manifest as manifest;
-extern crate reproto_parser as parser;
-extern crate reproto_repository as repository;
-extern crate serde_json as json;
-
 mod envelope;
 mod loaded_file;
 mod models;
@@ -20,8 +8,8 @@ use self::loaded_file::LoadedFile;
 use self::models::{Completion, Jump, Range, RenameResult};
 use self::workspace::Workspace;
 use self::ContentType::*;
-use crate::core::errors::Result;
-use crate::core::{Diagnostic, Encoding, Filesystem, RealFilesystem, Reported, Rope, Source};
+use core::errors::Result;
+use core::{Diagnostic, Encoding, Filesystem, RealFilesystem, Reported, Rope, Source};
 use serde::Deserialize;
 use std::cell::RefCell;
 use std::collections::{BTreeSet, Bound, HashMap};
@@ -131,7 +119,7 @@ where
     where
         T: fmt::Debug + serde::Serialize,
     {
-        debug!("send frame: {:#?}", frame);
+        log::debug!("send frame: {:#?}", frame);
 
         let mut guard = self.output.lock().map_err(|_| "lock poisoned")?;
         let &mut (ref mut buffer, ref mut writer) = guard.deref_mut();
@@ -333,10 +321,10 @@ where
 
     match try_server(reader, channel) {
         Err(e) => {
-            error!("error: {}", e.display());
+            log::error!("error: {}", e.display());
 
             for cause in e.causes().skip(1) {
-                error!("caused by: {}", cause.display());
+                log::error!("caused by: {}", cause.display());
             }
 
             return Err(e);
@@ -501,8 +489,8 @@ where
         // in case we need it to report errors.
         let id = request.id.clone();
 
-        trace!("received: {:#?}", request);
-        debug!("received: {}", request.method);
+        log::trace!("received: {:#?}", request);
+        log::debug!("received: {}", request.method);
 
         if let Err(e) = self.try_handle_request(request) {
             self.channel.send_error(
@@ -587,7 +575,7 @@ where
                 // ignore
             }
             method => {
-                error!("unsupported method: {}", method);
+                log::error!("unsupported method: {}", method);
 
                 self.channel.send_error(
                     request.id,
@@ -622,12 +610,12 @@ where
         let expected = match self.expected.remove(&id) {
             Some(expected) => expected,
             None => {
-                debug!("no handle for id: {:?}", id);
+                log::debug!("no handle for id: {:?}", id);
                 return Ok(());
             }
         };
 
-        debug!("response: {:?} {:#?}", expected, response);
+        log::debug!("response: {:?} {:#?}", expected, response);
 
         match expected {
             Expected::ProjectInit => {
@@ -668,7 +656,7 @@ where
             let handle = self.fs.open_root(Some(&workspace.root_path))?;
 
             if response.title == "Initialize project" {
-                info!("Initializing Project!");
+                log::info!("Initializing Project!");
                 workspace.initialize(handle.as_ref())?;
 
                 let manifest_url = workspace.manifest_url()?;
@@ -761,7 +749,7 @@ where
                 .try_borrow_mut()
                 .map_err(|_| "failed to access mutable workspace")?;
 
-            debug!("loading project: {}", workspace.root_path.display());
+            log::debug!("loading project: {}", workspace.root_path.display());
             workspace.reload()?;
         }
 
@@ -1206,7 +1194,7 @@ where
                 } else {
                     let mut actions = Vec::new();
 
-                    warn!("missing reproto manifest: {}", manifest_url);
+                    log::warn!("missing reproto manifest: {}", manifest_url);
 
                     actions.push(ty::MessageActionItem {
                         title: "Ignore".to_string(),
@@ -1329,7 +1317,7 @@ where
                 None => return Ok(()),
             };
 
-        debug!("type completion: {:?}", value);
+        log::debug!("type completion: {:?}", value);
 
         match *value {
             Completion::Package { ref results, .. } => {
@@ -1502,7 +1490,7 @@ where
                     edit = Some(local_edits(&url, edits));
                 }
                 RenameResult::NotSupported => {
-                    info!("not supported");
+                    log::info!("not supported");
                 }
             };
         }
@@ -1562,7 +1550,7 @@ where
             None => return Ok(()),
         };
 
-        debug!("jump: {}: {:?}", file.url, value);
+        log::debug!("jump: {}: {:?}", file.url, value);
 
         match *value {
             Jump::Absolute {

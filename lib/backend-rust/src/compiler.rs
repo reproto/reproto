@@ -1,72 +1,74 @@
 //! Backend for Rust
 
-use crate::backend::PackageProcessor;
-use crate::core::errors::*;
-use crate::core::{self, Handle, Loc, RelativePath, RelativePathBuf};
 use crate::flavored::{
-    RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpTupleBody,
-    RpTypeBody, RpVariant, RustFlavor,
+    Primitive, RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpTupleBody,
+    RpTypeBody, RpVariant, RpVariants, RustFlavor, Type,
 };
-use crate::rust_file_spec::RustFileSpec;
-use crate::trans::{self, Translated};
 use crate::utils::Comments;
-use crate::{Options, Root, Service, EXT, LIB, MOD, TYPE_SEP};
-use genco::rust;
-use genco::{Cons, IntoTokens, Quoted, Rust, Tokens};
+use crate::{Options, Root, Service, EXT, MOD, TYPE_SEP};
+use backend::PackageProcessor;
+use core::errors::*;
+use core::{self, Handle, Loc, RelativePathBuf};
+use genco::prelude::*;
+use genco::tokens::FormatInto;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::rc::Rc;
+use trans::{self, Translated};
 
-/// #[allow(non_camel_case_types)] attribute.
-pub struct AllowNonCamelCaseTypes;
+/// Serializer derives.
+pub struct Derives {
+    serialize: rust::Import,
+    deserialize: rust::Import,
+}
 
-impl<'a> IntoTokens<'a, Rust<'a>> for AllowNonCamelCaseTypes {
-    fn into_tokens(self) -> Tokens<'a, Rust<'a>> {
-        "#[allow(non_camel_case_types)]".into()
+impl Derives {
+    pub fn new() -> Self {
+        Self {
+            serialize: rust::import("serde", "Serialize").direct(),
+            deserialize: rust::import("serde", "Deserialize").direct(),
+        }
     }
 }
 
-/// Serializer derives.
-pub struct Derives;
-
-impl<'a> IntoTokens<'a, Rust<'a>> for Derives {
-    fn into_tokens(self) -> Tokens<'a, Rust<'a>> {
-        "#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]".into()
+impl<'a> FormatInto<Rust> for &'a Derives {
+    fn format_into(self, tokens: &mut Tokens<Rust>) {
+        quote_in! { *tokens => #[derive(Clone, Debug, PartialEq, #(&self.serialize), #(&self.deserialize))] }
     }
 }
 
 pub struct EnumDerives;
 
-impl<'a> IntoTokens<'a, Rust<'a>> for EnumDerives {
-    fn into_tokens(self) -> Tokens<'a, Rust<'a>> {
-        "#[derive(Clone, Copy, Debug, PartialEq, Eq)]".into()
+impl<'el> FormatInto<Rust> for EnumDerives {
+    fn format_into(self, tokens: &mut Tokens<Rust>) {
+        quote_in! { *tokens => #[derive(Clone, Copy, Debug, PartialEq, Eq)] }
     }
 }
 
 /// A serde rename annotation.
 pub struct Rename<'a>(&'a str);
 
-impl<'a> IntoTokens<'a, Rust<'a>> for Rename<'a> {
-    fn into_tokens(self) -> Tokens<'a, Rust<'a>> {
-        toks!["#[serde(rename = ", self.0.quoted(), ")]"]
+impl<'el> FormatInto<Rust> for Rename<'el> {
+    fn format_into(self, tokens: &mut Tokens<Rust>) {
+        quote_in!(*tokens => #[serde(rename = #(quoted(self.0)))])
     }
 }
 
 /// Tag attribute.
 pub struct Tag<'a>(&'a str);
 
-impl<'a> IntoTokens<'a, Rust<'a>> for Tag<'a> {
-    fn into_tokens(self) -> Tokens<'a, Rust<'a>> {
-        toks!["#[serde(tag = ", self.0.quoted(), ")]"]
+impl<'el> FormatInto<Rust> for Tag<'el> {
+    fn format_into(self, tokens: &mut Tokens<Rust>) {
+        quote_in!(*tokens => #[serde(tag = #(quoted(self.0)))])
     }
 }
 
 /// Untagged attribute.
 pub struct Untagged;
 
-impl<'el> IntoTokens<'el, Rust<'el>> for Untagged {
-    fn into_tokens(self) -> Tokens<'el, Rust<'el>> {
-        toks!["#[serde(untagged)]"]
+impl<'el> FormatInto<Rust> for Untagged {
+    fn format_into(self, tokens: &mut Tokens<Rust>) {
+        quote_in!(*tokens => #[serde(untagged)])
     }
 }
 
@@ -74,6 +76,7 @@ pub struct Compiler<'el> {
     pub env: &'el Translated<RustFlavor>,
     options: Options,
     handle: &'el dyn Handle,
+    derives: Derives,
 }
 
 impl<'el> Compiler<'el> {
@@ -86,25 +89,17 @@ impl<'el> Compiler<'el> {
             env,
             options,
             handle,
+            derives: Derives::new(),
         }
-    }
-
-    /// Build an implementation of the given name and body.
-    fn build_impl(&self, name: Rc<String>, body: Tokens<'el, Rust<'el>>) -> Tokens<'el, Rust<'el>> {
-        let mut t = Tokens::new();
-        push!(t, "impl ", name, " {");
-        t.nested(body);
-        push!(t, "}");
-        t
     }
 
     /// Convert the type name
     ///
     /// Optionally also emit the necessary attributes to suppress warnings for bad naming
     /// conventions.
-    fn convert_type_name(&self, name: &RpName) -> (Rc<String>, Tokens<'static, Rust<'static>>) {
+    fn convert_type_name(&self, name: &RpName) -> (Rc<String>, Tokens<Rust>) {
         let attributes = if name.path.len() > 1 {
-            AllowNonCamelCaseTypes.into_tokens()
+            quote!(#[allow(non_camel_case_types)])
         } else {
             Tokens::new()
         };
@@ -112,68 +107,89 @@ impl<'el> Compiler<'el> {
         (Rc::new(name.join(TYPE_SEP)), attributes)
     }
 
-    fn into_type<'a>(&self, field: &'a RpField) -> Result<Tokens<'a, Rust<'a>>> {
-        let stmt = toks![field.ty.clone()];
-
+    fn write_type(&self, out: &mut Tokens<Rust>, field: &RpField) {
         if field.is_optional() {
-            return Ok(toks!["Option<", stmt, ">"]);
+            quote_in!(*out => Option<#(&field.ty)>)
+        } else {
+            quote_in!(*out => #(&field.ty))
         }
-
-        Ok(stmt)
     }
 
     fn enum_value_fn<'a>(
         &self,
+        out: &mut Tokens<Rust>,
         body: &'a RpEnumBody,
-        name: Rc<String>,
-        match_body: Tokens<'a, Rust<'a>>,
-    ) -> Tokens<'a, Rust<'a>> {
-        let mut value_fn = Tokens::new();
-        let mut match_decl = Tokens::new();
-
-        match_decl.push("match *self {");
-        match_decl.nested(match_body);
-        match_decl.push("}");
-
-        push!(value_fn, "pub fn value(&self) -> ", body.enum_type, " {");
-        value_fn.nested(toks!["use self::", name, "::*;"]);
-        value_fn.nested(match_decl);
-        value_fn.push("}");
-
-        value_fn
+        variants: &RpVariants,
+    ) {
+        quote_in! { *out =>
+            pub fn value(&self) -> #(&body.enum_type) {
+                match self {
+                    #(for v in variants join (#<push>) =>
+                        #(match v.value {
+                            core::RpVariantValue::String(string) => {
+                                Self::#(v.ident()) => #(quoted(string)),
+                            }
+                            core::RpVariantValue::Number(number) => {
+                                Self::#(v.ident()) => #(display(number)),
+                            }
+                        })
+                    )
+                }
+            }
+        }
     }
 
     // Build the corresponding element out of a field declaration.
-    fn field_element<'a>(&self, field: &'a RpField) -> Result<Tokens<'a, Rust<'a>>> {
-        let mut t = Tokens::new();
+    fn field_element(&self, out: &mut Tokens<Rust>, field: &RpField) {
+        let ident = field.safe_ident().to_string();
 
-        let ident = field.safe_ident();
-        let type_spec = self.into_type(field)?;
-
-        if field.is_optional() {
-            t.push(toks!["#[serde(skip_serializing_if=\"Option::is_none\")]"]);
+        quote_in! { *out =>
+            #(if field.is_optional() {
+                #[serde(skip_serializing_if="Option::is_none")]
+            })
+            #(if field.name() != ident {
+                #(Rename(field.name()))
+            })
+            pub #ident: #(ref out => self.write_type(out, field))
         }
-
-        if field.name() != ident {
-            t.push(Rename(field.name()));
-        }
-
-        push!(t, "pub ", ident, ": ", type_spec, ",");
-        Ok(t.into())
     }
 
     pub fn compile(&self) -> Result<()> {
-        let mut files = self.populate_files()?;
+        use genco::fmt;
+
+        let mut files = self.do_populate_files(|_, new, out| {
+            // Add a line separating entries in each non-new file.
+            if !new {
+                out.line();
+            }
+
+            Ok(())
+        })?;
 
         for g in &self.options.root {
             g.generate(Root { files: &mut files })?;
         }
 
         self.write_mod_files(&files)?;
-        self.write_files(files)
+
+        let handle = self.handle();
+
+        for (package, out) in files {
+            let full_path = self.setup_module_path(&package)?;
+
+            log::debug!("+module: {}", full_path);
+
+            let mut w = fmt::IoWriter::new(handle.create(&full_path)?);
+            let config = rust::Config::default().with_default_import(rust::ImportMode::Qualified);
+            let fmt = fmt::Config::from_lang::<Rust>().with_indentation(fmt::Indentation::Space(2));
+
+            out.format_file(&mut w.as_formatter(&fmt), &config)?;
+        }
+
+        Ok(())
     }
 
-    fn write_mod_files(&self, files: &BTreeMap<RpPackage, RustFileSpec>) -> Result<()> {
+    fn write_mod_files(&self, files: &BTreeMap<RpPackage, rust::Tokens>) -> Result<()> {
         let mut packages: BTreeMap<RelativePathBuf, BTreeSet<String>> = BTreeMap::new();
         let mut root_names = BTreeSet::new();
 
@@ -201,35 +217,24 @@ impl<'el> Compiler<'el> {
             }
         }
 
-        let mut root_mod = RelativePathBuf::new().join(MOD);
-        root_mod.set_extension(self.ext());
+        let root_mod = RelativePathBuf::new().join(MOD).with_extension(self.ext());
         packages.insert(root_mod, root_names);
 
         let handle = self.handle();
 
         for (full_path, children) in packages {
-            // skip writing mod if lib file exists.
-            let lib_path = full_path.with_file_name(LIB).with_extension(self.ext());
-            let parent = full_path.parent().unwrap_or(RelativePath::new("."));
-
-            if !self.handle.is_dir(&parent) {
-                debug!("+dir: {}", parent);
-                handle.create_dir_all(&parent)?;
-            }
-
-            // do not create mod file if there is a lib.rs in the root.
-            if lib_path.parent().is_none() && handle.is_file(&lib_path) {
-                debug!("+mod: {} (skip due to: {})", full_path, lib_path);
-                continue;
-            }
-
-            if !handle.is_file(&full_path) {
-                debug!("+mod: {}", full_path);
-                let mut f = handle.create(&full_path)?;
-
-                for child in children {
-                    writeln!(f, "pub mod {};", child)?;
+            if let Some(parent) = full_path.parent() {
+                if !self.handle.is_dir(parent) {
+                    log::debug!("+dir: {}", parent);
+                    handle.create_dir_all(&parent)?;
                 }
+            }
+
+            log::debug!("+mod: {}", full_path);
+            let mut f = handle.create(&full_path)?;
+
+            for child in children {
+                writeln!(f, "pub mod {};", child)?;
             }
         }
 
@@ -238,7 +243,7 @@ impl<'el> Compiler<'el> {
 }
 
 impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
-    type Out = RustFileSpec<'el>;
+    type Out = rust::Tokens;
     type DeclIter = trans::translated::DeclIter<'el, RustFlavor>;
 
     fn ext(&self) -> &str {
@@ -258,345 +263,257 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
     }
 
     fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
-        let mut fields = Tokens::new();
-
-        for field in &body.fields {
-            fields.append(toks!["pub ", self.into_type(field)?]);
-        }
-
         let (name, attributes) = self.convert_type_name(&body.name);
 
-        let mut t = Tokens::new();
+        quote_in! { *out =>
+            #<line>
+            #(Comments(&body.comment))
+            #attributes
+            #(&self.derives)
+            pub struct #name(#(for f in &body.fields join (, ) => pub #(ref out => self.write_type(out, f))));
+        };
 
-        t.push_unless_empty(Comments(&body.comment));
-        t.push_unless_empty(attributes);
-        t.push(Derives);
-        t.push(toks!["pub struct ", name, "(", fields.join(", "), ");",]);
-
-        out.0.push(t);
         Ok(())
     }
 
     fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
         let (name, mut attributes) = self.convert_type_name(&body.name);
-
-        // variant declarations
-        let mut vars = Tokens::new();
-        // body of value function
-        let mut match_body = Tokens::new();
+        let name = &name;
 
         if let core::RpVariants::Number { .. } = body.variants {
             // TODO: commented out, see: https://github.com/rust-lang/rust/issues/49973
             // enable through option?
             // attributes.push(Repr(body.enum_type.clone()));
-            attributes.push(EnumDerives);
+            attributes.push();
+            attributes.append(EnumDerives);
         } else {
-            attributes.push(Derives);
+            attributes.push();
+            attributes.append(&self.derives);
         }
 
-        for v in body.variants.iter() {
-            vars.push_unless_empty(Comments(&v.comment));
-
-            match v.value {
-                core::RpVariantValue::String(string) => {
-                    if string != v.ident() {
-                        vars.push(Rename(string));
-                    }
-
-                    push!(vars, v.ident(), ",");
-                    push!(match_body, v.ident(), " => ", string.quoted(), ",");
-                }
-                core::RpVariantValue::Number(number) => {
-                    push!(vars, v.ident(), ",");
-                    push!(match_body, v.ident(), " => ", number.to_string(), ",");
-                }
+        quote_in! { *out =>
+            #(Comments(&body.comment))
+            #attributes
+            pub enum #name {
+                #(for v in &body.variants join (#<push>) =>
+                    #(Comments(v.comment))
+                    #(match v.value {
+                        core::RpVariantValue::String(string) if string != v.ident() => {
+                            #(Rename(string))
+                        }
+                        _ => {}
+                    })
+                    #(v.ident()),
+                )
             }
-        }
 
-        push!(out.0, |t| {
-            t.push_unless_empty(Comments(&body.comment));
-            t.push_unless_empty(attributes);
-            push!(t, "pub enum ", name, " {");
-            t.nested(vars);
-            t.push("}");
-        });
+            impl #name {
+                #(ref out => self.enum_value_fn(out, body, &body.variants))
 
-        push!(out.0, |t| {
-            push!(t, "impl ", name, " {");
+                #(if backend::code_contains!(body.codes, core::RpContext::Rust) {
+                    #(ref out => backend::code_in!(out, &body.codes, core::RpContext::Rust))
+                })
+            }
 
-            t.nested({
-                let mut t = Tokens::new();
-                t.push(self.enum_value_fn(body, name.clone(), match_body));
-                t.push_unless_empty(code!(&body.codes, core::RpContext::Rust));
-                t
-            });
+            #(if let core::RpVariants::Number { variants } = &body.variants {
+                #(ref t => numeric_serialize(t, body, &name, variants))
 
-            t.push("}");
-        });
-
-        // Serialize impl for numerics.
-        if let core::RpVariants::Number { ref variants } = body.variants {
-            out.0.push(numeric_serialize(body, &name, variants));
-            out.0.push(numeric_deserialize(body, &name, variants));
+                #(ref t => numeric_deserialize(t, body, &name, variants))
+            })
         }
 
         return Ok(());
 
         /// Build a numeric serialize implementation.
         fn numeric_serialize<'el, T>(
+            out: &mut Tokens<Rust>,
             body: &'el RpEnumBody,
             name: &Rc<String>,
             variants: &'el Vec<Loc<RpVariant<T>>>,
-        ) -> Tokens<'el, Rust<'el>>
-        where
+        ) where
             T: fmt::Display,
         {
-            let mut t = Tokens::new();
-
-            let ser = rust::imported("serde", "Serialize");
-            let serializer = rust::imported("serde", "Serializer");
+            let ser = rust::import("serde", "Serialize");
+            let serializer = rust::import("serde", "Serializer");
             let ty = &body.enum_type;
 
-            push!(t, "impl ", ser, " for ", *name, " {");
+            quote_in! { *out =>
+                impl #ser for #name {
+                    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+                    where
+                        S: #serializer
+                    {
+                        let o = match self {
+                            #(for v in variants =>
+                                #name::#(v.ident()) => #(v.value.to_string())#(ty),#<push>
+                            )
+                        };
 
-            let result = "Result<S::Ok, S::Error>";
-            let f = toks!["serialize_", body.enum_type.clone()];
-
-            nested!(t, |t| {
-                push!(t, "fn serialize<S>(&self, s: S) -> ", result);
-                nested!(t, "where S: ", serializer);
-                push!(t, "{");
-                push!(t, "use self::", *name, "::*;");
-
-                nested!(t, |t| {
-                    push!(t, "let o = match *self {");
-
-                    for v in variants {
-                        nested!(t, v.ident(), " => ", v.value.to_string(), *ty, ",");
+                        s.serialize_#(&body.enum_type)(o)
                     }
-
-                    push!(t, "};");
-                });
-
-                nested!(t, "s.", f, "(o)");
-                push!(t, "}");
-            });
-
-            push!(t, "}");
-
-            t
+                }
+            }
         }
 
         /// Build a numeric deserialize implementation.
         fn numeric_deserialize<'el, T>(
+            out: &mut Tokens<Rust>,
             body: &'el RpEnumBody,
             name: &Rc<String>,
             variants: &'el Vec<Loc<RpVariant<T>>>,
-        ) -> Tokens<'el, Rust<'el>>
-        where
+        ) where
             T: fmt::Display,
         {
-            let mut t = Tokens::new();
+            let des = rust::import("serde", "Deserialize");
+            let deserializer = rust::import("serde", "Deserializer");
 
-            let des = rust::imported("serde", "Deserialize");
-            let deserializer = rust::imported("serde", "Deserializer");
+            quote_in! { *out =>
+                impl<'de> #des<'de> for #name {
+                    fn deserialize<D>(d: D) -> Result<#name, D::Error>
+                    where
+                        D: #deserializer<'de>
+                    {
+                        #(ref out => numeric_visitor_deserialize(out, body, name, variants, "Visitor"))
 
-            push!(t, "impl<'de> ", des, "<'de> for ", *name, " {");
-
-            nested!(t, |t| {
-                push!(
-                    t,
-                    "fn deserialize<D>(d: D) -> Result<",
-                    *name,
-                    ", D::Error>"
-                );
-                nested!(t, "where D: ", deserializer, "<'de>");
-                push!(t, "{");
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    t.push(numeric_visitor_deserialize(body, name, variants, "Visitor"));
-                    push!(t, "d.deserialize_", body.enum_type, "(Visitor)");
-
-                    t.join_line_spacing()
-                });
-
-                push!(t, "}");
-            });
-
-            push!(t, "}");
-
-            t
+                        d.deserialize_#(&body.enum_type)(Visitor)
+                    }
+                }
+            }
         }
 
         /// Build a numeric deserialize visitor.
         fn numeric_visitor_deserialize<'el, T>(
+            out: &mut Tokens<Rust>,
             body: &'el RpEnumBody,
             parent: &Rc<String>,
             variants: &'el Vec<Loc<RpVariant<T>>>,
             name: &'el str,
-        ) -> Tokens<'el, Rust<'el>>
-        where
+        ) where
             T: fmt::Display,
         {
-            let mut t = Tokens::new();
+            let visitor = rust::import("serde::de", "Visitor");
 
-            let vis = rust::imported("serde::de", "Visitor");
+            quote_in! { *out =>
+                struct Visitor;
 
-            push!(t, "struct Visitor;");
+                impl<'de> #visitor<'de> for #name {
+                    type Value = #parent;
 
-            push!(t, "impl<'de> ", vis, "<'de> for ", name, " {");
+                    #(ref out => {
+                        numeric_expecting(out, parent, variants);
+                        out.line();
+                        numeric_visit(out, &body.enum_type, parent, variants);
 
-            t.nested({
-                let mut t = Tokens::new();
+                        if body.enum_type == Type::Primitive(Primitive::I32) {
+                            out.line();
+                            forward(out, &Type::Primitive(Primitive::I64), &body.enum_type, parent);
+                            out.line();
+                            forward(out, &Type::Primitive(Primitive::U64), &body.enum_type, parent);
+                        }
 
-                push!(t, "type Value = ", *parent, ";");
+                        if body.enum_type == Type::Primitive(Primitive::I64) {
+                            out.line();
+                            forward(out, &Type::Primitive(Primitive::U64), &body.enum_type, parent);
+                        }
 
-                t.push(numeric_expecting(parent, variants));
-                t.push(numeric_visit(&body.enum_type, parent, variants));
-
-                if body.enum_type == rust::local("i32") {
-                    t.push(forward(&rust::local("i64"), &body.enum_type, parent));
-                    t.push(forward(&rust::local("u64"), &body.enum_type, parent));
+                        if body.enum_type == Type::Primitive(Primitive::U32) {
+                            out.line();
+                            forward(out, &Type::Primitive(Primitive::U64), &body.enum_type, parent);
+                        }
+                    })
                 }
-
-                if body.enum_type == rust::local("i64") {
-                    t.push(forward(&rust::local("u64"), &body.enum_type, parent));
-                }
-
-                if body.enum_type == rust::local("u32") {
-                    t.push(forward(&rust::local("u64"), &body.enum_type, parent));
-                }
-
-                t.join_line_spacing()
-            });
-
-            push!(t, "}");
-
-            t
+            }
         }
 
         fn numeric_expecting<'el, T>(
+            out: &mut Tokens<Rust>,
             parent: &Rc<String>,
             variants: &'el Vec<Loc<RpVariant<T>>>,
-        ) -> Tokens<'el, Rust<'el>>
-        where
+        ) where
             T: fmt::Display,
         {
-            let mut t = Tokens::new();
-
             let variants = variants
                 .iter()
                 .map(|v| v.value.to_string())
                 .collect::<Vec<_>>()
                 .join(", ");
 
-            let res = rust::imported("std::fmt", "Result");
-            let fmt = rust::imported("std::fmt", "Formatter");
-            let m = format!("{}, one of: {}", parent, variants).quoted();
+            let res = rust::import("std::fmt", "Result");
+            let fmt = rust::import("std::fmt", "Formatter");
+            let m = quoted(format!("{}, one of: {}", parent, variants));
 
-            push!(t, "fn expecting(&self, fmt: &mut ", fmt, ") -> ", res, " {");
-            nested!(t, "fmt.write_str(", m, ")");
-            push!(t, "}");
-
-            t
+            quote_in! { *out =>
+                fn expecting(&self, fmt: &mut #fmt) -> #res {
+                    fmt.write_str(#m)
+                }
+            }
         }
 
         fn numeric_visit<'el, T>(
-            ty: &'el Rust<'static>,
+            out: &mut Tokens<Rust>,
+            ty: &'el Type,
             parent: &Rc<String>,
             variants: &'el Vec<Loc<RpVariant<T>>>,
-        ) -> Tokens<'el, Rust<'el>>
-        where
+        ) where
             T: fmt::Display,
         {
-            let err = rust::imported("serde::de", "Error");
-            let res = toks!["Result<", parent.clone(), ", E>"];
+            let err = rust::import("serde::de", "Error");
+            let error_fmt = quoted(format!("{}: unknown value: {{}}", parent.as_str()));
 
-            let mut t = Tokens::new();
-
-            push!(t, "fn visit_", *ty, "<E>(self, value: ", *ty, ") -> ", res);
-            nested!(t, "where E: ", err);
-            push!(t, "{");
-
-            nested!(t, |t| {
-                push!(t, "match value {");
-
-                for v in variants {
-                    let val = v.value.to_string();
-                    nested!(t, val, *ty, " => Ok(", *parent, "::", v.ident(), "),");
+            quote_in! { *out =>
+                fn visit_#(ty)<E>(self, value: #ty) -> Result<#parent, E>
+                    where E: #err
+                {
+                    match value {
+                        #(for v in &*variants join(,#<push>) =>
+                            #(v.value.to_string())#ty => Ok(#(parent.clone())::#(v.ident()))
+                        ),
+                        value => Err(E::custom(format!(#error_fmt, value))),
+                    }
                 }
-
-                let fmt = format!("{}: unknown value: {{}}", parent.as_str());
-                let mut args = Tokens::new();
-                args.append(fmt.quoted());
-                args.append("value");
-
-                let m = toks!["format!(", args.join(", "), ")"];
-
-                nested!(t, "value => Err(E::custom(", m, ")),");
-
-                push!(t, "}");
-            });
-
-            push!(t, "}");
-
-            t
+            }
         }
 
         fn forward<'el>(
-            ty: &Rust<'static>,
-            forward_ty: &'el Rust<'static>,
+            out: &mut rust::Tokens,
+            ty: &'el Type,
+            forward_ty: &'el Type,
             parent: &Rc<String>,
-        ) -> Tokens<'el, Rust<'el>> {
-            let err = rust::imported("serde::de", "Error");
-            let res = toks!["Result<", parent.clone(), ", E>"];
+        ) {
+            out.line();
 
-            let mut t = toks!();
-
-            push!(t, "fn visit_", *ty, "<E>(self, value: ", *ty, ") -> ", res);
-            nested!(t, "where E: ", err);
-            push!(t, "{");
-            nested!(t, "self.visit_", forward_ty, "(value as ", forward_ty, ")");
-            push!(t, "}");
-
-            t
+            quote_in! { *out =>
+                fn visit_#(ty)<E>(self, value: #ty) -> Result<#(parent.clone()), E>
+                    where E: #(rust::import("serde::de", "Error"))
+                {
+                    self.visit_#(forward_ty)(value as #forward_ty)
+                }
+            }
         }
     }
 
     fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
         let (name, attributes) = self.convert_type_name(&body.name);
+        let name = &name;
 
-        push!(out.0, |t| {
-            t.push_unless_empty(Comments(&body.comment));
-            t.push_unless_empty(attributes);
-            t.push(Derives);
-            push!(t, "pub struct ", name, " {");
+        quote_in! { *out =>
+            #<line>
+            #(Comments(&body.comment))
+            #attributes
+            #(&self.derives)
+            pub struct #name {
+                #(for field in &body.fields join (#<line>) =>
+                    #(Comments(&field.comment))
+                    #(ref out => self.field_element(out, field)),
+                )
+            }
 
-            // fields
-            t.nested({
-                let mut t = toks!();
-
-                for field in &body.fields {
-                    push!(t, |t| {
-                        t.push_unless_empty(Comments(&field.comment));
-                        t.push(self.field_element(field)?);
-                    });
+            #(if backend::code_contains!(body.codes, core::RpContext::Rust) {
+                impl #name {
+                    #(ref out => backend::code_in!(out, &body.codes, core::RpContext::Rust))
                 }
-
-                t.join_line_spacing()
-            });
-
-            t.push("}");
-        });
-
-        // if custom code is present, punt it into an impl.
-        let impl_body = code!(&body.codes, core::RpContext::Rust).into_tokens();
-
-        if !impl_body.is_empty() {
-            out.0.push(self.build_impl(name.clone(), impl_body));
-        }
+            })
+        };
 
         Ok(())
     }
@@ -604,72 +521,52 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
     fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
         let (name, attributes) = self.convert_type_name(&body.name);
 
-        let mut sup = Tokens::new();
-        let mut sub = Tokens::new();
+        quote_in! { *out =>
+            #(Comments(&body.comment))
+            #(attributes)
+            #(&self.derives)
+            #(match &body.sub_type_strategy {
+                core::RpSubTypeStrategy::Tagged { tag, .. } => #(Tag(tag.as_str())),
+                core::RpSubTypeStrategy::Untagged => #Untagged,
+            })
+            pub enum #(&name) {
+                #(for s in &body.sub_types join (#<line>) => #(ref out =>
+                    let (sub_name, _) = self.convert_type_name(&s.name);
 
-        sup.push_unless_empty(Comments(&body.comment));
-        sup.push_unless_empty(attributes);
-        sup.push(Derives);
+                    if let Some(name) = &s.sub_type_name {
+                        if name.as_str() != s.ident.as_str() {
+                            out.push();
+                            out.append(Rename(name));
+                        }
+                    }
 
-        match body.sub_type_strategy {
-            core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                sup.push(Tag(tag.as_str()));
+                    out.push();
+                    quote_in!(*out => #(&s.ident)(#sub_name),);
+                ))
             }
-            core::RpSubTypeStrategy::Untagged => {
-                sup.push(Untagged);
-            }
-        }
 
-        push!(sup, "pub enum ", name, " {");
+            #(if backend::code_contains!(body.codes, core::RpContext::Rust) {
+                impl #name {
+                    #(ref out => backend::code_in!(out, &body.codes, core::RpContext::Rust))
+                }
+            })
 
-        for s in &body.sub_types {
-            let (sub_name, attributes) = self.convert_type_name(&s.name);
+            #(for s in &body.sub_types join (#<line>) => #(ref out =>
+                let (sub_name, attributes) = self.convert_type_name(&s.name);
 
-            nested!(sup, |t| {
-                if let Some(ref name) = s.sub_type_name {
-                    if name.as_str() != s.ident.as_str() {
-                        t.push(Rename(name));
+                quote_in! { *out =>
+                    #(Comments(&s.comment))
+                    #(&self.derives)
+                    #attributes
+                    pub struct #sub_name {
+                        #(for field in body.fields.iter().chain(&s.fields) join (#<line>) =>
+                            #(Comments(&field.comment))
+                            #(ref out => self.field_element(out, field)),
+                        )
                     }
                 }
-
-                push!(t, s.ident.as_str(), "(", sub_name, "),");
-            });
-
-            push!(sub, |t| {
-                t.push_unless_empty(Comments(&s.comment));
-                t.push(Derives);
-                t.push_unless_empty(attributes);
-                push!(t, "pub struct ", sub_name, " {");
-
-                t.push({
-                    let mut t = Tokens::new();
-
-                    for field in body.fields.iter().chain(s.fields.iter()) {
-                        t.nested({
-                            let mut t = Tokens::new();
-                            t.push_unless_empty(Comments(&field.comment));
-                            t.push(self.field_element(field)?);
-                            t
-                        });
-                    }
-
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-            });
-        }
-
-        sup.push("}");
-        out.0.push(sup);
-
-        let impl_body = code!(&body.codes, core::RpContext::Rust).into_tokens();
-
-        if !impl_body.is_empty() {
-            out.0.push(self.build_impl(name.clone(), impl_body));
-        }
-
-        out.0.push_unless_empty(sub.join_line_spacing());
+            ))
+        };
 
         Ok(())
     }
@@ -679,9 +576,9 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
 
         for s in &self.options.service {
             s.generate(Service {
-                body: body,
-                container: &mut out.0,
-                name: Cons::from(name.clone()),
+                body,
+                container: out,
+                name: name.clone().into(),
                 attributes: &attributes,
             })?;
         }

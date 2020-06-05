@@ -9,8 +9,8 @@
 //!
 //! The second form is only used when a version requirement is present.
 
-use crate::core::errors::{Error, Result};
-use crate::core::{
+use core::errors::{Error, Result};
+use core::{
     Range, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage,
     Source, Version,
 };
@@ -186,7 +186,7 @@ impl Resolver for Paths {
 
                 if path.is_file() {
                     if path.extension().map(|e| e != EXT).unwrap_or(true) {
-                        debug!("skipping wrong file extension: {}", path.display());
+                        log::debug!("skipping wrong file extension: {}", path.display());
                         continue;
                     }
 
@@ -362,7 +362,7 @@ pub fn parse_stem<'a>(stem: &'a str) -> Result<(&'a str, Option<Version>)> {
 #[cfg(test)]
 mod tests {
     use super::path_to_package;
-    use crate::core::{RpPackage, RpVersionedPackage, Version};
+    use core::{RpPackage, RpVersionedPackage, Version};
 
     fn version(version: &str) -> Version {
         Version::parse(version).expect("bad version")

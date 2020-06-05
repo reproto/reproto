@@ -1,0 +1,17 @@
+name: rust
+lang: rust
+output: src
+package_prefix: generated
+args: ["-m", "chrono"]
+
+deadline: 5 minutes
+container: rust:1-buster
+
+# prebuild so that we have cached dependencies
+prepare:
+  - type: copy-source
+  - type: run
+    command: cargo build
+
+test:
+  - cargo --version

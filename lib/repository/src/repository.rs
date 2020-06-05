@@ -1,12 +1,12 @@
 use super::Objects;
-use crate::core::errors::*;
-use crate::core::{
-    self, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage,
-    Source, Version,
-};
 use crate::index::{Deployment, Index};
 use crate::sha256::to_sha256;
 use crate::update::Update;
+use core::errors::*;
+use core::{
+    Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage, Source,
+    Version,
+};
 
 pub struct Repository {
     index: Box<dyn Index>,
@@ -40,7 +40,7 @@ impl Repository {
             if !force {
                 return Err(format!("{}@{}: already published", package, version).into());
             } else {
-                info!("{}@{}: already published (forced)", package, version);
+                log::info!("{}@{}: already published (forced)", package, version);
             }
         }
 

@@ -1,6 +1,7 @@
 //! Reporter for spanned diagnostics.
 use crate::flavored::RpName;
 use crate::{Source, Span};
+use serde::Serialize;
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, Serialize)]

@@ -1,10 +1,9 @@
 //! build command
 
-use crate::core::errors::Result;
-use crate::core::{Filesystem, Reporter};
-use crate::env;
 use crate::utils::{load_manifest, session};
 use clap::{App, Arg, ArgMatches, SubCommand};
+use core::errors::Result;
+use core::{Filesystem, Reporter};
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("build").about("Build specifications");

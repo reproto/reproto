@@ -1,0 +1,7 @@
+name: go
+lang: go
+output: models
+args: ["-m", "encoding/json"]
+
+test:
+  - go --version

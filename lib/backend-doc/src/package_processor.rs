@@ -2,12 +2,12 @@
 //!
 //! Build an overview of available packages.
 
-use crate::core::errors::*;
-use crate::core::flavored::{RpFile, RpVersionedPackage};
 use crate::doc_builder::DocBuilder;
 use crate::escape::Escape;
 use crate::macros::FormatAttribute;
 use crate::processor::Processor;
+use core::errors::Result;
+use core::flavored::{RpFile, RpVersionedPackage};
 
 pub struct Data<'a> {
     pub package: &'a RpVersionedPackage,
@@ -38,7 +38,7 @@ macro_rules! types_section {
 
 define_processor!(PackageProcessor, Data<'session>, self,
     process => {
-        use crate::core::RpDecl::*;
+        use core::RpDecl::*;
 
         self.write_doc(|| {
             let mut types = Vec::new();

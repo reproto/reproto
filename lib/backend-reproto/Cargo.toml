@@ -1,6 +1,6 @@
 [package]
 name = "reproto-backend-reproto"
-version = "0.3.39"
+version = "0.4.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
 edition = "2018"
@@ -17,13 +17,13 @@ this crate writes a schema out as a schema again.
 """
 
 [dependencies]
-reproto-backend = {path = "../backend", version = "0.3"}
-reproto-core = {path = "../core", version = "0.3"}
-reproto-trans = {path = "../trans", version = "0.3"}
-reproto-lexer = {path = "../lexer", version = "0.3"}
-reproto-manifest = {path = "../manifest", version = "0.3"}
+backend = {package = "reproto-backend", path = "../backend", version = "0.4"}
+core = {package = "reproto-core", path = "../core", version = "0.4"}
+trans = {package = "reproto-trans", path = "../trans", version = "0.4"}
+lexer = {package = "reproto-lexer", path = "../lexer", version = "0.4"}
+manifest = {package = "reproto-manifest", path = "../manifest", version = "0.4"}
 
-genco = "0.4.0"
+genco = "0.15.0"
 toml = "0.5.6"
 log = "0.4.8"
 

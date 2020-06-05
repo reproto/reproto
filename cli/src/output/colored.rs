@@ -1,7 +1,7 @@
 use super::{LockableWrite, Output};
-use crate::core::errors::*;
-use crate::core::{self, Source, Span};
 use ansi_term::Colour::{self, Blue, Red};
+use core::errors::Result;
+use core::{self, Source, Span};
 use log;
 use std::io;
 
@@ -14,7 +14,7 @@ where
     T: LockableWrite,
 {
     pub fn new(out: T) -> Colored<T> {
-        Colored { out: out }
+        Colored { out }
     }
 
     fn print_positional(&self, source: &Source, span: &Span, m: &str, color: Colour) -> Result<()> {

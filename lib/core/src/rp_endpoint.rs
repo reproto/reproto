@@ -90,7 +90,7 @@ where
 }
 
 /// An argument to an endpont.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(bound = "F::Type: Serialize")]
 pub struct RpEndpointArgument<F: 'static>
 where

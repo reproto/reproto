@@ -1,41 +1,37 @@
-//! Module that adds the @ConstructorProperties annotation to every constructor.
+//! Module that adds the @ConstructorProperties annotation.
 
-use crate::codegen::{ClassAdded, ClassCodegen, Configure};
-use crate::core::errors::Result;
-use genco::java::imported;
-use genco::{Java, Quoted, Tokens};
+use crate::codegen::class_constructor;
+use crate::Options;
+use genco::prelude::*;
+use std::rc::Rc;
 
 pub struct Module;
 
 impl Module {
-    pub fn initialize(self, e: Configure) {
-        e.options
-            .class_generators
-            .push(Box::new(ConstructorProperties::new()));
+    pub fn initialize(self, options: &mut Options) {
+        options
+            .gen
+            .class_constructor
+            .push(Rc::new(ConstructorProperties::new()));
     }
 }
 
 pub struct ConstructorProperties {
-    annotation: Java<'static>,
+    annotation: Rc<java::Import>,
 }
 
 impl ConstructorProperties {
-    pub fn new() -> ConstructorProperties {
+    fn new() -> ConstructorProperties {
         ConstructorProperties {
-            annotation: imported("java.beans", "ConstructorProperties"),
+            annotation: Rc::new(java::import("java.beans", "ConstructorProperties")),
         }
     }
 }
 
-impl ClassCodegen for ConstructorProperties {
-    fn generate(&self, e: ClassAdded) -> Result<()> {
-        let args: Tokens<Java> = e.names.iter().cloned().map(Quoted::quoted).collect();
-        let a = toks!["@", self.annotation.clone(), "({", args.join(", "), "})"];
-
-        for c in &mut e.spec.constructors {
-            c.annotation(a.clone());
-        }
-
-        Ok(())
+impl class_constructor::Codegen for ConstructorProperties {
+    fn generate(&self, e: class_constructor::Args<'_>) {
+        e.annotations.push(quote! {
+            @#(&*self.annotation)({#(for f in e.fields => #_(#(&f.ident)))})
+        });
     }
 }

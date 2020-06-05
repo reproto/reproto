@@ -1,12 +1,12 @@
 //! Repository management commands.
 
-use crate::core::errors::*;
-use crate::repository::init_file_index;
 use clap::{App, Arg, ArgMatches, SubCommand};
+use core::errors::Result;
+use repository::init_file_index;
 
 fn init(matches: &ArgMatches) -> Result<()> {
     for path in matches.values_of("path").into_iter().flat_map(|it| it) {
-        info!("Creating repository: {}", path);
+        log::info!("Creating repository: {}", path);
         init_file_index(path)?;
     }
 

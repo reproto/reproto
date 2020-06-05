@@ -1,15 +1,10 @@
-extern crate atty;
-extern crate clap;
-extern crate reproto;
-extern crate reproto_core as core;
-
-use crate::core::errors::Result;
-use crate::core::RealFilesystem;
 use clap::{App, Arg, ArgMatches};
+use core::errors::Result;
+use core::RealFilesystem;
 use reproto::{ops, output, VERSION};
 use std::io;
 
-fn setup_opts<'a, 'b>() -> App<'a, 'b> {
+fn setup_opts() -> App<'static, 'static> {
     App::new("reproto")
         .version(VERSION)
         .arg(

@@ -1,5 +1,6 @@
-use crate::core::Version;
+use core::Version;
 use linked_hash_map::LinkedHashMap;
+use serde::Serialize;
 use std::collections::BTreeMap;
 
 pub struct Ref(pub String);

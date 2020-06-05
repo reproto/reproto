@@ -1,18 +1,13 @@
 //! A dynamically compiled and updated environment.
 
-use crate::ast;
-use crate::core::errors::{Error, Result};
-use crate::core::{
-    self, Encoding, Filesystem, Handle, Loc, Reported, Resolved, Resolver, RpPackage,
-    RpRequiredPackage, RpVersionedPackage, Source,
-};
-use crate::env;
 use crate::loaded_file::LoadedFile;
-use crate::manifest;
 use crate::models::{Completion, Jump, Prefix, Range, Rename, RenameResult, Symbol};
-use crate::parser;
-use crate::repository::{path_to_package, Packages, EXT};
-use crate::ty;
+use core::errors::{Error, Result};
+use core::{
+    Encoding, Filesystem, Handle, Loc, Reported, Resolved, Resolver, RpPackage, RpRequiredPackage,
+    RpVersionedPackage, Source,
+};
+use repository::{path_to_package, Packages, EXT};
 use std::collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::io::Read;
@@ -132,7 +127,7 @@ impl Workspace {
                 let package = match path_to_package(edited_path) {
                     Ok(package) => package,
                     Err(e) => {
-                        warn!(
+                        log::warn!(
                             "opened file `{}` does not correspond to a reproto package: {}",
                             url,
                             e.display()
@@ -196,7 +191,7 @@ impl Workspace {
     }
 
     fn dirty_package(&mut self, package: RpVersionedPackage) -> Result<()> {
-        debug!("dirty: {}", package);
+        log::debug!("dirty: {}", package);
 
         let url = match self.packages.remove(&package) {
             Some(url) => url,
@@ -274,23 +269,23 @@ impl Workspace {
                 ref source,
             } = *s;
 
-            debug!("building `{}` from source {}", package, source);
+            log::debug!("building `{}` from source {}", package, source);
 
             if let Err(e) = self.process_package(resolver.as_mut(), &package, None, source.clone())
             {
-                error!("failed to process: {}: {}", package, e.display());
+                log::error!("failed to process: {}: {}", package, e.display());
 
                 if let Some(backtrace) = e.backtrace() {
-                    error!("{:?}", backtrace);
+                    log::error!("{:?}", backtrace);
                 }
             }
         }
 
         if let Err(e) = self.try_compile(resolver.as_mut(), manifest, sources) {
-            error!("failed to compile: {}", e.display());
+            log::error!("failed to compile: {}", e.display());
 
             if let Some(backtrace) = e.backtrace() {
-                error!("{:?}", backtrace);
+                log::error!("{:?}", backtrace);
             }
         }
 
@@ -317,7 +312,7 @@ impl Workspace {
             } = *s;
 
             if let Err(e) = session.import_source(source.clone(), Some(package.clone())) {
-                debug!(
+                log::debug!(
                     "failed to import: {} from {}: {}",
                     package,
                     source,
@@ -325,7 +320,7 @@ impl Workspace {
                 );
 
                 if let Some(backtrace) = e.backtrace() {
-                    debug!("{:?}", backtrace);
+                    log::debug!("{:?}", backtrace);
                 }
             }
         }
@@ -336,10 +331,10 @@ impl Workspace {
 
         if let Err(e) = lang.compile(handle.as_ref(), session, manifest) {
             // ignore and just go off diagnostics?
-            debug!("compile error: {}", e.display());
+            log::debug!("compile error: {}", e.display());
 
             if let Some(backtrace) = e.backtrace() {
-                debug!("{:?}", backtrace);
+                log::debug!("{:?}", backtrace);
             }
         }
 
@@ -398,7 +393,7 @@ impl Workspace {
             return Ok(());
         };
 
-        debug!(
+        log::debug!(
             "import `{}` from {}",
             versioned,
             imported_from
@@ -417,7 +412,7 @@ impl Workspace {
         let url = match source.url() {
             Some(url) => url,
             None => {
-                warn!("no url for source `{}`", source);
+                log::warn!("no url for source `{}`", source);
                 return Ok(());
             }
         };
@@ -425,7 +420,7 @@ impl Workspace {
         let mut loaded = LoadedFile::new(url.clone(), source, versioned.clone());
 
         if let Err(e) = self.process_file(resolver, versioned, &mut loaded) {
-            error!("{}: {}", url, e.display());
+            log::error!("{}: {}", url, e.display());
         }
 
         self.files.insert(url.clone(), loaded);
@@ -599,7 +594,7 @@ impl Workspace {
         content: &str,
         decl: &ast::Decl<'input>,
     ) -> Result<()> {
-        use crate::ast::Decl::*;
+        use ast::Decl::*;
 
         let (_, span) = Loc::take_pair(decl.name());
 
@@ -793,7 +788,7 @@ impl Workspace {
 
     /// Build a package completion.
     fn package_completion(&self, content: &str, resolver: &mut dyn Resolver) -> Result<Completion> {
-        debug!("package completion from {:?}", content);
+        log::debug!("package completion from {:?}", content);
 
         let mut parts = content.split(|c: char| c.is_whitespace());
 

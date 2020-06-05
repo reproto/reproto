@@ -1,5 +1,5 @@
 use super::GitRepo;
-use crate::core::errors::*;
+use core::errors::Result;
 
 /// An update callback.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

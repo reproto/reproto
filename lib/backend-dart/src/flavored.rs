@@ -2,182 +2,164 @@
 
 #![allow(unused)]
 
-use crate::core::errors::Result;
-use crate::core::{
+use crate::{EXT, TYPE_SEP};
+use core::errors::Result;
+use core::{
     self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberKind,
     RpNumberType, RpStringType, Translate, Translator,
 };
-use crate::trans::Packages;
-use crate::{EXT, TYPE_SEP};
-use genco::dart;
-use genco::{Cons, Dart, Tokens};
+use genco::prelude::*;
+use genco::tokens::{FormatInto, ItemStr};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
+use trans::Packages;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DartType<'el> {
-    Native {
-        dart: Dart<'el>,
-    },
+pub enum Type {
+    Import { import: dart::Import },
+    Local { ident: ItemStr },
     Dynamic,
     Int,
     Double,
     Bool,
     String,
-    Array {
-        argument: Box<DartType<'el>>,
-    },
-    Map {
-        key: Box<DartType<'el>>,
-        value: Box<DartType<'el>>,
-    },
+    List { argument: Box<Type> },
+    Map { key: Box<Type>, value: Box<Type> },
 }
 
-impl<'el> DartType<'el> {
-    /// Get the dart type for the type.
-    pub fn ty(&self) -> Dart<'el> {
-        match *self {
-            DartType::Native { ref dart } => dart.clone(),
-            DartType::Dynamic => Dart::Dynamic,
-            DartType::Int => dart::INT,
-            DartType::Double => dart::DOUBLE,
-            DartType::Bool => dart::BOOL,
-            DartType::String => dart::imported(dart::DART_CORE).name("String"),
-            DartType::Array { ref argument } => {
-                let argument = argument.ty();
-                dart::imported(dart::DART_CORE)
-                    .name("List")
-                    .with_arguments(vec![argument])
+impl Type {
+    pub fn map<K, V>(key: K, value: V) -> Self
+    where
+        K: Into<Type>,
+        V: Into<Type>,
+    {
+        Self::Map {
+            key: Box::new(key.into()),
+            value: Box::new(value.into()),
+        }
+    }
+
+    pub fn list<A>(argument: A) -> Self
+    where
+        A: Into<Type>,
+    {
+        Self::List {
+            argument: Box::new(argument.into()),
+        }
+    }
+}
+
+impl<'a> FormatInto<Dart> for &'a Type {
+    fn format_into(self, t: &mut dart::Tokens) {
+        match self {
+            Type::Import { import } => quote_in!(*t => #import),
+            Type::Local { ident } => quote_in!(*t => #ident),
+            Type::Dynamic => quote_in!(*t => dynamic),
+            Type::Int => quote_in!(*t => int),
+            Type::Double => quote_in!(*t => double),
+            Type::Bool => quote_in!(*t => bool),
+            Type::String => quote_in!(*t => String),
+            Type::List { argument } => {
+                quote_in!(*t => List<#(&**argument)>);
             }
-            DartType::Map { ref key, ref value } => {
-                let key = key.ty();
-                let value = value.ty();
-                dart::imported(dart::DART_CORE)
-                    .name("Map")
-                    .with_arguments(vec![key, value])
+            Type::Map { key, value } => {
+                quote_in!(*t => Map<#(&**key), #(&**value)>);
+            }
+        }
+    }
+}
+
+impl Type {
+    /// Create an encode function appropriate for this type.
+    pub fn encode(&self, i: dart::Tokens) -> dart::Tokens {
+        match self {
+            Type::Import { .. } => quote!(#i.encode()),
+            Type::Local { .. } => quote!(#i.encode()),
+            Type::Dynamic => i,
+            Type::Int => i,
+            Type::Double => i,
+            Type::Bool => i,
+            Type::String => i,
+            Type::Map { key, value } => {
+                let d = value.encode(quote!(e.value));
+                quote!(Map.fromEntries(#i.entries.map((e) => MapEntry(e.key, #d))))
+            }
+            Type::List { argument } => {
+                let d = argument.encode(quote!(e));
+                quote!(List.from(#i.map((e) => #d)))
             }
         }
     }
 
     /// Create a decode function appropriate for this type.
-    pub fn encode(&self, i: Tokens<'el, Dart<'el>>) -> Result<Tokens<'el, Dart<'el>>> {
-        let _ = match *self {
-            DartType::Native { ref dart } => {
-                return Ok(toks!(i, ".encode()"));
-            }
-            DartType::Dynamic => Dart::Dynamic,
-            DartType::Int => dart::INT,
-            DartType::Double => dart::DOUBLE,
-            DartType::Bool => dart::BOOL,
-            DartType::String => dart::imported(dart::DART_CORE).name("String"),
-            DartType::Map { ref key, ref value } => {
-                let d = value.encode(toks!("e.value"))?;
-                return Ok(toks!(
-                    "Map.fromEntries(",
-                    i,
-                    ".entries.map((e) => MapEntry(e.key, ",
-                    d,
-                    ")))"
-                ));
-            }
-            DartType::Array { ref argument } => {
-                let d = argument.encode(toks!("e"))?;
-                return Ok(toks!("List.from(", i, ".map((e) => ", d, "))"));
-            }
-        };
-
-        Ok(i)
-    }
-
-    /// Create a decode function appropriate for this type.
     /// The first tuple element returned is the decoding procedure of the argument.
     /// The second optional tuple element is extra validation that needs to be evaluated.
-    pub fn decode(
-        &self,
-        i: impl Into<Cons<'el>>,
-    ) -> Result<(Tokens<'el, Dart<'el>>, Tokens<'el, Dart<'el>>)> {
-        let i = i.into();
-
-        let ty = match *self {
-            DartType::Native { ref dart } => {
-                return Ok((toks!(dart.clone(), ".decode(", i.clone(), ")"), toks!()));
+    pub fn decode(&self, i: dart::Tokens) -> (dart::Tokens, dart::Tokens) {
+        let ty = match self {
+            Type::Import { import } => {
+                return (quote!(#import.decode(#i)), quote!());
             }
-            DartType::Dynamic => Dart::Dynamic,
-            DartType::Int => dart::INT,
-            DartType::Double => dart::DOUBLE,
-            DartType::Bool => dart::BOOL,
-            DartType::String => dart::imported(dart::DART_CORE).name("String"),
-            DartType::Map { ref key, ref value } => {
-                let (d, e) = value.decode("e.value")?;
-
-                let core = dart::imported(dart::DART_CORE);
-                let dyn_ty = core
-                    .name("Map")
-                    .with_arguments(vec![key.ty(), Dart::Dynamic]);
-
-                let entries = toks!("(", i.clone(), " as ", dyn_ty.clone(), ").entries");
+            Type::Local { ident } => {
+                return (quote!(#ident.decode(#i)), quote!());
+            }
+            Type::Map { key, value } => {
+                let i = &i;
+                let (d, e) = value.decode(quote!(e.value));
 
                 let t = if e.is_empty() {
-                    toks!(
-                        "Map.fromEntries(",
-                        entries,
-                        ".map((e) => MapEntry(e.key, ",
-                        d,
-                        ")))"
-                    )
+                    quote!(Map.fromEntries((#i as Map<#(&**key), dynamic>).entries.map((e) => MapEntry(e.key, #d))))
                 } else {
-                    let mut t = Tokens::new();
-                    t.append(toks!("Map.fromEntries(", entries, ".map((e) {"));
-                    t.nested(e);
-                    nested!(t, "return MapEntry(e.key, ", d, ");");
-                    push!(t, "}));");
-                    t
+                    quote! {
+                        Map.fromEntries((#i as Map<#(&**key), dynamic>).entries.map((e) {
+                            return MapEntry(e.key, #d);
+                        }))
+                    }
                 };
 
-                // check that value is a map.
-                let mut e = Tokens::new();
-                push!(e, "if (!(", i, " is ", dyn_ty, ")) {");
-                nested!(e, "throw 'expected ", dyn_ty, ", but was: $", i, "';");
-                push!(e, "}");
+                let e = quote! {
+                    if (!(#i is Map<#(&**key), dynamic>)) {
+                        throw #_(expected map, but was: $(#i));
+                    }
+                };
 
-                return Ok((t, e));
+                return (t, e);
             }
-            DartType::Array { ref argument } => {
-                let (d, e) = argument.decode("e")?;
+            Type::List { argument } => {
+                let i = &i;
+                let (d, e) = argument.decode(quote!(e));
 
-                let core = dart::imported(dart::DART_CORE);
-                let string = core.name("String");
-                let dyn_ty = core.name("List").with_arguments(vec![Dart::Dynamic]);
-
-                let entries = toks!("(", i.clone(), " as ", dyn_ty.clone(), ")");
+                let entries = quote!((#i as List<dynamic>));
 
                 let t = if e.is_empty() {
-                    toks!("List.of(", entries, ".map((e) => ", d, "))")
+                    quote!(List.of((#i as List<dynamic>).map((e) => #d)))
                 } else {
-                    let mut t = Tokens::new();
-                    t.append(toks!("List.of(", entries, ".map((e) {"));
-                    t.nested(e);
-                    nested!(t, "return ", d, ";");
-                    push!(t, "}))");
-                    t
+                    quote! {
+                        List.of((#i as List<dynamic>).map((e) {
+                            return #d;
+                        }))
+                    }
                 };
 
                 // check that value is a list.
-                let mut e = Tokens::new();
-                push!(e, "if (!(", i, " is ", dyn_ty, ")) {");
-                nested!(e, "throw 'expected ", dyn_ty, ", but was: $", i, "';");
-                push!(e, "}");
+                let e = quote! {
+                    if (!(#i is List<dynamic>)) {
+                        throw #_(expected list, but was: $(#i));
+                    }
+                };
 
-                return Ok((t, e));
+                return (t, e);
+            }
+            ty => ty,
+        };
+
+        let mut e = quote! {
+            if (!(#(&i) is #ty)) {
+                throw #_(expected $(#ty), but was: $(#(&i)));
             }
         };
 
-        let mut e = Tokens::new();
-        push!(e, "if (!(", i, " is ", ty, ")) {");
-        nested!(e, "throw 'expected ", ty, ", but was: $", i, "';");
-        push!(e, "}");
-        Ok((toks!(i), e))
+        (i, e)
     }
 }
 
@@ -199,32 +181,22 @@ impl Deref for DartEndpoint {
 pub struct DartFlavor;
 
 impl Flavor for DartFlavor {
-    type Type = DartType<'static>;
+    type Type = Type;
     type Name = Loc<RpName>;
     type Field = core::RpField<DartFlavor>;
     type Endpoint = DartEndpoint;
     type Package = core::RpPackage;
-    type EnumType = DartType<'static>;
+    type EnumType = Type;
 }
 
 /// Responsible for translating RpType -> Dart type.
 pub struct DartFlavorTranslator {
     packages: Rc<Packages>,
-    map: Dart<'static>,
-    list: Dart<'static>,
-    string: Dart<'static>,
 }
 
 impl DartFlavorTranslator {
     pub fn new(packages: Rc<Packages>) -> Self {
-        let core = dart::imported(dart::DART_CORE);
-
-        Self {
-            packages,
-            map: core.name("Map"),
-            list: core.name("List"),
-            string: core.name("String"),
-        }
+        Self { packages }
     }
 }
 
@@ -232,63 +204,54 @@ impl FlavorTranslator for DartFlavorTranslator {
     type Source = CoreFlavor;
     type Target = DartFlavor;
 
-    translator_defaults!(Self, local_name, field);
+    core::translator_defaults!(Self, local_name, field);
 
-    fn translate_number(&self, number: RpNumberType) -> Result<DartType<'static>> {
-        Ok(DartType::Int)
+    fn translate_number(&self, number: RpNumberType) -> Result<Type> {
+        Ok(Type::Int)
     }
 
-    fn translate_float(&self) -> Result<DartType<'static>> {
-        Ok(DartType::Double)
+    fn translate_float(&self) -> Result<Type> {
+        Ok(Type::Double)
     }
 
-    fn translate_double(&self) -> Result<DartType<'static>> {
-        Ok(DartType::Double)
+    fn translate_double(&self) -> Result<Type> {
+        Ok(Type::Double)
     }
 
-    fn translate_boolean(&self) -> Result<DartType<'static>> {
-        Ok(DartType::Bool)
+    fn translate_boolean(&self) -> Result<Type> {
+        Ok(Type::Bool)
     }
 
-    fn translate_string(&self, _: RpStringType) -> Result<DartType<'static>> {
-        Ok(DartType::String)
+    fn translate_string(&self, _: RpStringType) -> Result<Type> {
+        Ok(Type::String)
     }
 
-    fn translate_datetime(&self) -> Result<DartType<'static>> {
-        Ok(DartType::String)
+    fn translate_datetime(&self) -> Result<Type> {
+        Ok(Type::String)
     }
 
-    fn translate_array(&self, argument: DartType<'static>) -> Result<DartType<'static>> {
-        Ok(DartType::Array {
+    fn translate_array(&self, argument: Type) -> Result<Type> {
+        Ok(Type::List {
             argument: Box::new(argument),
         })
     }
 
-    fn translate_map(
-        &self,
-        key: DartType<'static>,
-        value: DartType<'static>,
-    ) -> Result<DartType<'static>> {
-        Ok(DartType::Map {
+    fn translate_map(&self, key: Type, value: Type) -> Result<Type> {
+        Ok(Type::Map {
             key: Box::new(key),
             value: Box::new(value),
         })
     }
 
-    fn translate_any(&self) -> Result<DartType<'static>> {
-        Ok(DartType::Dynamic)
+    fn translate_any(&self) -> Result<Type> {
+        Ok(Type::Dynamic)
     }
 
-    fn translate_bytes(&self) -> Result<DartType<'static>> {
-        Ok(DartType::String)
+    fn translate_bytes(&self) -> Result<Type> {
+        Ok(Type::String)
     }
 
-    fn translate_name(
-        &self,
-        from: &RpPackage,
-        reg: RpReg,
-        name: Loc<RpName>,
-    ) -> Result<DartType<'static>> {
+    fn translate_name(&self, from: &RpPackage, reg: RpReg, name: Loc<RpName>) -> Result<Type> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 
         if let Some(ref prefix) = name.prefix {
@@ -298,12 +261,12 @@ impl FlavorTranslator for DartFlavorTranslator {
             );
             let path = format!("{}.{}", path.join("/"), EXT);
 
-            let dart = dart::imported(path).name(ident).alias(prefix.to_string());
-            return Ok(DartType::Native { dart });
+            let import = dart::import(path, ident).with_alias(prefix.to_string());
+            return Ok(Type::Import { import });
         }
 
-        return Ok(DartType::Native {
-            dart: dart::local(ident),
+        return Ok(Type::Local {
+            ident: ident.into(),
         });
     }
 
@@ -331,20 +294,18 @@ impl FlavorTranslator for DartFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         enum_type: core::RpEnumType,
-    ) -> Result<DartType<'static>>
+    ) -> Result<Type>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
-        use crate::core::RpEnumType::*;
-
         match enum_type {
-            String(string) => self.translate_string(string),
-            Number(number) => self.translate_number(number),
+            core::RpEnumType::String(string) => self.translate_string(string),
+            core::RpEnumType::Number(number) => self.translate_number(number),
         }
     }
 }
 
-decl_flavor!(DartFlavor, core);
+core::decl_flavor!(pub(crate) DartFlavor, core);
 
 /// Takes two iterators as a path, strips common prefix, and makes the two paths relative to each
 /// other.

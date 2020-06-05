@@ -3,6 +3,7 @@
 use crate::errors::Result;
 use crate::rp_package::Parts;
 use crate::{AsPackage, RpPackage, RpPackageFormat, Version};
+use serde::Serialize;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;

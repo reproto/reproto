@@ -1,9 +1,9 @@
-use crate::codegen::Configure;
+use crate::Options;
 
 pub struct Module;
 
 impl Module {
-    pub fn initialize(self, e: Configure) {
-        e.options.nullable = true;
+    pub fn initialize(self, options: &mut Options) {
+        options.nullable = true;
     }
 }

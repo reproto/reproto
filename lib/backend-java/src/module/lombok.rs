@@ -1,40 +1,41 @@
 //! Module that adds lombok annotations to generated classes.
 
-use crate::codegen::{ClassAdded, ClassCodegen, Configure};
-use crate::core::errors::*;
-use genco::java::imported;
-use genco::Java;
+use crate::codegen::class;
+use crate::Options;
+use genco::prelude::*;
+use std::rc::Rc;
 
 pub struct Module;
 
 impl Module {
-    pub fn initialize(self, e: Configure) {
+    pub fn initialize(self, options: &mut Options) {
         // lombok builds these automatically.
-        e.options.build_getters = false;
-        e.options.build_constructor = false;
-        e.options.build_hash_code = false;
-        e.options.build_equals = false;
-        e.options.build_to_string = false;
+        options.build_getters = false;
+        options.build_constructor = false;
+        options.build_hash_code = false;
+        options.build_equals = false;
+        options.build_to_string = false;
 
-        e.options.class_generators.push(Box::new(Lombok::new()));
+        options.gen.class.push(Rc::new(Lombok::new()));
     }
 }
 
 pub struct Lombok {
-    data: Java<'static>,
+    data: Rc<java::Import>,
 }
 
 impl Lombok {
     pub fn new() -> Lombok {
         Lombok {
-            data: imported("lombok", "Data"),
+            data: Rc::new(java::import("lombok", "Data")),
         }
     }
 }
 
-impl ClassCodegen for Lombok {
-    fn generate(&self, e: ClassAdded) -> Result<()> {
-        e.spec.annotation(toks!["@", self.data.clone()]);
-        Ok(())
+impl class::Codegen for Lombok {
+    fn generate(&self, e: class::Args<'_>) {
+        e.annotations.push(quote! {
+            @#(&*self.data)
+        });
     }
 }

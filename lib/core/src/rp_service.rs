@@ -2,6 +2,7 @@
 
 use crate::errors::Result;
 use crate::{Diagnostics, Flavor, Loc, RpReg, Translate, Translator};
+use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct RpServiceBodyHttp {

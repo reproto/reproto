@@ -1,10 +1,12 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use crate::backend::Initializer;
-use crate::core::errors::Result;
 use crate::utils::VersionHelper;
 use crate::Options;
-use genco::{Cons, Python, Tokens};
+use backend::Initializer;
+use core::errors::Result;
+use genco::prelude::*;
+use genco::tokens::ItemStr;
+use serde::Deserialize;
 use std::rc::Rc;
 
 #[derive(Debug, Default, Deserialize)]
@@ -17,7 +19,7 @@ pub struct Module {
 
 impl Module {
     pub fn new(config: Config) -> Module {
-        Module { config: config }
+        Module { config }
     }
 }
 
@@ -25,8 +27,8 @@ impl Module {
 struct Python2VersionHelper {}
 
 impl VersionHelper for Python2VersionHelper {
-    fn is_string<'el>(&self, var: Cons<'el>) -> Tokens<'el, Python<'el>> {
-        toks!["isinstance(", var, ", unicode)"]
+    fn is_string(&self, var: &ItemStr) -> Tokens<Python> {
+        quote!(isinstance(#var, unicode))
     }
 }
 
@@ -34,7 +36,7 @@ impl Initializer for Module {
     type Options = Options;
 
     fn initialize(&self, options: &mut Options) -> Result<()> {
-        options.version_helper = Rc::new(Box::new(Python2VersionHelper {}));
+        options.version_helper = Rc::new(Python2VersionHelper {});
 
         Ok(())
     }

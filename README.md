@@ -140,14 +140,15 @@ git submodule update --init
 Pack syntax highlighting and themes:
 
 ```bash
-make dumps
+cargo build-syntax
+cargo build-themes
 ```
 
 Build and install the CLI.
 This will install `reproto` into `~/.cargo/bin`, make sure it is in your PATH:
 
 ```bash
-cargo install --path $PWD/cli reproto
+cargo install --path cli reproto
 ```
 
 [rust-get-started]: https://rustup.rs
@@ -166,26 +167,46 @@ cargo install --path $PWD/cli reproto
 
 This project includes an extensive set of integration tests.
 
-See `make help` for documentation on what can be done.
+See `cargo it --help` for documentation on what can be done.
 
 Suites are fast tests which compiles a given set of rules, and compares with expected output stored
 in this repository.
 
 ```bash
-make suites
+cargo it --suites
+```
+
+To run UI tests:
+
+```bash
+cargo it --ui
 ```
 
 Projects are complete project tests.
 These are projects written for various programming languages, and are generally harder to build.
 
 ```bash
-make projects
+cargo it --projects
 ```
 
 To run all tests, do:
 
 ```bash
-make all
+cargo it --all
 ```
 
 For more information, run `make help`.
+
+#### Testing Rust Projects
+
+Install Rust: https://rustup.rs
+
+#### Testing Dart Projects
+
+Install Dart SDK: https://dart.dev/get-dart
+
+#### Testing Python Projects
+
+Install Python.
+
+All python testing requires `requests` to be installed.

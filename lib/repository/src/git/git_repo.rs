@@ -1,7 +1,7 @@
 //! Abstraction over git repositories.
 //! Uses git command available on the system to keep a repo in-sync.
 
-use crate::core::errors::*;
+use core::errors::Result;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -47,7 +47,7 @@ impl GitRepo {
         };
 
         if !path.is_dir() {
-            trace!("Initializing git repo in {}", path.display());
+            log::trace!("Initializing git repo in {}", path.display());
             fs::create_dir_all(path)?;
             git_repo.git(&["init"])?;
             git_repo.update()?;
@@ -83,7 +83,7 @@ impl GitRepo {
             .env("GIT_DIR", &self.git_dir)
             .env("GIT_WORK_TREE", &self.work_tree);
 
-        debug!("git: {:?}", command);
+        log::debug!("git: {:?}", command);
 
         let status = command.status()?;
 
@@ -130,7 +130,7 @@ impl GitRepo {
             Some(revspec) => revspec,
         };
 
-        info!("Updating {}", remote);
+        log::info!("Updating {}", remote);
         self.git(&["fetch", remote.as_ref(), revspec])?;
         self.reset(FETCH_HEAD)?;
 

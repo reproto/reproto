@@ -1,9 +1,6 @@
 //! Compiler for generating documentation.
 
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
-use crate::core::errors::*;
-use crate::core::flavored::{RpDecl, RpFile, RpVersionedPackage};
-use crate::core::{AsPackage, CoreFlavor};
 use crate::doc_builder::DocBuilder;
 use crate::enum_processor::EnumProcessor;
 use crate::index_processor::{Data as IndexData, IndexProcessor};
@@ -11,9 +8,11 @@ use crate::interface_processor::InterfaceProcessor;
 use crate::package_processor::{Data as PackageData, PackageProcessor};
 use crate::processor::Processor;
 use crate::service_processor::ServiceProcessor;
-use crate::trans::Translated;
 use crate::tuple_processor::TupleProcessor;
 use crate::type_processor::TypeProcessor;
+use core::errors::Result;
+use core::flavored::{RpDecl, RpFile, RpVersionedPackage};
+use core::{AsPackage, CoreFlavor};
 use genco::IoFmt;
 use std::cell::RefCell;
 use std::fs;
@@ -22,6 +21,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
+use trans::Translated;
 
 const NORMALIZE_CSS: &[u8] = include_bytes!("static/normalize.css");
 
@@ -58,7 +58,7 @@ impl<'a> DocCompiler<'a> {
 
     /// Process a single declaration.
     fn process_decl(&self, decl: &RpDecl) -> Result<()> {
-        use crate::core::RpDecl::*;
+        use core::RpDecl::*;
 
         let package = decl.name().package.try_as_package()?;
 
@@ -71,7 +71,7 @@ impl<'a> DocCompiler<'a> {
             path = path.join(part.as_str());
 
             if !path.is_dir() {
-                debug!("+dir: {}", path.display());
+                log::debug!("+dir: {}", path.display());
                 fs::create_dir_all(&path)?;
             }
         }
@@ -82,7 +82,7 @@ impl<'a> DocCompiler<'a> {
         let root = root.join("/");
 
         let out = path.join(format!("{}.{}.html", decl.kind(), name));
-        debug!("+file: {}", out.display());
+        log::debug!("+file: {}", out.display());
         let mut f = File::create(&out)?;
         let mut fmt = IoFmt(&mut f);
         let out = RefCell::new(DocBuilder::new(&mut fmt));
@@ -134,19 +134,19 @@ impl<'a> DocCompiler<'a> {
     /// Write stylesheets.
     fn write_stylesheets(&self) -> Result<()> {
         if !self.out_path.is_dir() {
-            debug!("+dir: {}", self.out_path.display());
+            log::debug!("+dir: {}", self.out_path.display());
             fs::create_dir_all(&self.out_path)?;
         }
 
         let normalize_css = self.out_path.join(NORMALIZE_CSS_NAME);
 
-        debug!("+css: {}", normalize_css.display());
+        log::debug!("+css: {}", normalize_css.display());
         let mut f = fs::File::create(normalize_css)?;
         f.write_all(NORMALIZE_CSS)?;
 
         let doc_css = self.out_path.join(DOC_CSS_NAME);
 
-        debug!("+css: {}", doc_css.display());
+        log::debug!("+css: {}", doc_css.display());
         let mut f = fs::File::create(doc_css)?;
         f.write_all(self.theme_css)?;
 
@@ -179,7 +179,7 @@ impl<'a> DocCompiler<'a> {
         }
         .process()?;
 
-        debug!("+file: {}", index_html.display());
+        log::debug!("+file: {}", index_html.display());
         Ok(())
     }
 
@@ -202,7 +202,7 @@ impl<'a> DocCompiler<'a> {
         }
         .process()?;
 
-        debug!("+file: {}", index_html.display());
+        log::debug!("+file: {}", index_html.display());
         Ok(())
     }
 }

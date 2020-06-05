@@ -1,13 +1,12 @@
 //! Module that adds fasterxml annotations to generated classes.
 
-use crate::backend::Initializer;
 use crate::codegen::{ServiceAdded, ServiceCodegen};
-use crate::core;
-use crate::core::errors::Result;
-use crate::utils::{BlockComment, IfNoneRaise, IfNoneThen};
+use crate::utils::BlockComment;
 use crate::Options;
-use genco::python::imported;
-use genco::{Python, Quoted, Tokens};
+use backend::Initializer;
+use core::errors::Result;
+use genco::prelude::*;
+use serde::Deserialize;
 
 #[derive(Debug, Default, Deserialize)]
 pub struct Config {}
@@ -19,18 +18,18 @@ pub struct Module {
 
 impl Module {
     pub fn new(config: Config) -> Module {
-        Module { config: config }
+        Module { config }
     }
 }
 
 struct RequestsServiceCodegen {
-    requests: Python<'static>,
+    requests: python::ImportModule,
 }
 
 impl RequestsServiceCodegen {
     pub fn new() -> RequestsServiceCodegen {
         Self {
-            requests: imported("requests"),
+            requests: python::import_module("requests"),
         }
     }
 }
@@ -42,157 +41,88 @@ impl ServiceCodegen for RequestsServiceCodegen {
             body, type_body, ..
         }: ServiceAdded,
     ) -> Result<()> {
-        type_body.push(toks!["class ", &body.name, "_Requests:"]);
-        type_body.nested({
-            let mut t = Tokens::new();
+        quote_in! { *type_body =>
+            class #(&body.name)_Requests:
+                def __init__(self, **kw):
+                    url = kw.pop("url", None)
 
-            t.push({
-                let mut args = Tokens::new();
-                args.append("self");
-                args.append("**kw");
-
-                // Use default URL if available.
-                if let Some(ref url) = body.http.url {
-                    args.append(toks!["url=", url.as_str().quoted()]);
-                } else {
-                    args.append("url");
-                }
-
-                args.append(toks!["session=", self.requests.clone()]);
-
-                let mut t = Tokens::new();
-
-                t.push(toks!["def __init__(self, **kw):"]);
-
-                t.nested({
-                    let mut t = Tokens::new();
-                    t.push(toks!["url = kw.pop(", "url".quoted(), ", None)"]);
-
-                    if let Some(ref url) = body.http.url {
-                        t.push(IfNoneThen("url", url.as_str().quoted()));
+                    #(if let Some(ref url) = body.http.url {
+                        if url is None:
+                            url = #(quoted(url.as_str()))
                     } else {
-                        t.push(IfNoneRaise("url", "Missing 'url' argument"));
-                    }
+                        if url is None:
+                            raise Exception("Missing 'url' argument")
+                    })
 
-                    t.push(toks!["session = kw.pop(", "session".quoted(), ", None)"]);
-                    t.push(IfNoneThen("session", self.requests.clone()));
+                    session = kw.pop("session", None)
 
-                    t.push({
-                        let mut t = Tokens::new();
-                        t.push("self.url = url");
-                        t.push("self.session = session");
-                        t
-                    });
+                    if session is None:
+                        session = #(&self.requests)
 
-                    t.join_line_spacing()
-                });
+                    self.url = url
+                    self.session = session
 
-                t
-            });
-
-            for e in &body.endpoints {
-                if !e.has_http_support() {
-                    continue;
-                }
-
-                t.push({
-                    let mut t = Tokens::new();
-
-                    let mut path = Tokens::new();
-
-                    if let Some(ref http_path) = e.http.path {
-                        for step in &http_path.steps {
-                            path.push(toks!["path.append(\"/\")"]);
-
-                            for part in &step.parts {
-                                let var = match *part {
-                                    core::RpPathPart::Variable(ref arg) => {
-                                        toks!["str(", arg.safe_ident(), ")"]
-                                    }
-                                    core::RpPathPart::Segment(ref s) => {
-                                        toks![s.to_string().quoted()]
-                                    }
-                                };
-
-                                path.push(toks!["path.append(", var, ")"]);
-                            }
-                        }
-                    }
-
-                    let path = {
-                        if path.is_empty() {
-                            path
-                        } else {
-                            let mut full = Tokens::new();
-                            full.push("path = list()");
-                            full.push("path.append(self.url)");
-                            full.extend(path);
-                            full
-                        }
-                    };
-
-                    let method = e
-                        .http
-                        .method
-                        .as_ref()
-                        .unwrap_or(&core::RpHttpMethod::Get)
-                        .as_str();
-
-                    let mut args = Tokens::new();
-                    args.append("self");
-                    args.extend(e.arguments.iter().map(|a| a.safe_ident().into()));
-
-                    t.push(toks!["def ", e.safe_ident(), "(", args.join(", "), "):"]);
-                    t.nested(BlockComment(&e.comment));
-
-                    t.nested({
-                        let mut t = Tokens::new();
-
-                        let mut args = Tokens::new();
-
-                        args.append(method.quoted());
-
-                        if path.is_empty() {
-                            args.append("self.url");
-                        } else {
-                            t.push(path);
-                            t.push("url = \"\".join(path)");
-                            args.append("url");
-                        };
-
-                        if let Some(ref body) = e.http.body {
-                            args.append(toks!["json=", body.safe_ident(), ".encode()"]);
+                #(for e in &body.endpoints join (#<line>) {
+                    #(ref t =>
+                        if !e.has_http_support() {
+                            continue;
                         }
 
-                        t.push(toks!["r = self.session.request(", args.join(", "), ")"]);
-                        t.push(toks!["r.raise_for_status()"]);
+                        let method = e
+                            .http
+                            .method
+                            .as_ref()
+                            .unwrap_or(&core::RpHttpMethod::Get)
+                            .as_str();
 
-                        if let Some(res) = e.response.as_ref() {
-                            match e.http.accept {
-                                core::RpAccept::Json => {
-                                    push!(t, "data = r.json()");
+                        quote_in! { *t =>
+                            def #(e.safe_ident())(self, #(for a in &e.arguments => #(a.safe_ident()))):
+                                #(BlockComment(&e.comment))
+                                #(if let Some(ref http_path) = e.http.path {
+                                    path = list()
 
-                                    if let Some(d) = res.ty().decode("data", 0) {
-                                        t.push(d);
-                                    }
+                                    path.append(self.url)
+                                    #(for step in &http_path.steps join (#<push>) =>
+                                        path.append("/")
+                                        #(for part in &step.parts join (#<push>) {
+                                            path.append(#(match part {
+                                                core::RpPathPart::Variable(a) => str(#(a.safe_ident())),
+                                                core::RpPathPart::Segment(s) => #(quoted(s.to_string())),
+                                            }))
+                                        })
+                                    )
 
-                                    push!(t, "return data");
-                                }
-                                core::RpAccept::Text => {
-                                    t.push("return r.text");
-                                }
-                            }
+                                    url = "/".join(path)
+                                } else {
+                                    url = self.url
+                                })
+
+                                r = self.session.request(#method, url=url#(if let Some(ref body) = e.http.body {
+                                    , json=#(body.safe_ident()).encode()
+                                }))
+
+                                r.raise_for_status()
+
+                                #(if let Some(res) = &e.response =>
+                                    #(match e.http.accept {
+                                        core::RpAccept::Json => {
+                                            data = r.json();
+
+                                            #(if let Some(d) = res.ty().decode("data", 0) {
+                                                #d
+                                            })
+
+                                            return data
+                                        }
+                                        core::RpAccept::Text => {
+                                            return r.text
+                                        }
+                                    })
+                                )
                         }
-
-                        t.join_line_spacing()
-                    });
-
-                    t
-                });
-            }
-
-            t.join_line_spacing()
-        });
+                    )
+                })
+        }
 
         Ok(())
     }

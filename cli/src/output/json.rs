@@ -1,9 +1,8 @@
 use super::{LockableWrite, Output};
-use crate::core::errors::*;
-use crate::core::flavored::RpName;
-use crate::core::{Encoding, Source, Span, SymbolKind};
-use log;
-use serde_json;
+use core::errors::Result;
+use core::flavored::RpName;
+use core::{Encoding, Source, Span, SymbolKind};
+use serde::Serialize;
 use std::io;
 use std::path::PathBuf;
 

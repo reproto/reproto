@@ -1,0 +1,5 @@
+/script.sh
+/target
+/node_modules
+/generated
+/package-lock.json

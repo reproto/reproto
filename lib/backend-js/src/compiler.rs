@@ -1,327 +1,287 @@
-use crate::backend::PackageProcessor;
-use crate::core::errors::*;
-use crate::core::{self, Handle, Loc};
 use crate::flavored::{
-    JavaScriptFlavor, JavaScriptName, RpEnumBody, RpField, RpInterfaceBody, RpTupleBody, RpTypeBody,
+    JavaScriptFlavor, Name, RpEnumBody, RpField, RpInterfaceBody, RpTupleBody, RpTypeBody,
 };
-use crate::naming::{self, Naming};
-use crate::trans::{self, Translated};
 use crate::utils::{is_defined, is_not_defined};
 use crate::{FileSpec, Options, EXT};
-use genco::{Element, JavaScript, Quoted, Tokens};
+use backend::PackageProcessor;
+use core::errors::Result;
+use core::{Handle, Loc, Span};
+use genco::prelude::*;
+use genco::tokens::FormatInto;
+use naming::Naming;
+use relative_path::RelativePathBuf;
 use std::rc::Rc;
+use trans::Translated;
 
-pub struct Compiler<'el> {
-    pub env: &'el Translated<JavaScriptFlavor>,
-    variant_field: &'el Loc<RpField>,
-    handle: &'el dyn Handle,
+pub struct Compiler<'a> {
+    pub env: &'a Translated<JavaScriptFlavor>,
+    handle: &'a dyn Handle,
     to_lower_snake: naming::ToLowerSnake,
-    values: Tokens<'static, JavaScript<'static>>,
-    enum_name: Tokens<'static, JavaScript<'static>>,
+    values: Tokens<JavaScript>,
+    enum_name: Tokens<JavaScript>,
 }
 
-impl<'el> Compiler<'el> {
+impl<'a> Compiler<'a> {
     pub fn new(
-        env: &'el Translated<JavaScriptFlavor>,
-        variant_field: &'el Loc<RpField>,
+        env: &'a Translated<JavaScriptFlavor>,
         _: Options,
-        handle: &'el dyn Handle,
-    ) -> Compiler<'el> {
+        handle: &'a dyn Handle,
+    ) -> Compiler<'a> {
         Compiler {
             env,
-            variant_field,
             handle,
             to_lower_snake: naming::to_lower_snake(),
-            values: "values".into(),
-            enum_name: "name".into(),
+            values: quote!(values),
+            enum_name: quote!(name),
         }
     }
 
     pub fn compile(&self) -> Result<()> {
-        let files = self.populate_files()?;
-        self.write_files(files)
+        use genco::fmt;
+
+        let files = self.do_populate_files(|_, new, out| {
+            if !new {
+                out.0.line();
+            }
+
+            Ok(())
+        })?;
+
+        let handle = self.handle();
+
+        for (package, out) in files {
+            let full_path = self.setup_module_path(&package)?;
+
+            log::debug!("+module: {}", full_path);
+
+            let path = RelativePathBuf::from(format!("{}.js", package.join("/")));
+
+            let mut w = fmt::IoWriter::new(handle.create(&full_path)?);
+            let mut config = js::Config::default();
+
+            if let Some(parent) = path.parent() {
+                config = config.with_module_path(parent.to_owned());
+            }
+
+            let fmt =
+                fmt::Config::from_lang::<JavaScript>().with_indentation(fmt::Indentation::Space(2));
+
+            out.0.format_file(&mut w.as_formatter(&fmt), &config)?;
+        }
+
+        Ok(())
     }
 
     /// Build a function that throws an exception if the given value `toks` is None.
-    fn throw_if_null<S>(&self, toks: S, field: &Loc<RpField>) -> Tokens<'el, JavaScript<'el>>
+    fn throw_if_null<T>(&self, out: &mut js::Tokens, toks: T, field: &Loc<RpField>)
     where
-        S: Into<Tokens<'el, JavaScript<'el>>>,
+        T: Copy + FormatInto<JavaScript>,
     {
-        let required_error = format!("{}: is a required field", field.name()).quoted();
-        js![if is_not_defined(toks), js![throw required_error]]
-    }
-
-    fn encode_method<B, I>(
-        &self,
-        fields: I,
-        builder: B,
-        extra: Option<Tokens<'el, JavaScript<'el>>>,
-    ) -> Result<Tokens<'el, JavaScript<'el>>>
-    where
-        B: Into<Tokens<'el, JavaScript<'el>>>,
-        I: IntoIterator<Item = &'el Loc<RpField>>,
-    {
-        let mut body = Tokens::new();
-
-        body.push(toks!["const data = ", builder.into(), ";"]);
-
-        if let Some(extra) = extra {
-            body.push(extra);
-        }
-
-        let mut assign = Tokens::new();
-
-        for field in fields {
-            let var_string = field.name().quoted();
-            let field_toks = toks!["this.", field.safe_ident()];
-            let value_toks = field.ty.encode(field_toks.clone());
-
-            if field.is_optional() {
-                let toks = js![if is_defined(field_toks),
-                                      toks!["data[", var_string, "] = ", value_toks, ";"]];
-                assign.push(toks);
-            } else {
-                assign.push(self.throw_if_null(field_toks, field));
-                let toks = toks!["data[", var_string, "] = ", value_toks, ";"];
-                assign.push(toks);
+        quote_in! { *out =>
+            if (#(is_not_defined(toks))) {
+                throw new Error(#(quoted(format!("{}: is a required field", field.name()))));
             }
         }
-
-        if !assign.is_empty() {
-            body.push(assign.join_line_spacing());
-        }
-
-        body.push(js![return "data"]);
-
-        Ok({
-            let mut t = Tokens::new();
-            t.push("encode() {");
-            t.nested(body.join_line_spacing());
-            t.push("}");
-            t
-        })
     }
 
-    fn encode_tuple_method<I>(&self, fields: I) -> Result<Tokens<'el, JavaScript<'el>>>
-    where
-        I: IntoIterator<Item = &'el Loc<RpField>>,
-    {
-        let mut values = Tokens::new();
-
-        let mut body = Tokens::new();
-
-        for field in fields {
-            let toks = toks!["this.", field.safe_ident()];
-            body.push(self.throw_if_null(toks.clone(), field));
-            values.push(field.ty.encode(toks));
-        }
-
-        body.push(js![@return [ values ]]);
-
-        let mut encode = Tokens::new();
-        encode.push("encode() {");
-        encode.nested(body.join_line_spacing());
-        encode.push("}");
-        Ok(encode)
-    }
-
-    fn decode_enum_method(
+    fn encode_method<'el, B, I>(
         &self,
-        name: &'el JavaScriptName,
-        ident: &'el str,
-    ) -> Result<Tokens<'el, JavaScript<'el>>> {
-        let members = toks![name, ".", self.values.clone()];
-        let loop_init = toks!["let i = 0, l = ", members.clone(), ".length"];
-        let match_member = toks!["member.", ident, " === data"];
-
-        let mut loop_body = Tokens::new();
-        loop_body.push(toks!["const member = ", members, "[i]"]);
-        loop_body.push(js![if match_member, toks!["return member;"]]);
-
-        let mut member_loop = Tokens::new();
-        member_loop.push(js![for loop_init; "i < l"; "i++", loop_body.join_line_spacing()]);
-
-        let mut body = Tokens::new();
-        body.push(member_loop);
-        body.push(js![throw "no matching value: ".quoted(), " + data"]);
-
-        let mut decode = Tokens::new();
-        decode.push("static decode(data) {");
-        decode.nested(body.join_line_spacing());
-        decode.push("}");
-        Ok(decode)
-    }
-
-    fn decode_method<F, I>(
-        &self,
+        out: &mut Tokens<JavaScript>,
         fields: I,
-        name: &'el JavaScriptName,
-        variable_fn: F,
-    ) -> Result<Tokens<'el, JavaScript<'el>>>
-    where
-        F: Fn(usize, &'el Loc<RpField>) -> Element<'el, JavaScript<'el>>,
+        builder: B,
+        extra: Option<Tokens<JavaScript>>,
+    ) where
+        B: FormatInto<JavaScript>,
         I: IntoIterator<Item = &'el Loc<RpField>>,
     {
-        let mut arguments = Tokens::new();
-        let mut assign = Tokens::new();
+        quote_in! { *out =>
+            encode() {
+                const data = #builder;
 
-        for (i, field) in fields.into_iter().enumerate() {
-            let var_name = Rc::new(format!("v_{}", field.ident()));
-            let var = variable_fn(i, field);
+                #(if let Some(extra) = extra {
+                    #extra
+                })
 
-            let toks = if field.is_optional() {
-                let var_name = toks![var_name.clone()];
-                let var_toks = field.ty.decode(var_name.clone());
+                #(for field in fields join (#<line>) {
+                    #(ref out => {
+                        let field_toks = quote!(this.#(field.safe_ident()));
 
-                let mut check = Tokens::new();
+                        if field.is_optional() {
+                            quote_in! { *out =>
+                                if (#(is_defined(&field_toks))) {
+                                    data[#(quoted(field.name()))] = #(field.ty.encode(field_toks));
+                                }
+                            }
+                        } else {
+                            quote_in! { *out =>
+                                #(ref o => self.throw_if_null(o, &field_toks, field))
 
-                check.push(toks!["let ", var_name.clone(), " = data[", var, "];"]);
-                check.push(js![if is_defined(var_name.clone()),
-                                      toks![var_name.clone(), " = ", var_toks, ";"],
-                                      toks![var_name, " = null", ";"]]);
+                                data[#(quoted(field.name()))] = #(field.ty.encode(field_toks));
+                            }
+                        }
+                    })
+                })
 
-                check.join_line_spacing()
-            } else {
-                let var_toks = toks!["data[", var.clone(), "]"];
-                let var_toks = field.ty.decode(var_toks.into());
-
-                let mut check = Tokens::new();
-
-                let var_name = toks![var_name.clone()];
-
-                check.push(toks!["const ", var_name.clone(), " = ", var_toks, ";"]);
-                check.push(js![if is_not_defined(var_name),
-                                   js![throw var, " + ", ": required field".quoted()]]);
-
-                check.join_line_spacing()
-            };
-
-            assign.push(toks);
-            arguments.append(var_name);
+                return data;
+            }
         }
-
-        let mut body = Tokens::new();
-
-        if !assign.is_empty() {
-            body.push(assign.join_line_spacing());
-        }
-
-        body.push(js![@return new name, arguments]);
-
-        let mut decode = Tokens::new();
-        decode.push("static decode(data) {");
-        decode.nested(body.join_line_spacing());
-        decode.push("}");
-        Ok(decode)
     }
 
-    fn field_by_name(_i: usize, field: &'el Loc<RpField>) -> Element<'el, JavaScript<'el>> {
-        field.name().quoted()
-    }
-
-    fn field_by_index(i: usize, _field: &'el Loc<RpField>) -> Element<'el, JavaScript<'el>> {
-        i.to_string().into()
-    }
-
-    fn build_constructor<I>(&self, fields: I) -> Tokens<'el, JavaScript<'el>>
+    fn encode_tuple_method<'el, I>(&self, out: &mut js::Tokens, fields: I)
     where
         I: IntoIterator<Item = &'el Loc<RpField>>,
     {
-        let mut arguments = Tokens::new();
-        let mut assignments = Tokens::new();
+        let mut values = Vec::new();
+
+        quote_in! { *out =>
+            encode() {
+                #(for field in fields join (#<line>) {
+                    #(ref out => {
+                        let access = quote!(this.#(field.safe_ident()));
+                        self.throw_if_null(out, &access, field);
+                        values.push(field.ty.encode(access));
+                    })
+                })
+
+                return [#(for v in values join (, ) => #v)];
+            }
+        }
+    }
+
+    fn decode_enum_method(&self, out: &mut js::Tokens, name: &Name, field: &Loc<RpField>) {
+        let members = &quote!(#name.#(&self.values));
+
+        quote_in! { *out =>
+            static decode(data) {
+                for (let i = 0, l = #members.length; i < l; i++) {
+                    const member = #members[i];
+
+                    if (member.#(field.safe_ident()) === data) {
+                        return member;
+                    }
+                }
+
+                throw new Error(#(quoted(format!("no value matching: "))) + data);
+            }
+        }
+    }
+
+    fn decode_method<'el, F, I, O>(&self, out: &mut js::Tokens, fields: I, name: &Name, var_fn: F)
+    where
+        F: Fn(usize, &'el Loc<RpField>) -> O,
+        I: IntoIterator<Item = &'el Loc<RpField>>,
+        O: FormatInto<JavaScript> + Copy,
+    {
+        let mut arguments = Vec::<Rc<String>>::new();
+
+        quote_in! { *out =>
+            static decode(data) {
+                #(for (i, field) in fields.into_iter().enumerate() join (#<line>) {
+                    #(ref o {
+                        let var_name = &Rc::new(format!("v_{}", field.ident));
+                        arguments.push(var_name.clone());
+
+                        let var = var_fn(i, field);
+
+                        if field.is_optional() {
+                            quote_in! { *o =>
+                                let #var_name = data[#var];
+
+                                if (#(is_defined(var_name))) {
+                                    #(ref t => field.ty.decode(t, quote!(#var_name)))
+                                } else {
+                                    #var_name = null;
+                                }
+                            }
+                        } else {
+                            quote_in! { *o =>
+                                let #var_name = data[#var];
+
+                                if (#(is_not_defined(var_name))) {
+                                    throw new Error(#var + ": required field");
+                                }
+
+                                #(ref t => field.ty.decode(t, quote!(#var_name)))
+                            }
+                        }
+                    })
+                })
+
+                return new #name(#(for a in arguments join (, ) => #a));
+            }
+        }
+    }
+
+    fn field_by_name<'o>(
+        _i: usize,
+        field: &'o Loc<RpField>,
+    ) -> impl FormatInto<JavaScript> + 'o + Copy {
+        quoted(field.name())
+    }
+
+    fn field_by_index(i: usize, _field: &Loc<RpField>) -> impl FormatInto<JavaScript> + Copy {
+        display(i)
+    }
+
+    fn build_constructor<'el, I>(&self, out: &mut js::Tokens, fields: I)
+    where
+        I: IntoIterator<Item = &'el Loc<RpField>>,
+    {
+        let mut arguments = Vec::new();
+        let mut assign = Vec::new();
 
         for field in fields {
-            arguments.append(field.safe_ident());
-            assignments.push(toks![
-                "this.",
-                field.safe_ident(),
-                " = ",
-                field.safe_ident(),
-                ";",
-            ]);
+            arguments.push(field.safe_ident());
+            assign.push(quote!(this.#(field.safe_ident()) = #(field.safe_ident());));
         }
 
-        let mut ctor = Tokens::new();
-        ctor.push(toks!["constructor(", arguments.join(", "), ") {"]);
-        ctor.nested(assignments);
-        ctor.push("}");
-        ctor
+        quote_in! { *out =>
+            constructor(#(for a in arguments join (, ) => #a)) {
+                #<push>#(for a in assign join (#<push>) => #a)
+            }
+        }
     }
 
-    fn build_enum_constructor<'a>(&self, field: &'el RpField) -> Tokens<'el, JavaScript<'el>> {
-        let mut arguments = Tokens::new();
-        let mut assignments = Tokens::new();
-
-        arguments.append(self.enum_name.clone());
-        assignments.push(toks![
-            "this.",
-            self.enum_name.clone(),
-            " = ",
-            self.enum_name.clone(),
-            ";",
-        ]);
-
-        arguments.append(field.safe_ident());
-        assignments.push(toks![
-            "this.",
-            field.safe_ident(),
-            " = ",
-            field.safe_ident(),
-            ";",
-        ]);
-
-        let mut ctor = Tokens::new();
-        ctor.push(toks!["constructor(", arguments.join(", "), ") {"]);
-        ctor.nested(assignments);
-        ctor.push("}");
-        ctor
+    fn build_enum_constructor(&self, out: &mut js::Tokens, field: &RpField) {
+        quote_in! { *out =>
+            constructor(#(&self.enum_name), #(field.safe_ident())) {
+                this.#(&self.enum_name) = #(&self.enum_name);
+                this.#(field.safe_ident()) = #(field.safe_ident());
+            }
+        }
     }
 
-    fn enum_encode_decode(
-        &self,
-        field: &'el Loc<RpField>,
-        name: &'el JavaScriptName,
-    ) -> Result<Tokens<'el, JavaScript<'el>>> {
-        let mut elements = Tokens::new();
-
-        elements.push({
-            let mut encode = Tokens::new();
-            encode.push("encode() {");
-            encode.nested(js![return "this.", field.safe_ident()]);
-            encode.push("}");
-            encode
-        });
-
-        let decode = self.decode_enum_method(name, field.safe_ident())?;
-        elements.push(decode);
-        return Ok(elements.into());
+    fn enum_encode(&self, out: &mut js::Tokens, field: &Loc<RpField>) {
+        quote_in! { *out =>
+            encode() {
+                return this.#(field.safe_ident());
+            }
+        }
     }
 
-    fn build_getters<I>(&self, fields: I) -> Result<Vec<Tokens<'el, JavaScript<'el>>>>
+    fn build_getters<'el, I>(&self, fields: I) -> Vec<Tokens<JavaScript>>
     where
         I: IntoIterator<Item = &'el Loc<RpField>>,
     {
         let mut result = Vec::new();
 
         for field in fields {
-            let name = Rc::new(self.to_lower_snake.convert(&field.ident));
+            let name = &Rc::new(self.to_lower_snake.convert(&field.ident));
 
-            result.push({
-                let mut tokens = Tokens::new();
-                tokens.push(toks!["function get_", name.clone(), "() {"]);
-                tokens.push(js![return "this.", name]);
-                tokens.push("}");
-                tokens
+            result.push(quote! {
+                function get_#(name)() {
+                    return this.#name;
+                }
             });
         }
 
-        Ok(result)
+        result
     }
 }
 
-impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'el> {
-    type Out = FileSpec<'el>;
-    type DeclIter = trans::translated::DeclIter<'el, JavaScriptFlavor>;
+impl<'a> PackageProcessor<'a, JavaScriptFlavor, Name> for Compiler<'a> {
+    type Out = FileSpec;
+    type DeclIter = trans::translated::DeclIter<'a, JavaScriptFlavor>;
 
     fn ext(&self) -> &str {
         EXT
@@ -331,265 +291,200 @@ impl<'el> PackageProcessor<'el, JavaScriptFlavor, JavaScriptName> for Compiler<'
         self.env.decl_iter()
     }
 
-    fn handle(&self) -> &'el dyn Handle {
+    fn handle(&self) -> &'a dyn Handle {
         self.handle
     }
 
-    fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
-        let mut class_body = Tokens::new();
+    fn process_tuple(&self, out: &mut Self::Out, body: &RpTupleBody) -> Result<()> {
+        quote_in! { out.0 =>
+            export class #(&body.name) {
+                #(ref o => self.build_constructor(o, &body.fields))
 
-        class_body.push(self.build_constructor(&body.fields));
+                #(if false {
+                    #(for getter in self.build_getters(&body.fields) join (#<line>) {
+                        #getter
+                    })
+                })
 
-        // TODO: make configurable
-        if false {
-            for getter in self.build_getters(&body.fields)? {
-                class_body.push(getter);
+                #(ref o => self.decode_method(o, &body.fields, &body.name, Self::field_by_index))
+
+                #(ref o => self.encode_tuple_method(o, &body.fields))
+
+                #(if backend::code_contains!(&body.codes, core::RpContext::Js) {
+                    #(ref o => backend::code_in!(o, &body.codes, core::RpContext::Js))
+                })
             }
         }
 
-        class_body.push(self.decode_method(&body.fields, &body.name, Self::field_by_index)?);
-
-        class_body.push(self.encode_tuple_method(&body.fields)?);
-        class_body.push_unless_empty(code!(&body.codes, core::RpContext::Js));
-
-        let mut class = Tokens::new();
-
-        class.push(toks!["export class ", &body.name, " {"]);
-        class.nested(class_body.join_line_spacing());
-        class.push("}");
-
-        out.0.push(class);
         Ok(())
     }
 
-    fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
-        let mut class_body = Tokens::new();
+    fn process_enum(&self, out: &mut Self::Out, body: &RpEnumBody) -> Result<()> {
+        let mut values = Vec::new();
 
-        let mut members = Tokens::new();
+        let variant_field = Loc::new(RpField::new("value", body.enum_type.clone()), Span::empty());
 
-        class_body.push(self.build_enum_constructor(self.variant_field));
-        class_body.push(self.enum_encode_decode(self.variant_field, &body.name)?);
+        quote_in! { out.0 =>
+            export class #(&body.name) {
+                #(ref o => self.build_enum_constructor(o, &variant_field))
 
-        let mut values = Tokens::new();
+                #(ref o => self.enum_encode(o, &variant_field))
 
-        for v in body.variants.iter() {
-            let mut args = Tokens::new();
+                #(ref o => self.decode_enum_method(o, &body.name, &variant_field))
 
-            args.append(v.ident().quoted());
-
-            match v.value {
-                core::RpVariantValue::String(string) => {
-                    args.append(string.quoted());
-                }
-                core::RpVariantValue::Number(number) => {
-                    args.append(number.to_string());
-                }
+                #(if backend::code_contains!(&body.codes, core::RpContext::Js) {
+                    #(ref o => backend::code_in!(o, &body.codes, core::RpContext::Js))
+                })
             }
 
-            let args = js![new & body.name, args];
-            let member = toks![&body.name, ".", v.ident()];
+            #(ref o => for v in body.variants.iter() {
+                values.push(quote!(#(&body.name).#(v.ident())));
 
-            values.push(js![= member.clone(), args]);
-            members.append(member);
+                quote_in! { *o =>
+                    #<push>
+                    #(&body.name).#(v.ident()) = new #(&body.name)(#(quoted(v.ident())), #(match v.value {
+                        core::RpVariantValue::String(string) => {
+                            #(quoted(string))
+                        }
+                        core::RpVariantValue::Number(number) => {
+                            #(display(number))
+                        }
+                    }));
+                }
+            })
+
+            #(&body.name).#(&self.values) = [#(for v in values join (, ) => #v)];
         }
 
-        class_body.push_unless_empty(code!(&body.codes, core::RpContext::Js));
-
-        let mut elements = Tokens::new();
-
-        let mut class = Tokens::new();
-
-        class.push(toks!["export class ", &body.name, " {"]);
-        class.nested(class_body.join_line_spacing());
-        class.push("}");
-
-        // class declaration
-        elements.push(class);
-
-        // enum literal values
-        elements.push(values);
-
-        // push members field
-        let members_key = toks![&body.name, ".", self.values.clone()];
-        elements.push(js![= members_key, js!([members])]);
-
-        out.0.push(elements.join_line_spacing());
         Ok(())
     }
 
-    fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
-        let mut class_body = Tokens::new();
+    fn process_type(&self, out: &mut Self::Out, body: &RpTypeBody) -> Result<()> {
+        quote_in! { out.0 =>
+            export class #(&body.name) {
+                #(ref o => self.build_constructor(o, &body.fields))
 
-        class_body.push(self.build_constructor(&body.fields));
+                #(if false {
+                    #(for getter in self.build_getters(&body.fields) {
+                        #getter
+                    })
+                })
 
-        // TODO: make configurable
-        if false {
-            for getter in self.build_getters(&body.fields)? {
-                class_body.push(getter);
+                #(ref o => self.decode_method(o, &body.fields, &body.name, Self::field_by_name))
+
+                #(ref o => self.encode_method(o, &body.fields, "{}", None))
+
+                #(if backend::code_contains!(&body.codes, core::RpContext::Js) {
+                    #(ref o => backend::code_in!(o, &body.codes, core::RpContext::Js))
+                })
             }
         }
 
-        class_body.push(self.decode_method(&body.fields, &body.name, Self::field_by_name)?);
-
-        class_body.push(self.encode_method(&body.fields, "{}", None)?);
-        class_body.push_unless_empty(code!(&body.codes, core::RpContext::Js));
-
-        let mut class = Tokens::new();
-
-        class.push(toks!["export class ", &body.name, " {"]);
-        class.nested(class_body.join_line_spacing());
-        class.push("}");
-
-        out.0.push(class);
         Ok(())
     }
 
-    fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
-        let mut classes = Tokens::new();
+    fn process_interface(&self, out: &mut Self::Out, body: &RpInterfaceBody) -> Result<()> {
+        quote_in! { out.0 =>
+            export class #(&body.name) {
+                #(match &body.sub_type_strategy {
+                    core::RpSubTypeStrategy::Tagged { tag, .. } => {
+                        #(ref o => decode(o, &body, tag.as_str()))
+                    }
+                    core::RpSubTypeStrategy::Untagged => {
+                        #(ref o => decode_untagged(o, body))
+                    }
+                })
 
-        let mut interface_body = Tokens::new();
+                #(if backend::code_contains!(&body.codes, core::RpContext::Js) {
+                    #(ref o => backend::code_in!(o, &body.codes, core::RpContext::Js))
+                })
+            }
 
-        match body.sub_type_strategy {
-            core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                let tk = tag.as_str().quoted().into();
-                interface_body.push(decode(&body, &tk)?);
-            }
-            core::RpSubTypeStrategy::Untagged => {
-                interface_body.push(decode_untagged(body)?);
-            }
+            #(for sub_type in &body.sub_types {
+                export class #(&sub_type.name) {
+                    #(ref o => self.build_constructor(o, body.fields.iter().chain(sub_type.fields.iter())))
+
+                    #(if false {
+                        #(for getter in self.build_getters(body.fields.iter().chain(sub_type.fields.iter())) {
+                            #getter
+                        })
+                    })
+
+                    #(ref o => {
+                        self.decode_method(
+                            o,
+                            body.fields.iter().chain(sub_type.fields.iter()),
+                            &sub_type.name,
+                            Self::field_by_name,
+                        )
+                    })
+
+                    #(match &body.sub_type_strategy {
+                        core::RpSubTypeStrategy::Tagged { tag, .. } => {
+                            #(ref o => {
+                                self.encode_method(
+                                    o,
+                                    body.fields.iter().chain(sub_type.fields.iter()),
+                                    "{}",
+                                    Some(quote!(data[#(quoted(tag))] = #(quoted(sub_type.name()));))
+                                )
+                            })
+                        }
+                        core::RpSubTypeStrategy::Untagged => {
+                            #(ref o => {
+                                self.encode_method(o, body.fields.iter().chain(sub_type.fields.iter()), "{}", None)
+                            })
+                        }
+                    })
+
+                    #(if backend::code_contains!(&sub_type.codes, core::RpContext::Js) {
+                        #(ref o => backend::code_in!(o, &sub_type.codes, core::RpContext::Js))
+                    })
+                }
+            })
         }
 
-        interface_body.push_unless_empty(code!(&body.codes, core::RpContext::Js));
-
-        classes.push({
-            let mut tokens = Tokens::new();
-
-            tokens.push(toks!["export class ", &body.name, " {"]);
-            tokens.nested(interface_body.join_line_spacing());
-            tokens.push("}");
-
-            tokens
-        });
-
-        for sub_type in &body.sub_types {
-            let mut class_body = Tokens::new();
-
-            let fields: Vec<&Loc<RpField>> =
-                body.fields.iter().chain(sub_type.fields.iter()).collect();
-
-            class_body.push(self.build_constructor(fields.iter().cloned()));
-
-            // TODO: make configurable
-            if false {
-                for getter in self.build_getters(fields.iter().cloned())? {
-                    class_body.push(getter);
-                }
-            }
-
-            class_body.push(self.decode_method(
-                fields.iter().cloned(),
-                &sub_type.name,
-                Self::field_by_name,
-            )?);
-
-            match body.sub_type_strategy {
-                core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                    let tk: Tokens<'el, JavaScript<'el>> = tag.as_str().quoted().into();
-                    let type_toks = toks!["data[", tk, "] = ", sub_type.name().quoted(), ";"];
-                    class_body.push(self.encode_method(
-                        fields.iter().cloned(),
-                        "{}",
-                        Some(type_toks),
-                    )?);
-                }
-                core::RpSubTypeStrategy::Untagged => {
-                    class_body.push(self.encode_method(fields.iter().cloned(), "{}", None)?);
-                }
-            }
-
-            class_body.push_unless_empty(code!(&sub_type.codes, core::RpContext::Js));
-
-            classes.push({
-                let mut tokens = Tokens::new();
-
-                tokens.push(toks!["export class ", &sub_type.name, " {"]);
-                tokens.nested(class_body.join_line_spacing());
-                tokens.push("}");
-
-                tokens
-            });
-        }
-
-        out.0.push(classes.join_line_spacing());
         return Ok(());
 
-        fn decode<'el>(
-            body: &'el RpInterfaceBody,
-            tag: &Tokens<'el, JavaScript<'el>>,
-        ) -> Result<Tokens<'el, JavaScript<'el>>> {
-            let mut t = Tokens::new();
+        fn decode(out: &mut js::Tokens, body: &RpInterfaceBody, tag: &str) {
+            quote_in! { *out =>
+                static decode(data) {
+                    const f_tag = data[#(quoted(tag))];
 
-            let data = "data";
-            let f_tag = "f_tag";
+                    if (#(is_not_defined("f_tag"))) {
+                        throw new Error(#(quoted(format!("missing tag field: {}", tag))));
+                    }
 
-            push!(t, "const ", f_tag, " = ", data, "[", tag.clone(), "]");
+                    #(for sub_type in body.sub_types.iter() {
+                        if (f_tag === #(quoted(sub_type.name()))) {
+                            return #(&sub_type.name).decode(data);
+                        }
+                    })
 
-            for sub_type in body.sub_types.iter() {
-                t.push_into(|t| {
-                    let cond = toks![f_tag, " === ", sub_type.name().quoted()];
-                    t.push(js![if cond, js![return &sub_type.name, ".decode(", data, ")"]]);
-                });
+                    throw new Error("bad sub-type: " + f_tag);
+                }
             }
-
-            t.push(js![throw "bad type: ".quoted(), " + ", f_tag]);
-
-            Ok({
-                let mut decode = Tokens::new();
-                push!(decode, "static decode(", data, ") {");
-                decode.nested(t.join_line_spacing());
-                push!(decode, "}");
-                decode
-            })
         }
 
-        fn decode_untagged<'el>(
-            body: &'el RpInterfaceBody,
-        ) -> Result<Tokens<'el, JavaScript<'el>>> {
-            let mut t = Tokens::new();
+        fn decode_untagged(out: &mut js::Tokens, body: &RpInterfaceBody) {
+            quote_in! { *out =>
+                static decode(data) {
+                    var all = true;
+                    var keys = {};
 
-            let data = "data";
+                    for (const k in data) {
+                        keys[k] = true;
+                    }
 
-            push!(t, "var all = true");
-            push!(t, "var keys = {}");
+                    #(for sub_type in body.sub_types.iter() {
+                        if (#(for f in sub_type.discriminating_fields() join ( && ) => (#(quoted(f.name())) in keys))) {
+                            return #(&sub_type.name).decode(data);
+                        }
+                    })
 
-            t.push_into(|t| {
-                push!(t, "for (const k in ", data, ") {");
-                nested!(t, "keys[k] = true");
-                push!(t, "}");
-            });
-
-            for sub_type in body.sub_types.iter() {
-                let mut required = Tokens::new();
-
-                for f in sub_type.discriminating_fields() {
-                    required.append(toks!["(", f.name().quoted(), " in keys)"]);
+                    throw new Error("no legal field combinations found");
                 }
-
-                t.push_into(|t| {
-                    let cond = required.join(" && ");
-                    t.push(js![if cond, js![return &sub_type.name, ".decode(", data, ")"]]);
-                });
             }
-
-            t.push(js![throw "no legal field combinations found".quoted()]);
-
-            Ok({
-                let mut decode = Tokens::new();
-                push!(decode, "static decode(", data, ") {");
-                decode.nested(t.join_line_spacing());
-                push!(decode, "}");
-                decode
-            })
         }
     }
 }

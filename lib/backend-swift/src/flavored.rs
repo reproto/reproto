@@ -2,70 +2,228 @@
 
 #![allow(unused)]
 
-use crate::backend::package_processor;
-use crate::core::errors::Result;
-use crate::core::{
-    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberKind,
-    RpNumberType, RpStringType, Translate, Translator,
-};
-use crate::module::simple::Simple;
-use crate::naming::{self, Naming};
-use crate::trans::Packages;
 use crate::{Options, TYPE_SEP};
-use genco::swift::{self, Swift};
-use genco::{Cons, Element, IntoTokens, Tokens};
+use backend::package_processor;
+use core::errors::Result;
+use core::{
+    CoreFlavor, Diagnostics, Flavor, FlavorField, FlavorTranslator, Loc, PackageTranslator,
+    RpNumberKind, RpNumberType, RpStringType, Translate, Translator,
+};
+use genco::prelude::*;
+use genco::tokens::{from_fn, FormatInto, ItemStr};
+use naming::Naming;
 use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
+use trans::Packages;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SwiftType<'el> {
-    simple: Simple<'el>,
-    ty: Swift<'el>,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Primitive {
+    Bool,
+    UInt32,
+    UInt64,
+    Int32,
+    Int64,
+    Float,
+    Double,
 }
 
-impl<'el> SwiftType<'el> {
-    /// Build a plain swift type.
-    pub fn from_type(ty: Swift<'el>) -> SwiftType<'el> {
-        SwiftType {
-            simple: Simple::Type { ty: ty.clone() },
-            ty: ty,
+impl FormatInto<Swift> for Primitive {
+    fn format_into(self, t: &mut swift::Tokens) {
+        match self {
+            Self::Bool => quote_in!(*t => Bool),
+            Self::UInt32 => quote_in!(*t => UInt32),
+            Self::UInt64 => quote_in!(*t => UInt64),
+            Self::Int32 => quote_in!(*t => Int32),
+            Self::Int64 => quote_in!(*t => Int64),
+            Self::Float => quote_in!(*t => Float),
+            Self::Double => quote_in!(*t => Double),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Type {
+    Primitive { primitive: Primitive },
+    Any,
+    String,
+    DateTime { formatter: Rc<swift::Import> },
+    Bytes { data: Rc<swift::Import> },
+    Array { argument: Box<Type> },
+    Dictionary { key: Box<Type>, value: Box<Type> },
+    Local { ident: ItemStr },
+    Name { name: swift::Import },
+}
+
+impl Type {
+    pub(crate) fn local(ident: impl Into<ItemStr>) -> Self {
+        Self::Local {
+            ident: ident.into(),
         }
     }
 
-    /// Access the swift type.
-    pub fn ty(&self) -> &Swift<'el> {
-        &self.ty
+    pub(crate) fn array(argument: impl Into<Type>) -> Self {
+        Self::Array {
+            argument: Box::new(argument.into()),
+        }
     }
 
-    /// Access the simpel type.
-    pub fn simple(&self) -> &Simple<'el> {
-        &self.simple
+    pub(crate) fn map(key: impl Into<Type>, value: impl Into<Type>) -> Self {
+        Self::Dictionary {
+            key: Box::new(key.into()),
+            value: Box::new(value.into()),
+        }
+    }
+
+    /// Decode the given value.
+    pub(crate) fn decode_value(&self, name: ItemStr, var: swift::Tokens) -> swift::Tokens {
+        let name = &name;
+
+        let unbox = match self {
+            Type::DateTime { formatter } => {
+                let string = quote!(try decode_value(#var as? String));
+                let date = quote!(#(&**formatter)().date(from: #string));
+                quote!(try decode_value(#date))
+            }
+            Type::Bytes { data } => quote! {
+                #(&**data)(base64Encoded: try decode_value(#var as? String))
+            },
+            Type::Array { argument } => {
+                let argument = argument.decode_value(name.clone(), quote!(inner));
+
+                return quote! {
+                    try decode_array(#var, name: #(quoted(name)), inner: { inner in #argument })
+                };
+            }
+            Type::Dictionary { value, .. } => {
+                let value = value.decode_value(name.clone(), quote!(value));
+
+                return quote! {
+                    try decode_map(#var, name: #(quoted(name)), value: { value in #value })
+                };
+            }
+            Type::Local { ident } => {
+                return quote!(try #ident.decode(json: #var));
+            }
+            Type::Name { name } => {
+                return quote!(try #name.decode(json: #var));
+            }
+            Type::Any => var,
+            Type::Primitive { primitive } => quote!(unbox(#var, as: #(*primitive).self)),
+            Type::String => quote!(unbox(#var, as: String.self)),
+        };
+
+        quote! {
+            try decode_name(#unbox, name: #(quoted(name)))
+        }
+    }
+
+    /// Decode the given value.
+    pub(crate) fn encode_value(&self, name: &str, var: swift::Tokens) -> swift::Tokens {
+        match self {
+            Type::Primitive { .. } | Type::Any | Type::String => var,
+            Type::DateTime { formatter } => quote!(#(&**formatter)().string(from: #var)),
+            Type::Bytes { .. } => quote!(#var.base64EncodedString()),
+            Type::Array { argument } => {
+                let argument = argument.encode_value(name, quote!(inner));
+                quote!(try encode_array(#var, name: #(quoted(name)), inner: { inner in #argument }))
+            }
+            Type::Dictionary { value, .. } => {
+                let value = value.encode_value(name, quote!(value));
+                quote!(try encode_map(#var, name: #(quoted(name)), value: { value in #value }))
+            }
+            Type::Name { .. } | Type::Local { .. } => quote!(try #var.encode()),
+        }
+    }
+}
+
+impl<'a> FormatInto<Swift> for &'a Type {
+    fn format_into(self, t: &mut swift::Tokens) {
+        match self {
+            Type::Primitive { primitive } => {
+                t.append(*primitive);
+            }
+            Type::String => {
+                quote_in!(*t => String);
+            }
+            Type::DateTime { .. } => {
+                quote_in!(*t => Date);
+            }
+            Type::Bytes { data } => {
+                quote_in!(*t => #(&**data));
+            }
+            Type::Array { argument } => {
+                quote_in!(*t => [#(&**argument)]);
+            }
+            Type::Dictionary { key, value } => {
+                quote_in!(*t => [#(&**key): #(&**value)]);
+            }
+            Type::Local { ident } => {
+                t.append(ident);
+            }
+            Type::Name { name } => {
+                quote_in!(*t => #name);
+            }
+            Type::Any => {
+                quote_in!(*t => Any);
+            }
+        }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SwiftName {
+pub struct Name {
     pub name: Rc<String>,
     pub package: RpPackage,
 }
 
-impl fmt::Display for SwiftName {
+impl fmt::Display for Name {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         self.name.fmt(fmt)
     }
 }
 
-impl<'el> From<&'el SwiftName> for Element<'el, Swift<'el>> {
-    fn from(value: &'el SwiftName) -> Element<'el, Swift<'el>> {
-        Element::Literal(value.name.clone().into())
+impl<'a> FormatInto<Swift> for &'a Name {
+    fn format_into(self, tokens: &mut swift::Tokens) {
+        tokens.append(self.name.clone())
     }
 }
 
-impl package_processor::Name<SwiftFlavor> for SwiftName {
+impl package_processor::Name<SwiftFlavor> for Name {
     fn package(&self) -> &RpPackage {
         &self.package
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Field {
+    inner: RpField,
+}
+
+impl Field {
+    pub(crate) fn field_type(&self) -> impl FormatInto<Swift> + '_ {
+        quote_fn! {
+            #(if self.inner.is_optional() {
+                #(&self.inner.ty)?
+            } else {
+                #(&self.inner.ty)
+            })
+        }
+    }
+}
+
+impl FlavorField for Field {
+    fn is_discriminating(&self) -> bool {
+        self.inner.is_discriminating()
+    }
+}
+
+impl Deref for Field {
+    type Target = RpField;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 
@@ -73,20 +231,21 @@ impl package_processor::Name<SwiftFlavor> for SwiftName {
 pub struct SwiftFlavor;
 
 impl Flavor for SwiftFlavor {
-    type Type = SwiftType<'static>;
-    type Name = SwiftName;
-    type Field = RpField;
+    type Type = Type;
+    type Name = Name;
+    type Field = Field;
     type Endpoint = RpEndpoint;
     type Package = RpPackage;
-    type EnumType = SwiftType<'static>;
+    type EnumType = Type;
 }
 
 /// Responsible for translating RpType -> Swift type.
 pub struct SwiftFlavorTranslator {
     packages: Rc<Packages>,
-    data: Swift<'static>,
-    date: Swift<'static>,
-    any: Swift<'static>,
+    formatter: Rc<swift::Import>,
+    data: Rc<swift::Import>,
+    date: Rc<swift::Import>,
+    any: Type,
     to_upper_camel: naming::ToUpperCamel,
 }
 
@@ -104,16 +263,17 @@ impl SwiftFlavorTranslator {
                     .into());
                 }
 
-                any_type.clone()
+                any_type.clone().into()
             } else {
-                swift::local("Any")
+                Type::Any
             }
         };
 
         Ok(Self {
             packages,
-            data: swift::imported("Foundation", "Data"),
-            date: swift::imported("Foundation", "Date"),
+            formatter: Rc::new(swift::import("Foundation", "ISO8601DateFormatter")),
+            data: Rc::new(swift::import("Foundation", "Data")),
+            date: Rc::new(swift::import("Foundation", "Date")),
             any,
             to_upper_camel: naming::to_upper_camel(),
         })
@@ -124,96 +284,90 @@ impl FlavorTranslator for SwiftFlavorTranslator {
     type Source = CoreFlavor;
     type Target = SwiftFlavor;
 
-    translator_defaults!(Self, field, endpoint);
+    core::translator_defaults!(Self, endpoint);
 
-    fn translate_number(&self, number: RpNumberType) -> Result<SwiftType<'static>> {
-        let out = match number.kind {
-            RpNumberKind::U32 => swift::local("UInt32"),
-            RpNumberKind::U64 => swift::local("UInt64"),
-            RpNumberKind::I32 => swift::local("Int32"),
-            RpNumberKind::I64 => swift::local("Int64"),
+    fn translate_field<T>(
+        &self,
+        translator: &T,
+        diag: &mut core::Diagnostics,
+        field: core::RpField<Self::Source>,
+    ) -> Result<Field>
+    where
+        T: Translator<Source = Self::Source, Target = Self::Target>,
+    {
+        let inner = field.translate(diag, translator)?;
+
+        Ok(Field { inner })
+    }
+
+    fn translate_number(&self, number: RpNumberType) -> Result<Type> {
+        Ok(match number.kind {
+            RpNumberKind::U32 => Type::Primitive {
+                primitive: Primitive::UInt32,
+            },
+            RpNumberKind::U64 => Type::Primitive {
+                primitive: Primitive::UInt64,
+            },
+            RpNumberKind::I32 => Type::Primitive {
+                primitive: Primitive::Int32,
+            },
+            RpNumberKind::I64 => Type::Primitive {
+                primitive: Primitive::Int64,
+            },
             ty => return Err(format!("unsupported number type: {}", ty).into()),
-        };
-
-        Ok(SwiftType::from_type(out))
-    }
-
-    fn translate_float(&self) -> Result<SwiftType<'static>> {
-        Ok(SwiftType::from_type(swift::local("Float")))
-    }
-
-    fn translate_double(&self) -> Result<SwiftType<'static>> {
-        Ok(SwiftType::from_type(swift::local("Double")))
-    }
-
-    fn translate_boolean(&self) -> Result<SwiftType<'static>> {
-        Ok(SwiftType::from_type(swift::local("Bool")))
-    }
-
-    fn translate_string(&self, _: RpStringType) -> Result<SwiftType<'static>> {
-        Ok(SwiftType::from_type(swift::local("String")))
-    }
-
-    fn translate_datetime(&self) -> Result<SwiftType<'static>> {
-        Ok(SwiftType {
-            simple: Simple::DateTime,
-            ty: self.date.clone(),
         })
     }
 
-    fn translate_array(&self, argument: SwiftType<'static>) -> Result<SwiftType<'static>> {
-        Ok(SwiftType {
-            simple: Simple::Array {
-                argument: Box::new(argument.simple.clone()),
-            },
-            ty: swift::array(argument.ty),
+    fn translate_float(&self) -> Result<Type> {
+        Ok(Type::Primitive {
+            primitive: Primitive::Float,
         })
     }
 
-    fn translate_map(
-        &self,
-        key: SwiftType<'static>,
-        value: SwiftType<'static>,
-    ) -> Result<SwiftType<'static>> {
-        Ok(SwiftType {
-            simple: Simple::Map {
-                key: Box::new(key.simple.clone()),
-                value: Box::new(value.simple.clone()),
-            },
-            ty: swift::map(key.ty, value.ty),
+    fn translate_double(&self) -> Result<Type> {
+        Ok(Type::Primitive {
+            primitive: Primitive::Double,
         })
     }
 
-    fn translate_any(&self) -> Result<SwiftType<'static>> {
-        Ok(SwiftType {
-            simple: Simple::Any {
-                ty: self.any.clone(),
-            },
-            ty: self.any.clone(),
+    fn translate_boolean(&self) -> Result<Type> {
+        Ok(Type::Primitive {
+            primitive: Primitive::Bool,
         })
     }
 
-    fn translate_bytes(&self) -> Result<SwiftType<'static>> {
-        Ok(SwiftType {
-            simple: Simple::Bytes,
-            ty: self.data.clone(),
+    fn translate_string(&self, _: RpStringType) -> Result<Type> {
+        Ok(Type::String)
+    }
+
+    fn translate_datetime(&self) -> Result<Type> {
+        Ok(Type::DateTime {
+            formatter: self.formatter.clone(),
         })
     }
 
-    fn translate_name(
-        &self,
-        _from: &RpPackage,
-        reg: RpReg,
-        name: Loc<RpName>,
-    ) -> Result<SwiftType<'static>> {
+    fn translate_array(&self, argument: Type) -> Result<Type> {
+        Ok(Type::array(argument))
+    }
+
+    fn translate_map(&self, key: Type, value: Type) -> Result<Type> {
+        Ok(Type::map(key, value))
+    }
+
+    fn translate_any(&self) -> Result<Type> {
+        Ok(self.any.clone())
+    }
+
+    fn translate_bytes(&self) -> Result<Type> {
+        Ok(Type::Bytes {
+            data: self.data.clone(),
+        })
+    }
+
+    fn translate_name(&self, _from: &RpPackage, reg: RpReg, name: Loc<RpName>) -> Result<Type> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
         let package_name = name.package.join("_");
-        let ty = swift::local(format!("{}_{}", package_name, ident));
-
-        Ok(SwiftType {
-            simple: Simple::Name { name: ty.clone() },
-            ty: ty,
-        })
+        Ok(Type::local(format!("{}_{}", package_name, ident)))
     }
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
@@ -226,7 +380,7 @@ impl FlavorTranslator for SwiftFlavorTranslator {
         diag: &mut Diagnostics,
         reg: RpReg,
         name: Loc<core::RpName<CoreFlavor>>,
-    ) -> Result<SwiftName>
+    ) -> Result<Name>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
@@ -237,7 +391,7 @@ impl FlavorTranslator for SwiftFlavorTranslator {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
         let ident = format!("{}_{}", package_name, ident);
 
-        Ok(SwiftName {
+        Ok(Name {
             name: Rc::new(ident),
             package: name.package,
         })
@@ -248,17 +402,15 @@ impl FlavorTranslator for SwiftFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         enum_type: core::RpEnumType,
-    ) -> Result<SwiftType<'static>>
+    ) -> Result<Type>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
-        use crate::core::RpEnumType::*;
-
         match enum_type {
-            String(string) => self.translate_string(string),
-            Number(number) => self.translate_number(number),
+            core::RpEnumType::String(string) => self.translate_string(string),
+            core::RpEnumType::Number(number) => self.translate_number(number),
         }
     }
 }
 
-decl_flavor!(SwiftFlavor, core);
+core::decl_flavor!(pub(crate) SwiftFlavor, core);

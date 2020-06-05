@@ -1,7 +1,7 @@
 //! Function to initialize a new project.
 
-use crate::core::errors::Result;
-use crate::core::{Handle, RelativePath};
+use core::errors::Result;
+use core::{Handle, RelativePath};
 
 const EXAMPLE: &'static [u8] = include_bytes!("example.reproto");
 
@@ -28,7 +28,7 @@ pub fn initialize(handle: &dyn Handle) -> Result<()> {
     }
 
     if !handle.is_file(manifest) {
-        info!("Writing Manifest: {}", manifest);
+        log::info!("Writing Manifest: {}", manifest);
 
         let mut manifest = handle.create(manifest)?;
 
@@ -62,13 +62,13 @@ pub fn initialize(handle: &dyn Handle) -> Result<()> {
 
     if let Some(parent) = example.parent() {
         if !handle.is_dir(parent) {
-            info!("Creating: {}", parent);
+            log::info!("Creating: {}", parent);
             handle.create_dir_all(parent)?;
         }
     }
 
     if !handle.is_file(&example) {
-        info!("Writing: {}", example);
+        log::info!("Writing: {}", example);
         let mut example = handle.create(&example)?;
         example.write_all(EXAMPLE)?;
     }

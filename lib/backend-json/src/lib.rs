@@ -1,28 +1,15 @@
-#[macro_use]
-extern crate log;
-#[allow(unused)]
-#[macro_use]
-extern crate reproto_backend as backend;
-extern crate reproto_core as core;
-#[macro_use]
-extern crate reproto_manifest as manifest;
-extern crate reproto_trans as trans;
-extern crate serde;
-extern crate serde_json;
-extern crate toml;
-
-use crate::core::errors::*;
-use crate::core::{CoreFlavor, Handle, RelativePathBuf};
-use crate::manifest::{Lang, Manifest, NoModule, TryFromToml};
-use crate::trans::Session;
+use core::errors::Result;
+use core::{CoreFlavor, Handle, RelativePathBuf};
+use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
+use trans::Session;
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct JsonLang;
 
 impl Lang for JsonLang {
-    lang_base!(JsonModule, compile);
+    manifest::lang_base!(JsonModule, compile);
 }
 
 #[derive(Debug)]
@@ -55,7 +42,7 @@ fn compile(handle: &dyn Handle, session: Session<CoreFlavor>, _manifest: Manifes
             .unwrap_or_else(|| root.clone());
 
         if !handle.is_dir(&parent) {
-            debug!("+dir: {}", parent);
+            log::debug!("+dir: {}", parent);
             handle.create_dir_all(&parent)?;
         }
 
@@ -70,7 +57,7 @@ fn compile(handle: &dyn Handle, session: Session<CoreFlavor>, _manifest: Manifes
             path.with_extension("json")
         };
 
-        debug!("+file: {}", path);
+        log::debug!("+file: {}", path);
         writeln!(
             handle.create(&path)?,
             "{}",

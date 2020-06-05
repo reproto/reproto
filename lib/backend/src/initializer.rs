@@ -1,4 +1,4 @@
-use crate::core::errors::Result;
+use core::errors::Result;
 
 pub trait Initializer {
     type Options;

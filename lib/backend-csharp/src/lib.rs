@@ -1,47 +1,25 @@
-#[macro_use]
-extern crate genco;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate reproto_backend as backend;
-#[macro_use]
-extern crate reproto_core as core;
-#[macro_use]
-extern crate reproto_manifest as manifest;
-extern crate reproto_naming as naming;
-extern crate reproto_trans as trans;
-extern crate serde;
-#[allow(unused_imports)]
-#[macro_use]
-extern crate serde_derive;
-extern crate toml;
-
 mod codegen;
 mod compiler;
-mod csharp_field;
-mod csharp_file;
 mod flavored;
 mod module;
 mod options;
 mod processor;
-mod utils;
 
-use crate::codegen::Configure;
 use crate::compiler::Compiler;
-use crate::core::errors::Result;
-use crate::core::{CoreFlavor, Handle};
-use crate::manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use crate::options::Options;
-use crate::trans::Session;
+use core::errors::Result;
+use core::{CoreFlavor, Handle};
+use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
+use trans::Session;
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct CsharpLang;
 
 impl Lang for CsharpLang {
-    lang_base!(CsharpModule, compile);
+    manifest::lang_base!(CsharpModule, compile);
 
     fn comment(&self, input: &str) -> Option<String> {
         Some(format!("// {}", input))
@@ -145,10 +123,8 @@ pub enum CsharpModule {
 
 impl TryFromToml for CsharpModule {
     fn try_from_string(path: &Path, id: &str, value: String) -> Result<Self> {
-        use self::CsharpModule::*;
-
         let result = match id {
-            "Json.NET" => JsonNet,
+            "Json.NET" => CsharpModule::JsonNet,
             _ => return NoModule::illegal(path, id, value),
         };
 
@@ -156,10 +132,8 @@ impl TryFromToml for CsharpModule {
     }
 
     fn try_from_value(path: &Path, id: &str, value: toml::Value) -> Result<Self> {
-        use self::CsharpModule::*;
-
         let result = match id {
-            "Json.NET" => JsonNet,
+            "Json.NET" => CsharpModule::JsonNet,
             _ => return NoModule::illegal(path, id, value),
         };
 
@@ -168,17 +142,13 @@ impl TryFromToml for CsharpModule {
 }
 
 fn setup_options<'a>(modules: Vec<CsharpModule>) -> Options {
-    use self::CsharpModule::*;
-
     let mut options = Options::new();
 
     for module in modules {
-        let c = Configure {
-            options: &mut options,
-        };
-
         match module {
-            JsonNet => module::JsonNet.initialize(c),
+            CsharpModule::JsonNet => {
+                module::json_net::initialize(&mut options);
+            }
         };
     }
 

@@ -1,7 +1,4 @@
-extern crate reproto_core as core;
-extern crate reproto_lexer as lexer;
-
-use crate::core::{Loc, RpNumber, Span};
+use core::{Loc, RpNumber, Span};
 use std::borrow::Cow;
 use std::ops;
 

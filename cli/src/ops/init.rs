@@ -1,9 +1,8 @@
 //! Initialize a new project.
 
-use crate::core::errors::*;
-use crate::core::Filesystem;
-use crate::env;
 use clap::{App, Arg, ArgMatches, SubCommand};
+use core::errors::Result;
+use core::Filesystem;
 use std::path::Path;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {

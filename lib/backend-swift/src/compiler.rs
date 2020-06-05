@@ -1,170 +1,147 @@
 //! Backend for Swift
 
-use crate::backend::PackageProcessor;
-use crate::core::errors::*;
-use crate::core::{Handle, Loc};
 use crate::flavored::{
-    RpEnumBody, RpField, RpInterfaceBody, RpTupleBody, RpTypeBody, SwiftFlavor, SwiftName,
+    Field, Name, RpEnumBody, RpInterfaceBody, RpTupleBody, RpTypeBody, SwiftFlavor,
 };
-use crate::trans::{self, Packages, Translated};
-use crate::{
-    EnumAdded, FileSpec, InterfaceAdded, InterfaceModelAdded, Options, PackageAdded,
-    StructModelAdded, TupleAdded, TypeAdded, EXT,
-};
-use genco::swift::Swift;
-use genco::{IntoTokens, Tokens};
+use crate::{Options, EXT};
+use backend::PackageProcessor;
+use core::errors::Result;
+use core::{Handle, Loc};
+use genco::prelude::*;
+use genco::tokens::{FormatInto, ItemStr};
+use trans::{self, Packages, Translated};
 
 /// Documentation comments.
-pub struct Comments<'el, S: 'el>(pub &'el [S]);
+pub struct Comments<I>(pub I);
 
-impl<'el, S: 'el + AsRef<str>> IntoTokens<'el, Swift<'el>> for Comments<'el, S> {
-    fn into_tokens(self) -> Tokens<'el, Swift<'el>> {
-        let mut t = Tokens::new();
-
-        for c in self.0.iter() {
-            t.push(toks!["// ", c.as_ref()]);
+impl<I> FormatInto<Swift> for Comments<I>
+where
+    I: IntoIterator,
+    I::Item: Into<ItemStr>,
+{
+    fn format_into(self, t: &mut swift::Tokens) {
+        for line in self.0 {
+            t.push();
+            t.append(ItemStr::Static("//"));
+            t.space();
+            t.append(line.into());
         }
-
-        t
     }
 }
 
-pub struct Compiler<'el> {
-    pub env: &'el Translated<SwiftFlavor>,
-    options: Options,
-    handle: &'el dyn Handle,
+pub struct Compiler<'a> {
+    pub env: &'a Translated<SwiftFlavor>,
+    opt: Options,
+    handle: &'a dyn Handle,
 }
 
-impl<'el> Compiler<'el> {
+impl<'a> Compiler<'a> {
     pub fn new(
-        env: &'el Translated<SwiftFlavor>,
-        options: Options,
-        handle: &'el dyn Handle,
-    ) -> Result<Compiler<'el>> {
-        let c = Compiler {
-            env,
-            options,
-            handle,
-        };
-
-        Ok(c)
-    }
-
-    pub fn into_field<'a>(&self, field: &'a RpField) -> Result<Tokens<'a, Swift<'a>>> {
-        if field.is_optional() {
-            return Ok(toks![field.ty().ty(), "?"]);
-        }
-
-        Ok(toks![field.ty().ty()])
+        env: &'a Translated<SwiftFlavor>,
+        opt: Options,
+        handle: &'a dyn Handle,
+    ) -> Result<Compiler<'a>> {
+        Ok(Self { env, opt, handle })
     }
 
     /// Set up a model structure for the given fields.
-    fn model_struct<'a, F>(
+    fn model_struct(
         &self,
-        name: &SwiftName,
-        comment: &'a [String],
-        fields: F,
+        t: &mut swift::Tokens,
+        name: &Name,
+        comment: &[String],
+        fields: &[Loc<Field>],
         extends: bool,
-    ) -> Result<Tokens<'a, Swift<'a>>>
-    where
-        F: IntoIterator<Item = &'a RpField>,
-    {
-        let fields = fields.into_iter().collect::<Vec<_>>();
+    ) -> Result<()> {
+        let extends = match (extends, &self.opt.struct_model_extends) {
+            (false, _) => None,
+            (true, extends) if extends.is_empty() => None,
+            (true, extends) => Some(quote!(: #(for e in extends join (, ) => #e))),
+        };
 
-        let mut t = Tokens::new();
+        let mut container = Vec::new();
+        self.opt.gen.struct_model_added(&mut container, fields);
 
-        t.push_unless_empty(Comments(comment));
+        quote_in! { *t =>
+            #(Comments(comment))
+            public struct #(&name.name)#extends {
+                #(for field in fields join (#<push>) {
+                    #(Comments(&field.comment))
+                    let #(field.safe_ident()): #(field.field_type())
+                })
 
-        if self.options.struct_model_extends.is_empty() || !extends {
-            t.push(toks!["public struct ", name.name.clone(), " {"]);
-        } else {
-            let extends = self.options.struct_model_extends.clone().join(", ");
-            t.push(toks![
-                "public struct ",
-                name.name.clone(),
-                ": ",
-                extends,
-                " {"
-            ]);
-        }
-
-        // fields
-        t.nested({
-            let mut t = Tokens::new();
-
-            t.push({
-                let mut t = Tokens::new();
-
-                for field in fields.iter() {
-                    t.push_unless_empty(Comments(&field.comment));
-                    let ty = self.into_field(field)?;
-                    t.push(toks!["let ", field.safe_ident(), ": ", ty]);
-                }
-
-                t
-            });
-
-            for g in &self.options.struct_model_gens {
-                g.generate(StructModelAdded {
-                    container: &mut t,
-                    fields: &fields,
-                })?;
+                #(for c in container join (#<line>) => #c)
             }
+        };
 
-            t.join_line_spacing()
-        });
-
-        t.push("}");
-        Ok(t)
+        Ok(())
     }
 
     /// Build a model struct for the given set of fields.
-    fn model_type<'a, F>(
+    fn model_type(
         &self,
-        name: &'a SwiftName,
-        comment: &'a [String],
-        fields: F,
-    ) -> Result<Tokens<'a, Swift<'a>>>
-    where
-        F: IntoIterator<Item = &'a RpField>,
-    {
-        let fields = fields.into_iter().collect::<Vec<_>>();
+        t: &mut swift::Tokens,
+        name: &Name,
+        comment: &[String],
+        fields: &[Loc<Field>],
+    ) -> Result<()> {
+        self.model_struct(t, name, comment, fields, true)?;
 
-        let mut tokens = Tokens::new();
+        let mut container = Vec::new();
+        self.opt.gen.type_added(&mut container, name, fields);
 
-        tokens.push(self.model_struct(name, comment, fields.iter().cloned(), true)?);
-
-        for g in &self.options.type_gens {
-            g.generate(TypeAdded {
-                container: &mut tokens,
-                compiler: self,
-                name: name,
-                fields: &fields,
-            })?;
-        }
-
-        return Ok(tokens);
-    }
-
-    pub fn compile(&self, packages: &Packages) -> Result<()> {
-        let mut files = self.populate_files()?;
-
-        for g in &self.options.package_gens {
-            let mut f = Vec::new();
-            g.generate(PackageAdded { files: &mut f })?;
-
-            for (package, out) in f {
-                files.insert(packages.package(package)?, out);
+        if !container.is_empty() {
+            for c in container {
+                t.line();
+                t.append(c);
             }
         }
 
-        self.write_files(files)
+        Ok(())
+    }
+
+    pub fn compile(&self, packages: &Packages) -> Result<()> {
+        use genco::fmt;
+
+        let mut files = self.do_populate_files(|_, new, out| {
+            if !new {
+                out.line();
+            }
+
+            Ok(())
+        })?;
+
+        let mut f = Vec::new();
+        self.opt.gen.package_added(&mut f);
+
+        for (package, out) in f {
+            files.insert(packages.package(package)?, out);
+        }
+
+        let handle = self.handle();
+
+        for (package, mut out) in files {
+            let full_path = self.setup_module_path(&package)?;
+
+            log::debug!("+module: {}", full_path);
+
+            out.line();
+
+            let mut w = fmt::IoWriter::new(handle.create(&full_path)?);
+            let config = swift::Config::default();
+            let fmt =
+                fmt::Config::from_lang::<Swift>().with_indentation(fmt::Indentation::Space(2));
+
+            out.format_file(&mut w.as_formatter(&fmt), &config)?;
+        }
+
+        Ok(())
     }
 }
 
-impl<'el> PackageProcessor<'el, SwiftFlavor, SwiftName> for Compiler<'el> {
-    type Out = FileSpec<'el>;
-    type DeclIter = trans::translated::DeclIter<'el, SwiftFlavor>;
+impl<'a> PackageProcessor<'a, SwiftFlavor, Name> for Compiler<'a> {
+    type Out = swift::Tokens;
+    type DeclIter = trans::translated::DeclIter<'a, SwiftFlavor>;
 
     fn ext(&self) -> &str {
         EXT
@@ -174,135 +151,93 @@ impl<'el> PackageProcessor<'el, SwiftFlavor, SwiftName> for Compiler<'el> {
         self.env.decl_iter()
     }
 
-    fn handle(&self) -> &'el dyn Handle {
+    fn handle(&self) -> &'a dyn Handle {
         self.handle
     }
 
-    fn default_process(&self, _out: &mut Self::Out, _: &SwiftName) -> Result<()> {
+    fn default_process(&self, _out: &mut Self::Out, _: &Name) -> Result<()> {
         Ok(())
     }
 
-    fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
-        out.0.extend(self.model_type(
-            &body.name,
-            &body.comment,
-            body.fields.iter().map(Loc::borrow),
-        )?);
+    fn process_type(&self, out: &mut Self::Out, body: &RpTypeBody) -> Result<()> {
+        self.model_type(out, &body.name, &body.comment, &body.fields)?;
 
         Ok(())
     }
 
-    fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
-        out.0.push({
-            let fields = body.fields.iter().map(Loc::borrow).collect::<Vec<_>>();
+    fn process_tuple(&self, out: &mut Self::Out, body: &RpTupleBody) -> Result<()> {
+        let mut containers = Vec::new();
+        self.opt
+            .gen
+            .tuple_added(&mut containers, &body.name, &body.fields);
 
-            let mut tokens = Tokens::new();
-
-            tokens.push(self.model_struct(
+        quote_in! { *out =>
+            #(ref o => self.model_struct(
+                o,
                 &body.name,
                 &body.comment,
-                fields.iter().cloned(),
+                &body.fields,
                 false,
-            )?);
+            )?)
 
-            for g in &self.options.tuple_gens {
-                g.generate(TupleAdded {
-                    container: &mut tokens,
-                    compiler: self,
-                    name: &body.name,
-                    fields: &fields,
-                })?;
-            }
-
-            tokens
-        });
+            #(for c in containers join (#<line>) => #c)
+        }
 
         Ok(())
     }
 
-    fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
-        out.0.push({
-            let mut t = Tokens::new();
+    fn process_enum(&self, out: &mut Self::Out, body: &RpEnumBody) -> Result<()> {
+        let mut containers = Vec::new();
+        self.opt.gen.enum_added(&mut containers, &body.name, body);
 
-            t.push(toks!["public enum ", body.name.name.clone(), " {"]);
-
-            for v in &body.variants {
-                nested!(t, "case ", v.ident());
+        quote_in! { *out =>
+            public enum #(&body.name.name) {
+                #(for v in &body.variants join (#<push>) {
+                    #(Comments(v.comment))
+                    case #(v.ident())
+                })
             }
 
-            t.push("}");
-
-            t
-        });
-
-        for g in &self.options.enum_gens {
-            g.generate(EnumAdded {
-                container: &mut out.0,
-                name: &body.name,
-                body: body,
-            })?;
+            #(for c in containers join (#<line>) => #c)
         }
 
-        return Ok(());
+        Ok(())
     }
 
-    fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
-        out.0.push({
-            let mut t = Tokens::new();
+    fn process_interface(&self, out: &mut Self::Out, body: &RpInterfaceBody) -> Result<()> {
+        let mut inner = Vec::new();
+        self.opt.gen.interface_model_added(&mut inner, body);
 
-            t.push_unless_empty(Comments(&body.comment));
-            t.push(toks!["public enum ", body.name.name.clone(), " {"]);
+        let mut extra = Vec::new();
+        self.opt
+            .gen
+            .interface_added(&mut extra, self, &body.name, body);
 
-            t.push({
-                let mut t = Tokens::new();
+        quote_in! { *out =>
+            #(Comments(&body.comment))
+            public enum #(body.name.name.clone()) {
+                #(for sub_type in &body.sub_types join (#<push>) {
+                    case #(&sub_type.ident)(#(sub_type.name.name.clone()))
+                })
 
-                t.push_into(|t| {
-                    for sub_type in body.sub_types.iter() {
-                        let ident = sub_type.ident.as_str();
-                        t.nested(toks!["case ", ident, "(", sub_type.name.name.clone(), ")"]);
-                    }
-                });
+                #(for c in inner join (#<line>) => #c)
+            }
 
-                t.push_unless_empty({
-                    let mut t = Tokens::new();
+            #(for c in extra join (#<line>) => #c)
 
-                    for g in &self.options.interface_model_gens {
-                        g.generate(InterfaceModelAdded {
-                            container: &mut t,
-                            body: body,
-                        })?;
-                    }
+            #(ref o => for sub_type in &body.sub_types {
+                let fields = body
+                    .fields
+                    .iter()
+                    .chain(sub_type.fields.iter())
+                    .cloned()
+                    .collect::<Vec<_>>();
 
-                    t.join_line_spacing()
-                });
+                o.line();
+                self.model_type(o, &sub_type.name, &sub_type.comment, &fields)?;
+            })
+        };
 
-                t.join_line_spacing()
-            });
-
-            t.push("}");
-            t
-        });
-
-        for g in &self.options.interface_gens {
-            g.generate(InterfaceAdded {
-                container: &mut out.0,
-                compiler: self,
-                name: &body.name,
-                body: body,
-            })?;
-        }
-
-        for sub_type in body.sub_types.iter() {
-            let fields = body
-                .fields
-                .iter()
-                .chain(sub_type.fields.iter())
-                .map(Loc::borrow);
-
-            out.0
-                .push(self.model_type(&sub_type.name, &sub_type.comment, fields)?);
-        }
-
-        return Ok(());
+        Ok(())
     }
 }

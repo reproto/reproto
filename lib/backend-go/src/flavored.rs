@@ -2,31 +2,115 @@
 
 #![allow(unused)]
 
-use crate::backend::package_processor;
-use crate::core::errors::Result;
-use crate::core::{
-    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberKind,
+use crate::TYPE_SEP;
+use backend::package_processor;
+use core::errors::Result;
+use core::{
+    CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberKind,
     RpNumberType, RpStringType, Translate, Translator,
 };
-use crate::trans::Packages;
-use crate::TYPE_SEP;
-use genco::go::{array, imported, interface, local, map, Go};
-use genco::{Cons, Element};
+use genco::prelude::*;
+use genco::tokens::{FormatInto, Item, ItemStr};
 use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
+use trans::Packages;
+
+#[derive(Debug, Clone, Copy)]
+pub enum Primitive {
+    U32,
+    U64,
+    I32,
+    I64,
+    F32,
+    F64,
+    Bool,
+}
+
+impl FormatInto<Go> for Primitive {
+    fn format_into(self, t: &mut go::Tokens) {
+        match self {
+            Self::U32 => quote_in!(*t => uint32),
+            Self::U64 => quote_in!(*t => uint64),
+            Self::I32 => quote_in!(*t => int32),
+            Self::I64 => quote_in!(*t => int64),
+            Self::F32 => quote_in!(*t => float32),
+            Self::F64 => quote_in!(*t => float64),
+            Self::Bool => quote_in!(*t => bool),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Type {
+    Primitive { primitive: Primitive },
+    String,
+    Interface,
+    Array { argument: Box<Type> },
+    Map { key: Box<Type>, value: Box<Type> },
+    Import { import: go::Import },
+    Local { ident: ItemStr },
+}
+
+impl Type {
+    pub fn import<T>(import: T) -> Self
+    where
+        T: Into<go::Import>,
+    {
+        Self::Import {
+            import: import.into(),
+        }
+    }
+
+    pub fn local<T>(ident: T) -> Self
+    where
+        T: Into<ItemStr>,
+    {
+        Self::Local {
+            ident: ident.into(),
+        }
+    }
+}
+
+impl<'a> FormatInto<Go> for &'a Type {
+    fn format_into(self, t: &mut go::Tokens) {
+        match self {
+            Type::Primitive { primitive } => {
+                t.append(*primitive);
+            }
+            Type::String => {
+                quote_in!(*t => string);
+            }
+            Type::Array { argument } => {
+                quote_in!(*t => []#(&**argument));
+            }
+            Type::Map { key, value } => {
+                quote_in!(*t => map[#(&**key)]#(&**value));
+            }
+            Type::Interface => {
+                quote_in!(*t => interface{});
+            }
+            Type::Import { import } => {
+                quote_in!(*t => #import);
+            }
+            Type::Local { ident } => {
+                quote_in!(*t => #ident);
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GoFlavor;
 
 impl Flavor for GoFlavor {
-    type Type = Go<'static>;
+    type Type = Type;
     type Name = GoName;
     type Field = RpField;
     type Endpoint = RpEndpoint;
     type Package = RpPackage;
-    type EnumType = Go<'static>;
+    type EnumType = Type;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,15 +119,9 @@ pub struct GoName {
     pub package: RpPackage,
 }
 
-impl fmt::Display for GoName {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str(self.name.as_str())
-    }
-}
-
-impl<'el> From<&'el GoName> for Element<'el, Go<'el>> {
-    fn from(value: &'el GoName) -> Element<'el, Go<'el>> {
-        Element::Literal(value.name.clone().to_string().into())
+impl<'a> FormatInto<Go> for &'a GoName {
+    fn format_into(self, tokens: &mut go::Tokens) {
+        tokens.append(Item::Literal(self.name.clone().into()))
     }
 }
 
@@ -68,59 +146,73 @@ impl FlavorTranslator for GoFlavorTranslator {
     type Source = CoreFlavor;
     type Target = GoFlavor;
 
-    translator_defaults!(Self, field, endpoint);
+    core::translator_defaults!(Self, field, endpoint);
 
-    fn translate_number(&self, number: RpNumberType) -> Result<Go<'static>> {
-        match number.kind {
-            RpNumberKind::U32 => Ok(local("uint32")),
-            RpNumberKind::U64 => Ok(local("uint64")),
-            RpNumberKind::I32 => Ok(local("int32")),
-            RpNumberKind::I64 => Ok(local("int64")),
-        }
+    fn translate_number(&self, number: RpNumberType) -> Result<Type> {
+        Ok(match number.kind {
+            RpNumberKind::U32 => Type::Primitive {
+                primitive: Primitive::U32,
+            },
+            RpNumberKind::U64 => Type::Primitive {
+                primitive: Primitive::U64,
+            },
+            RpNumberKind::I32 => Type::Primitive {
+                primitive: Primitive::I32,
+            },
+            RpNumberKind::I64 => Type::Primitive {
+                primitive: Primitive::I64,
+            },
+        })
     }
 
-    fn translate_float(&self) -> Result<Go<'static>> {
-        Ok(local("float32"))
+    fn translate_float(&self) -> Result<Type> {
+        Ok(Type::Primitive {
+            primitive: Primitive::F32,
+        })
     }
 
-    fn translate_double(&self) -> Result<Go<'static>> {
-        Ok(local("float64"))
+    fn translate_double(&self) -> Result<Type> {
+        Ok(Type::Primitive {
+            primitive: Primitive::F64,
+        })
     }
 
-    fn translate_boolean(&self) -> Result<Go<'static>> {
-        Ok(local("bool"))
+    fn translate_boolean(&self) -> Result<Type> {
+        Ok(Type::Primitive {
+            primitive: Primitive::Bool,
+        })
     }
 
-    fn translate_string(&self, _: RpStringType) -> Result<Go<'static>> {
-        Ok(local("string"))
+    fn translate_string(&self, _: RpStringType) -> Result<Type> {
+        Ok(Type::String)
     }
 
-    fn translate_datetime(&self) -> Result<Go<'static>> {
-        Ok(local("string"))
+    fn translate_datetime(&self) -> Result<Type> {
+        Ok(Type::String)
     }
 
-    fn translate_array(&self, argument: Go<'static>) -> Result<Go<'static>> {
-        Ok(array(argument))
+    fn translate_array(&self, argument: Type) -> Result<Type> {
+        Ok(Type::Array {
+            argument: Box::new(argument),
+        })
     }
 
-    fn translate_map(&self, key: Go<'static>, value: Go<'static>) -> Result<Go<'static>> {
-        Ok(map(key, value))
+    fn translate_map(&self, key: Type, value: Type) -> Result<Type> {
+        Ok(Type::Map {
+            key: Box::new(key),
+            value: Box::new(value),
+        })
     }
 
-    fn translate_any(&self) -> Result<Go<'static>> {
-        Ok(interface())
+    fn translate_any(&self) -> Result<Type> {
+        Ok(Type::Interface)
     }
 
-    fn translate_bytes(&self) -> Result<Go<'static>> {
-        Ok(local("string"))
+    fn translate_bytes(&self) -> Result<Type> {
+        Ok(Type::String)
     }
 
-    fn translate_name(
-        &self,
-        _from: &RpPackage,
-        reg: RpReg,
-        name: Loc<RpName>,
-    ) -> Result<Go<'static>> {
+    fn translate_name(&self, _from: &RpPackage, reg: RpReg, name: Loc<RpName>) -> Result<Type> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 
         // imported
@@ -128,11 +220,11 @@ impl FlavorTranslator for GoFlavorTranslator {
             let module = name.package.join(TYPE_SEP);
             let module = format!("../{}", module);
 
-            return Ok(imported(module, ident));
+            return Ok(Type::import(go::import(module, ident)));
         }
 
         // same package
-        return Ok(local(ident));
+        return Ok(Type::local(ident));
     }
 
     fn translate_local_name<T>(
@@ -153,7 +245,7 @@ impl FlavorTranslator for GoFlavorTranslator {
         // same package
         return Ok(GoName {
             name: Rc::new(ident),
-            package: package,
+            package,
         });
     }
 
@@ -166,17 +258,15 @@ impl FlavorTranslator for GoFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         enum_type: core::RpEnumType,
-    ) -> Result<Go<'static>>
+    ) -> Result<Type>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
-        use crate::core::RpEnumType::*;
-
         match enum_type {
-            String(string) => self.translate_string(string),
-            Number(number) => self.translate_number(number),
+            core::RpEnumType::String(string) => self.translate_string(string),
+            core::RpEnumType::Number(number) => self.translate_number(number),
         }
     }
 }
 
-decl_flavor!(GoFlavor, core);
+core::decl_flavor!(pub(crate) GoFlavor, core);

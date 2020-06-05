@@ -63,16 +63,16 @@ themes.forEach((theme) => {
 
 const DEFAULT_JSON = require("../static/default.json");
 const DEFAULT_YAML = require("raw-loader!../static/default.yaml");
-const COMMON_REPROTO: string = require("raw-loader!../static/common.reproto");
-const COMMON2_REPROTO: string = require("raw-loader!../static/common2.reproto");
-const IMPORT_REPROTO: string = require("raw-loader!../static/import.reproto");
-const TYPE_REPROTO: string = require("raw-loader!../static/type.reproto");
-const TUPLE_REPROTO: string = require("raw-loader!../static/tuple.reproto");
-const INTERFACE_REPROTO: string = require("raw-loader!../static/interface.reproto");
-const UNTAGGED_REPROTO: string = require("raw-loader!../static/untagged.reproto");
-const SERVICE_REPROTO: string = require("raw-loader!../static/service.reproto");
-const SERVICE_OPENAPI_REPROTO: string = require("raw-loader!../static/service.openapi.reproto");
-const DEFAULT_NEW_FILE_REPROTO: string = require("raw-loader!../static/default-new.reproto");
+const COMMON_REPROTO: any = require("raw-loader!../static/common.reproto");
+const COMMON2_REPROTO: any = require("raw-loader!../static/common2.reproto");
+const IMPORT_REPROTO: any = require("raw-loader!../static/import.reproto");
+const TYPE_REPROTO: any = require("raw-loader!../static/type.reproto");
+const TUPLE_REPROTO: any = require("raw-loader!../static/tuple.reproto");
+const INTERFACE_REPROTO: any = require("raw-loader!../static/interface.reproto");
+const UNTAGGED_REPROTO: any = require("raw-loader!../static/untagged.reproto");
+const SERVICE_REPROTO: any = require("raw-loader!../static/service.reproto");
+const SERVICE_OPENAPI_REPROTO: any = require("raw-loader!../static/service.openapi.reproto");
+const DEFAULT_NEW_FILE_REPROTO: any = require("raw-loader!../static/default-new.reproto");
 const logo = require("../static/logo.256.png");
 
 interface Dialog {
@@ -162,7 +162,7 @@ export interface MainState {
   // set of files
   files: File[],
   // current selected package.
-  file_index: number,
+  fileIndex: number,
   // If we are editing the file metadata right now.
   file_editing_meta: boolean;
   // Settings for various outputs.
@@ -173,9 +173,9 @@ export interface MainState {
   package_prefix: string;
   settings_enabled: boolean,
   // Error annotations (gutter markers) on input.
-  input_annotations: IAnnotation[];
+  inputAnnotations: IAnnotation[];
   // Error markers on input.
-  input_markers: IMarker[];
+  inputMarkers: IMarker[];
   // Result of last compilation.
   compiled?: Compiled;
   error?: string;
@@ -189,49 +189,49 @@ export class Main extends React.Component<MainProps, MainState> {
     this.state = {
       contentSet: {
         json: JSON.stringify(DEFAULT_JSON, null, 4),
-        yaml: DEFAULT_YAML,
+        yaml: DEFAULT_YAML.default,
       },
       files: [
         {
           package: "example.type",
-          content: TYPE_REPROTO,
+          content: TYPE_REPROTO.default,
         },
         {
           package: "example.interface",
-          content: INTERFACE_REPROTO,
+          content: INTERFACE_REPROTO.default,
         },
         {
           package: "example.untagged",
-          content: UNTAGGED_REPROTO,
+          content: UNTAGGED_REPROTO.default,
         },
         {
           package: "example.service",
-          content: SERVICE_REPROTO,
+          content: SERVICE_REPROTO.default,
         },
         {
           package: "example.service.openapi",
-          content: SERVICE_OPENAPI_REPROTO,
+          content: SERVICE_OPENAPI_REPROTO.default,
         },
         {
           package: "example.tuple",
-          content: TUPLE_REPROTO,
+          content: TUPLE_REPROTO.default,
         },
         {
           package: "example.import",
-          content: IMPORT_REPROTO,
+          content: IMPORT_REPROTO.default,
         },
         {
           package: "example.common",
           version: "1.0.0",
-          content: COMMON_REPROTO,
+          content: COMMON_REPROTO.default,
         },
         {
           package: "example.common",
           version: "2.0.0",
-          content: COMMON2_REPROTO,
+          content: COMMON2_REPROTO.default,
         },
       ],
-      file_index: 0,
+      fileIndex: 0,
       file_editing_meta: false,
       settings: {
         java: {
@@ -264,8 +264,8 @@ export class Main extends React.Component<MainProps, MainState> {
       root_name: "Generated",
       package_prefix: "reproto",
       settings_enabled: false,
-      input_annotations: [],
-      input_markers: [],
+      inputAnnotations: [],
+      inputMarkers: [],
       format: Format.Reproto,
       output: Output.Java,
     };
@@ -273,9 +273,9 @@ export class Main extends React.Component<MainProps, MainState> {
 
   componentWillUpdate(nextProps: MainProps, nextState: MainState) {
     // Update URL if needed
-    const { format, output, file_index, files } = nextState;
+    const { format, output, fileIndex, files } = nextState;
 
-    let f = files[file_index];
+    let f = files[fileIndex];
 
     let params = new URLSearchParams(location.search);
     let update = false;
@@ -320,7 +320,7 @@ export class Main extends React.Component<MainProps, MainState> {
     let {format} = this.state;
 
     if (format == "reproto") {
-      return this.state.files[this.state.file_index].content;
+      return this.state.files[this.state.fileIndex].content;
     } else {
       return this.state.contentSet[format];
     }
@@ -335,7 +335,7 @@ export class Main extends React.Component<MainProps, MainState> {
         root_name,
         package_prefix,
         files,
-        file_index,
+        fileIndex,
         settings,
         compiled,
         derive,
@@ -352,7 +352,7 @@ export class Main extends React.Component<MainProps, MainState> {
       let content_request;
 
       if (format == "reproto") {
-        content_request = {type: "file_index", index: file_index};
+        content_request = {type: "file_index", index: fileIndex};
       } else {
         content_request = {type: "content", content: content};
       }
@@ -374,18 +374,18 @@ export class Main extends React.Component<MainProps, MainState> {
 
       const result = derive(request) as DeriveResult;
 
-      const input_annotations: IAnnotation[] = [];
-      const input_markers: IMarker[] = [];
+      const inputAnnotations: IAnnotation[] = [];
+      const inputMarkers: IMarker[] = [];
 
       result.error_markers.forEach(m => {
-        input_annotations.push({
+        inputAnnotations.push({
           row: m.row_start,
           column: m.col_start,
           type: 'error',
           text: m.message,
         });
 
-        input_markers.push({
+        inputMarkers.push({
           startRow: m.row_start,
           startCol: m.col_start,
           endRow: m.row_end,
@@ -396,14 +396,14 @@ export class Main extends React.Component<MainProps, MainState> {
       });
 
       result.info_markers.forEach(m => {
-        input_annotations.push({
+        inputAnnotations.push({
           row: m.row_start,
           column: m.col_start,
           type: 'info',
           text: m.message,
         });
 
-        input_markers.push({
+        inputMarkers.push({
           startRow: m.row_start,
           startCol: m.col_start,
           endRow: m.row_end,
@@ -423,8 +423,8 @@ export class Main extends React.Component<MainProps, MainState> {
           request: request,
           result: result,
         },
-        input_annotations: input_annotations,
-        input_markers: input_markers,
+        inputAnnotations: inputAnnotations,
+        inputMarkers: inputMarkers,
       };
     });
   }
@@ -433,11 +433,11 @@ export class Main extends React.Component<MainProps, MainState> {
     console.log("new content", value.length);
 
     this.setState((state: MainState, props: MainProps) => {
-      let {file_index, files, contentSet} = this.state;
+      let {fileIndex, files, contentSet} = this.state;
 
       if (format == "reproto") {
         let new_files = files.map((file, index) => {
-          if (index == file_index) {
+          if (index == fileIndex) {
             let new_file = {...file};
             new_file.content = value;
             return new_file;
@@ -455,12 +455,12 @@ export class Main extends React.Component<MainProps, MainState> {
     }, () => this.recompile());
   }
 
-  setFile(file_index: number, cb: (file: File) => void) {
+  setFile(fileIndex: number, cb: (file: File) => void) {
     this.setState((state: MainState, props: MainProps) => {
       let {files} = state;
 
       let new_files = files.map((file, index) => {
-        if (index == file_index) {
+        if (index == fileIndex) {
           let new_file = {...file};
           cb(new_file);
           return new_file;
@@ -475,7 +475,7 @@ export class Main extends React.Component<MainProps, MainState> {
 
   setFileIndex(value: string) {
     this.setState({
-      file_index: Number(value)
+      fileIndex: Number(value)
     }, () => this.recompile());
   }
 
@@ -510,7 +510,7 @@ export class Main extends React.Component<MainProps, MainState> {
         return {};
       }
 
-      return {file_index: index} as MainState;
+      return {fileIndex: index} as MainState;
     }, () => this.recompile());
   }
 
@@ -649,7 +649,7 @@ export class Main extends React.Component<MainProps, MainState> {
       let { files } = state;
 
       files = [...files];
-      let file_index = files.length;
+      let fileIndex = files.length;
 
       files.push({
         content: DEFAULT_NEW_FILE_REPROTO,
@@ -658,7 +658,7 @@ export class Main extends React.Component<MainProps, MainState> {
 
       return {
         files: files,
-        file_index: file_index,
+        fileIndex: fileIndex,
         file_editing_meta: true,
       };
     }, () => this.recompile());
@@ -666,11 +666,11 @@ export class Main extends React.Component<MainProps, MainState> {
 
   deleteFile() {
     this.setState((state: MainState, props: MainProps) => {
-      let { files, file_index } = state;
+      let { files, fileIndex } = state;
 
       return {
-        files: files.filter((_, i: number) => i != file_index),
-        file_index: 0,
+        files: files.filter((_, i: number) => i != fileIndex),
+        fileIndex: 0,
         file_editing_meta: false,
       };
     }, () => this.recompile());
@@ -680,13 +680,13 @@ export class Main extends React.Component<MainProps, MainState> {
     let {
       contentSet,
       files,
-      file_index,
+      fileIndex,
       format,
       output,
       root_name,
       package_prefix,
-      input_annotations,
-      input_markers,
+      inputAnnotations,
+      inputMarkers,
       settings,
       compiled,
       derive,
@@ -695,8 +695,16 @@ export class Main extends React.Component<MainProps, MainState> {
 
     let content = this.content();
 
-    let input_mode = FORMAT_LANGUAGE_MAP[format as string];
-    let output_mode = FORMAT_LANGUAGE_MAP[output as string];
+    let inputMode = FORMAT_LANGUAGE_MAP[format as string];
+    let outputMode = FORMAT_LANGUAGE_MAP[output as string];
+
+    if (!inputMode) {
+      throw Error(`Invalid input mode: ${format}`);
+    }
+
+    if (!outputMode) {
+      throw Error(`Invalid output mode: ${output}`);
+    }
 
     let dialogs: Dialog[] = [];
     let compiledFiles: DeriveFile[] = [];
@@ -705,7 +713,7 @@ export class Main extends React.Component<MainProps, MainState> {
     var view = undefined;
 
     if (format == "reproto") {
-      let {version, package: file_package} = files[file_index];
+      let {version, package: file_package} = files[fileIndex];
       let {file_editing_meta} = this.state;
 
       if (file_editing_meta) {
@@ -723,7 +731,7 @@ export class Main extends React.Component<MainProps, MainState> {
                 placeholder="package"
                 onChange={e => {
                   let value = e.target.value;
-                  this.setFile(file_index, file => file.package = value);
+                  this.setFile(fileIndex, file => file.package = value);
                 }}
                 value={file_package} />
             </div>
@@ -736,7 +744,7 @@ export class Main extends React.Component<MainProps, MainState> {
                 placeholder="version"
                 onChange={e => {
                   let value = e.target.value;
-                  this.setFile(file_index, file => {
+                  this.setFile(fileIndex, file => {
                     if (value == "") {
                       delete file.version;
                     } else {
@@ -782,7 +790,7 @@ export class Main extends React.Component<MainProps, MainState> {
 
               <select
                 id="file-package"
-                value={file_index}
+                value={fileIndex}
                 className="form-control"
                 onChange={e => this.setFileIndex(e.target.value)}>
                 { files.map((f, index) => {
@@ -1072,13 +1080,13 @@ export class Main extends React.Component<MainProps, MainState> {
               <AceEditor
                 tabSize={2}
                 showGutter={true}
-                mode={input_mode}
+                mode={inputMode}
                 theme="monokai"
                 width="100%"
                 height="100%"
                 value={content}
-                annotations={input_annotations}
-                markers={input_markers}
+                annotations={inputAnnotations}
+                markers={inputMarkers}
                 onChange={value => this.setContent(format, value)}
                 />
             </div>
@@ -1103,7 +1111,7 @@ export class Main extends React.Component<MainProps, MainState> {
                       <i className="title-icon fa fa-file"></i>
                       <span className="title-text">{f.path}</span>
                     </div>
-                    <OutputEditor mode={output_mode as string} value={f.content} />
+                    <OutputEditor mode={outputMode as string} value={f.content} />
                   </div>
                 );
               })}

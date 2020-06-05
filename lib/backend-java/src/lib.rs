@@ -1,45 +1,25 @@
-#[macro_use]
-extern crate genco;
-#[macro_use]
-extern crate log;
-extern crate reproto_backend as backend;
-#[macro_use]
-extern crate reproto_core as core;
-#[macro_use]
-extern crate reproto_manifest as manifest;
-extern crate reproto_naming as naming;
-extern crate reproto_trans as trans;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate toml;
-
 mod codegen;
 mod compiler;
 mod flavored;
-mod java_file;
 mod module;
 mod options;
-mod serialization;
-mod utils;
 
-use crate::codegen::Configure;
 use crate::compiler::Compiler;
-use crate::core::errors::Result;
-use crate::core::{CoreFlavor, Handle};
-use crate::manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
-use crate::naming::Naming;
 use crate::options::Options;
-use crate::trans::Session;
+use core::errors::Result;
+use core::{CoreFlavor, Handle};
+use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
+use naming::Naming;
 use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;
+use trans::Session;
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct JavaLang;
 
 impl Lang for JavaLang {
-    lang_base!(JavaModule, compile);
+    manifest::lang_base!(Module, compile);
 
     fn comment(&self, input: &str) -> Option<String> {
         Some(format!("// {}", input))
@@ -113,30 +93,28 @@ impl Lang for JavaLang {
 }
 
 #[derive(Debug)]
-pub enum JavaModule {
+pub enum Module {
     Jackson,
     Lombok,
-    Grpc,
+    //Grpc,
     Builder,
     ConstructorProperties,
     Mutable,
     Nullable,
-    OkHttp(module::OkHttpConfig),
+    //OkHttp(module::OkHttpConfig),
 }
 
-impl TryFromToml for JavaModule {
+impl TryFromToml for Module {
     fn try_from_string(path: &Path, id: &str, value: String) -> Result<Self> {
-        use self::JavaModule::*;
-
         let result = match id {
-            "jackson" => Jackson,
-            "lombok" => Lombok,
-            "grpc" => Grpc,
-            "builder" => Builder,
-            "constructor_properties" => ConstructorProperties,
-            "mutable" => Mutable,
-            "nullable" => Nullable,
-            "okhttp" => OkHttp(module::OkHttpConfig::default()),
+            "jackson" => Self::Jackson,
+            "lombok" => Self::Lombok,
+            //"grpc" => Grpc,
+            "builder" => Self::Builder,
+            "constructor_properties" => Self::ConstructorProperties,
+            "mutable" => Self::Mutable,
+            "nullable" => Self::Nullable,
+            //"okhttp" => OkHttp(module::OkHttpConfig::default()),*/
             _ => return NoModule::illegal(path, id, value),
         };
 
@@ -144,17 +122,15 @@ impl TryFromToml for JavaModule {
     }
 
     fn try_from_value(path: &Path, id: &str, value: toml::Value) -> Result<Self> {
-        use self::JavaModule::*;
-
         let result = match id {
-            "jackson" => Jackson,
-            "lombok" => Lombok,
-            "grpc" => Grpc,
-            "builder" => Builder,
-            "constructor_properties" => ConstructorProperties,
-            "mutable" => Mutable,
-            "nullable" => Nullable,
-            "okhttp" => OkHttp(value.try_into()?),
+            "jackson" => Self::Jackson,
+            "lombok" => Self::Lombok,
+            //"grpc" => Grpc,
+            "builder" => Self::Builder,
+            "constructor_properties" => Self::ConstructorProperties,
+            "mutable" => Self::Mutable,
+            "nullable" => Self::Nullable,
+            //"okhttp" => OkHttp(value.try_into()?),
             _ => return NoModule::illegal(path, id, value),
         };
 
@@ -162,42 +138,22 @@ impl TryFromToml for JavaModule {
     }
 }
 
-fn setup_options<'a>(modules: Vec<JavaModule>) -> Result<Options> {
-    use self::JavaModule::*;
-
+fn setup_options(modules: Vec<Module>) -> Result<Options> {
     let mut options = Options::new();
 
-    // prepare options
-    for module in &modules {
-        let c = Configure {
-            options: &mut options,
-        };
-
-        match *module {
-            Jackson => {
-                module::Jackson::prepare(c)?;
-            }
-            _ => {}
-        }
-    }
-
     for module in modules {
-        let c = Configure {
-            options: &mut options,
-        };
-
         match module {
-            Jackson => module::Jackson.initialize(c),
-            Lombok => module::Lombok.initialize(c),
-            Grpc => module::Grpc.initialize(c),
-            Builder => module::Builder.initialize(c),
-            ConstructorProperties => module::ConstructorProperties.initialize(c),
-            Mutable => module::Mutable.initialize(c),
-            Nullable => module::Nullable.initialize(c),
-            OkHttp(config) => {
-                let serialization = c.options.get_serialization()?;
-                module::OkHttp::new(config).initialize(c, serialization);
-            }
+            Module::Jackson => module::Jackson.initialize(&mut options),
+            Module::Lombok => module::Lombok.initialize(&mut options),
+            //Grpc => module::Grpc.initialize(c),
+            Module::Builder => module::Builder.initialize(&mut options),
+            Module::ConstructorProperties => module::ConstructorProperties.initialize(&mut options),
+            Module::Mutable => module::Mutable.initialize(&mut options),
+            Module::Nullable => module::Nullable.initialize(&mut options),
+            //OkHttp(config) => {
+            //let serialization = c.options.get_serialization()?;
+            //module::OkHttp::new(config).initialize(c, serialization);
+            //}
         };
     }
 
@@ -214,5 +170,5 @@ fn compile(handle: &dyn Handle, session: Session<CoreFlavor>, manifest: Manifest
 
     let compiler = Compiler::new(&session, options);
 
-    compiler.compile(&packages, handle)
+    compiler.compile(handle)
 }

@@ -1,18 +1,17 @@
-use crate::core::errors::{Error, Result, ResultExt};
-use crate::core::{
+use clap::ArgMatches;
+use core::errors::{Error, Result, ResultExt};
+use core::{
     CoreFlavor, Flavor, Reporter, Resolved, ResolvedByPrefix, Resolver, RpChannel, RpFile,
     RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Source, SourceDiagnostics,
     Version,
 };
-use crate::env;
-use crate::manifest::{self, Lang, Language, Manifest, Publish};
-use crate::repository::Repository;
-use crate::semck;
-use crate::trans::Session;
-use clap::ArgMatches;
+use manifest::{self, Lang, Language, Manifest, Publish};
+use repository::Repository;
+use semck;
 use std::fmt;
 use std::fs::File;
 use std::path::Path;
+use trans::Session;
 
 /// Load the manifest based on commandline arguments.
 pub fn load_manifest<'a>(m: &ArgMatches<'a>) -> Result<Manifest> {
@@ -32,7 +31,7 @@ pub fn load_manifest<'a>(m: &ArgMatches<'a>) -> Result<Manifest> {
     }
 
     if path.is_file() {
-        debug!("reading manifest: {}", path.display());
+        log::debug!("reading manifest: {}", path.display());
         manifest.from_yaml(File::open(&path)?, env::convert_lang)?;
     }
 
@@ -161,7 +160,7 @@ where
     }
 
     if stdin {
-        debug!("Reading file to build from stdin");
+        log::debug!("Reading file to build from stdin");
 
         let source = Source::stdin();
 
@@ -209,9 +208,10 @@ where
         for ResolvedByPrefix { package, source } in resolved {
             // only publish un-versioned.
             if package.version.is_some() {
-                warn!(
+                log::warn!(
                     "not publishing versioned package `{}` from {}",
-                    package, source
+                    package,
+                    source
                 );
                 continue;
             }
@@ -246,11 +246,11 @@ where
             .ok_or_else(|| format!("no package matching: {}", package))?;
 
         if let Some(next) = resolved.next() {
-            warn!("matched: {}", first);
-            warn!("    and: {}", next);
+            log::warn!("matched: {}", first);
+            log::warn!("    and: {}", next);
 
             while let Some(next) = resolved.next() {
-                warn!("    and: {}", next);
+                log::warn!("    and: {}", next);
             }
 
             return Err("more than one matching package found".into());
@@ -289,7 +289,7 @@ pub fn semck_check(
         .filter(|d| d.version <= *version_to && !d.version.is_prerelease())
         .last()
     {
-        debug!("Checking semantics of {} -> {}", d.version, version_to);
+        log::debug!("Checking semantics of {} -> {}", d.version, version_to);
 
         let current = repository
             .get_object(&d)?
@@ -328,7 +328,7 @@ pub fn semck_check(
         source_to: &Source,
         violation: semck::Violation,
     ) -> Result<()> {
-        use crate::semck::Violation::*;
+        use semck::Violation::*;
 
         match violation {
             DeclRemoved(c, reg) => {

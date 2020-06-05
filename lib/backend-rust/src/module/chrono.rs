@@ -1,9 +1,10 @@
 //! Chrono module for Rust.
 
-use crate::backend::Initializer;
-use crate::core::errors::*;
+use crate::flavored::Type;
 use crate::Options;
-use genco::rust::imported;
+use backend::Initializer;
+use core::errors::Result;
+use genco::lang::rust;
 
 pub struct Module {}
 
@@ -17,10 +18,10 @@ impl Initializer for Module {
     type Options = Options;
 
     fn initialize(&self, options: &mut Self::Options) -> Result<()> {
-        options.datetime = Some(
-            imported("chrono", "DateTime").with_arguments(vec![imported("chrono::offset", "Utc")]),
-        );
-
+        options.datetime = Some(Type::generic(
+            rust::import("chrono", "DateTime"),
+            rust::import("chrono::offset", "Utc"),
+        ));
         Ok(())
     }
 }

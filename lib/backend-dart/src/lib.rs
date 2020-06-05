@@ -1,33 +1,14 @@
-#[macro_use]
-extern crate genco;
-extern crate log;
-#[macro_use]
-extern crate reproto_backend as backend;
-#[macro_use]
-extern crate reproto_core as core;
-#[macro_use]
-extern crate reproto_manifest as manifest;
-extern crate reproto_naming as naming;
-extern crate reproto_trans as trans;
-extern crate serde;
-#[allow(unused)]
-#[macro_use]
-extern crate serde_derive;
-extern crate toml;
-
 mod compiler;
-mod dart_file_spec;
 mod flavored;
-mod module;
 mod utils;
 
 use crate::compiler::Compiler;
-use crate::core::errors::*;
-use crate::core::{CoreFlavor, Handle};
-use crate::manifest::{Lang, Manifest, NoModule, TryFromToml};
-use crate::trans::Session;
+use core::errors::Result;
+use core::{CoreFlavor, Handle};
+use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
+use trans::Session;
 
 const EXT: &str = "dart";
 const TYPE_SEP: &'static str = "_";
@@ -36,7 +17,7 @@ const TYPE_SEP: &'static str = "_";
 pub struct DartLang;
 
 impl Lang for DartLang {
-    lang_base!(DartModule, compile);
+    manifest::lang_base!(DartModule, compile);
 
     fn comment(&self, input: &str) -> Option<String> {
         Some(format!("// {}", input))

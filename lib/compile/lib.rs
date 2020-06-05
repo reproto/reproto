@@ -1,9 +1,5 @@
-extern crate reproto_ast as ast;
-extern crate reproto_core as core;
-extern crate reproto_manifest as manifest;
-
-use crate::core::{RelativePath, Reporter, Resolver, RpPackage, RpVersionedPackage, Source};
-use crate::manifest::Lang;
+use core::{RelativePath, Reporter, Resolver, RpPackage, RpVersionedPackage, Source};
+use manifest::Lang;
 use std::any::Any;
 use std::str;
 

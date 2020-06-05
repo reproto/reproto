@@ -1,38 +1,21 @@
-#[macro_use]
-extern crate genco;
-#[macro_use]
-extern crate log;
-extern crate reproto_backend as backend;
-#[macro_use]
-extern crate reproto_core as core;
-#[macro_use]
-extern crate reproto_manifest as manifest;
-extern crate reproto_naming as naming;
-extern crate reproto_trans as trans;
-extern crate serde;
-#[allow(unused)]
-#[macro_use]
-extern crate serde_derive;
-extern crate toml;
-
 mod compiler;
 mod flavored;
 mod module;
 
-use crate::backend::{Initializer, IntoBytes};
 use crate::compiler::Compiler;
-use crate::core::errors::Result;
-use crate::core::{CoreFlavor, Handle};
-use crate::flavored::{GoName, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody};
-use crate::manifest::{Lang, Manifest, NoModule, TryFromToml};
-use crate::naming::Naming;
-use crate::trans::Session;
-use genco::go::{self, Go};
-use genco::{Element, IntoTokens, Tokens};
+use crate::flavored::{GoName, RpEnumBody, RpField, RpInterfaceBody, RpTupleBody};
+use backend::Initializer;
+use core::errors::Result;
+use core::{CoreFlavor, Handle};
+use genco::prelude::*;
+use genco::tokens::{FormatInto, ItemStr, Tokens};
+use manifest::{Lang, Manifest, NoModule, TryFromToml};
+use naming::Naming;
 use std::any::Any;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::rc::Rc;
+use trans::Session;
 
 const TYPE_SEP: &str = "_";
 const EXT: &str = "go";
@@ -41,7 +24,7 @@ const EXT: &str = "go";
 pub struct GoLang;
 
 impl Lang for GoLang {
-    lang_base!(GoModule, compile);
+    manifest::lang_base!(GoModule, compile);
 
     fn comment(&self, input: &str) -> Option<String> {
         Some(format!("// {}", input))
@@ -113,7 +96,7 @@ pub fn options(modules: Vec<GoModule>) -> Result<Options> {
     let mut options = Options::new();
 
     for m in modules {
-        debug!("+module: {:?}", m);
+        log::debug!("+module: {:?}", m);
 
         let initializer: Box<dyn Initializer<Options = Options>> = match m {
             EncodingJson => Box::new(module::EncodingJson::new()),
@@ -125,19 +108,11 @@ pub fn options(modules: Vec<GoModule>) -> Result<Options> {
     Ok(options)
 }
 
-pub struct FileSpec<'a>(pub Tokens<'a, Go<'a>>);
+pub struct FileSpec(pub Tokens<Go>);
 
-impl<'el> Default for FileSpec<'el> {
+impl Default for FileSpec {
     fn default() -> Self {
         FileSpec(Tokens::new())
-    }
-}
-
-impl<'el> IntoBytes<Compiler<'el>> for FileSpec<'el> {
-    fn into_bytes(self, _: &Compiler<'el>, package: &RpPackage) -> Result<Vec<u8>> {
-        let extra = go::Extra::from_package(package.join("_"));
-        let out = self.0.join_line_spacing().to_file_with(extra)?;
-        Ok(out.into_bytes())
     }
 }
 
@@ -160,114 +135,98 @@ macro_rules! codegen {
 }
 
 /// Event emitted when a field has been added.
-pub struct FieldAdded<'a, 'el: 'a> {
+pub struct FieldAdded<'a> {
     pub tags: &'a mut Tags,
-    pub field: &'el RpField,
+    pub field: &'a RpField,
 }
 
 codegen!(FieldCodegen, FieldAdded);
 
 /// Event emitted when an enum has been added
-pub struct EnumAdded<'a, 'el: 'a> {
-    pub container: &'a mut Tokens<'el, Go<'el>>,
-    pub name: &'el GoName,
-    pub body: &'el RpEnumBody,
+pub struct EnumAdded<'a> {
+    pub container: &'a mut Tokens<Go>,
+    pub name: &'a GoName,
+    pub body: &'a RpEnumBody,
 }
 
 codegen!(EnumCodegen, EnumAdded);
 
 /// Event emitted when a tuple has been added.
-pub struct TupleAdded<'a, 'el: 'a> {
-    pub container: &'a mut Tokens<'el, Go<'el>>,
-    pub name: &'el GoName,
-    pub body: &'el RpTupleBody,
+pub struct TupleAdded<'a> {
+    pub container: &'a mut Tokens<Go>,
+    pub name: &'a GoName,
+    pub body: &'a RpTupleBody,
 }
 
 codegen!(TupleCodegen, TupleAdded);
 
 /// Event emitted when an interface has been added.
-pub struct InterfaceAdded<'a, 'el: 'a> {
-    pub container: &'a mut Tokens<'el, Go<'el>>,
-    pub name: &'el GoName,
-    pub body: &'el RpInterfaceBody,
+pub struct InterfaceAdded<'a> {
+    pub container: &'a mut Tokens<Go>,
+    pub name: &'a GoName,
+    pub body: &'a RpInterfaceBody,
 }
 
 codegen!(InterfaceCodegen, InterfaceAdded);
 
-pub enum TagValue {
-    String(String),
-}
-
-impl From<TagValue> for Element<'static, Go<'static>> {
-    fn from(value: TagValue) -> Self {
-        match value {
-            TagValue::String(string) => Element::from(string),
-        }
-    }
-}
-
 /// Structure for Tags - a type of Go metadata
 pub struct Tags {
-    values: HashMap<String, Vec<TagValue>>,
+    values: BTreeMap<ItemStr, Vec<ItemStr>>,
 }
 
 impl Tags {
     pub fn new() -> Self {
         Self {
-            values: HashMap::new(),
+            values: BTreeMap::new(),
         }
     }
 
     /// Push a string tag.
-    pub fn push_str<K: AsRef<str>, V: AsRef<str>>(&mut self, key: K, value: V) {
+    pub fn push_str<K: Into<ItemStr>, V: Into<ItemStr>>(&mut self, key: K, value: V) {
         self.values
-            .entry(key.as_ref().to_string())
+            .entry(key.into())
             .or_insert_with(Vec::new)
-            .push(TagValue::String(value.as_ref().to_string()));
+            .push(value.into());
     }
 }
 
-impl<'el> IntoTokens<'el, Go<'el>> for Tags {
-    fn into_tokens(self) -> Tokens<'el, Go<'el>> {
-        let mut t = Tokens::new();
-
+impl FormatInto<Go> for Tags {
+    fn format_into(self, t: &mut Tokens<Go>) {
         if self.values.is_empty() {
-            return t;
+            return;
         }
 
-        t.append("`");
+        let mut it = self.values.into_iter().peekable();
 
-        t.append({
-            let mut t = Tokens::new();
+        let mut s = String::new();
 
-            for (key, vals) in self.values {
-                t.append({
-                    let mut t = Tokens::new();
-                    t.append(key);
-                    t.append(":");
+        s.push('`');
 
-                    let vals = vals
-                        .into_iter()
-                        .fold(Tokens::new(), |mut t, v| {
-                            t.append(Element::from(v));
-                            t
-                        })
-                        .join(",");
+        while let Some((key, vals)) = it.next() {
+            s.push_str(&key);
+            s.push(':');
 
-                    t.append("\"");
-                    t.append(vals);
-                    t.append("\"");
+            let mut val_it = vals.into_iter().peekable();
 
-                    t
-                });
+            s.push('"');
+
+            while let Some(v) = val_it.next() {
+                s.push_str(&v);
+
+                if val_it.peek().is_some() {
+                    s.push(',');
+                }
             }
 
-            t.join(" ")
-        });
+            s.push('"');
 
-        t.append("`");
+            if it.peek().is_some() {
+                t.append(" ")
+            }
+        }
 
-        t
+        s.push('`');
+        t.append(s);
     }
 }
 

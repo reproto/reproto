@@ -1,18 +1,18 @@
 //! gRPC module for Rust.
 
-use crate::backend::Initializer;
-use crate::core;
-use crate::core::errors::{Error, Result};
-use crate::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, SwiftName};
-use crate::{
-    EnumAdded, EnumCodegen, FileSpec, InterfaceAdded, InterfaceCodegen, InterfaceModelAdded,
-    InterfaceModelCodegen, Options, PackageAdded, PackageCodegen, StructModelAdded,
-    StructModelCodegen, TupleAdded, TupleCodegen,
-};
-use genco::swift::{local, Swift};
-use genco::{Quoted, Tokens};
+use crate::codegen;
+use crate::flavored::{Field, Name, RpEnumBody, RpInterfaceBody, RpPackage, Type};
+use crate::Options;
+use backend::Initializer;
+use core::errors::Result;
+use core::Loc;
+use genco::prelude::*;
 use std::collections::BTreeSet;
 use std::rc::Rc;
+
+static PRIMITIVES: [&str; 10] = [
+    "Bool", "Int", "UInt", "Int32", "Int64", "UInt32", "UInt64", "Float", "Double", "String",
+];
 
 pub struct Module {}
 
@@ -25,16 +25,16 @@ impl Module {
 impl Initializer for Module {
     type Options = Options;
 
-    fn initialize(&self, options: &mut Self::Options) -> Result<()> {
+    fn initialize(&self, opt: &mut Self::Options) -> Result<()> {
         let codegen = Rc::new(Codegen);
-        options.struct_model_extends.append("Codable");
-        options.tuple_gens.push(Box::new(codegen.clone()));
-        options.struct_model_gens.push(Box::new(codegen.clone()));
-        options.enum_gens.push(Box::new(codegen.clone()));
-        options.interface_gens.push(Box::new(codegen.clone()));
-        options.interface_model_gens.push(Box::new(codegen.clone()));
-        options.any_type.push(("codable", local("AnyCodable")));
-        options.package_gens.push(Box::new(codegen.clone()));
+        opt.struct_model_extends.push(quote!(Codable));
+        opt.gen.tuple_added.push(codegen.clone());
+        opt.gen.struct_model_added.push(codegen.clone());
+        opt.gen.enum_added.push(codegen.clone());
+        opt.gen.interface_added.push(codegen.clone());
+        opt.gen.interface_model_added.push(codegen.clone());
+        opt.gen.package_added.push(codegen.clone());
+        opt.any_type.push(("codable", Type::local("AnyCodable")));
         Ok(())
     }
 }
@@ -46,1260 +46,663 @@ impl Codegen {
         RpPackage::parse("reproto_codable")
     }
 
-    fn utils<'el>(&self) -> Result<FileSpec<'el>> {
-        let mut out = FileSpec::default();
-
-        out.0.push(any_codable()?);
+    fn utils(&self) -> swift::Tokens {
+        let mut out = swift::Tokens::default();
+        any_codable(&mut out);
+        return out;
 
-        return Ok(out);
-
-        fn any_codable<'el>() -> Result<Tokens<'el, Swift<'el>>> {
-            let primitives = vec![
-                "Bool", "Int", "UInt", "Int32", "Int64", "UInt32", "UInt64", "Float", "Double",
-                "String",
-            ];
+        fn any_codable(t: &mut swift::Tokens) {
+            quote_in! { *t =>
+                class AnyCodable: Codable {
+                    public let value: Any
 
-            let mut t = Tokens::new();
+                    #(init())
 
-            t.try_push_into::<Error, _>(|t| {
-                t.push("class AnyCodable: Codable {");
+                    #(encode())
 
-                t.nested({
-                    let mut t = Tokens::new();
+                    #(decoding_error())
 
-                    t.push("public let value: Any");
-                    t.push(init()?);
-                    t.push(encode()?);
+                    #(encoding_error())
 
-                    t.push(decoding_error()?);
-                    t.push(encoding_error()?);
-
-                    t.push(decode_single(&primitives)?);
-                    t.push(decode_unkeyed(&primitives)?);
-                    t.push(decode_keyed(&primitives)?);
-                    t.push(decode_array()?);
-                    t.push(decode_dictionary()?);
-
-                    t.push(encode_single(&primitives)?);
-                    t.push(encode_unkeyed(&primitives)?);
-                    t.push(encode_keyed(&primitives)?);
-
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-                Ok(())
-            })?;
-
-            t.push(any_coding_key());
-            t.push(any_null());
-
-            return Ok(t);
-
-            fn init<'el>() -> Result<Tokens<'el, Swift<'el>>> {
-                let mut t = Tokens::new();
-
-                t.push("public required init(from decoder: Decoder) throws {");
-
-                t.nested_into(|t| {
-                    t.push_into(|t| {
-                        t.push("if var array = try? decoder.unkeyedContainer() {");
-                        t.nested("self.value = try AnyCodable.decodeArray(from: &array)");
-                        t.nested("return");
-                        t.push("}");
-                    });
-
-                    t.push_into(|t| {
-                        t.push("if var c = try? decoder.container(keyedBy: AnyCodingKey.self) {");
-                        t.nested("self.value = try AnyCodable.decodeDictionary(from: &c)");
-                        t.nested("return");
-                        t.push("}");
-                    });
-
-                    t.push_into(|t| {
-                        t.push("let c = try decoder.singleValueContainer()");
-                        t.push("self.value = try AnyCodable.decode(from: c)");
-                    });
-                });
-
-                t.push("}");
-
-                Ok(t)
-            }
-
-            fn encode<'el>() -> Result<Tokens<'el, Swift<'el>>> {
-                let mut t = Tokens::new();
-
-                t.push("public func encode(to encoder: Encoder) throws {");
-
-                t.nested_into(|t| {
-                    t.push_into(|t| {
-                        t.push("if let arr = self.value as? [Any] {");
-                        t.nested("var c = encoder.unkeyedContainer()");
-                        t.nested("try AnyCodable.encode(to: &c, array: arr)");
-                        t.nested("return");
-                        t.push("}");
-                    });
-
-                    t.push_into(|t| {
-                        t.push("if let dict = self.value as? [String: Any] {");
-                        t.nested("var c = encoder.container(keyedBy: AnyCodingKey.self)");
-                        t.nested("try AnyCodable.encode(to: &c, dictionary: dict)");
-                        t.nested("return");
-                        t.push("}");
-                    });
-
-                    t.push_into(|t| {
-                        t.push("var c = encoder.singleValueContainer()");
-                        t.push("try AnyCodable.encode(to: &c, value: self.value)");
-                    });
-                });
-
-                t.push("}");
-
-                Ok(t)
-            }
-
-            fn decoding_error<'el>() -> Result<Tokens<'el, Swift<'el>>> {
-                let mut t = Tokens::new();
-
-                t.push(
-                    "static func decodingError(forCodingPath codingPath: [CodingKey]) -> \
-                     DecodingError {",
-                );
-
-                t.nested({
-                    let mut args = Tokens::new();
-                    args.push("codingPath: codingPath");
-                    args.push(toks![
-                        "debugDescription: ",
-                        "Cannot decode AnyCodable".quoted()
-                    ]);
-
-                    let mut t = Tokens::new();
-                    t.push(toks![
-                        "let context = DecodingError.Context(",
-                        args.join(", "),
-                        ")"
-                    ]);
-                    t.push("return DecodingError.typeMismatch(AnyCodable.self, context)");
-                    t
-                });
-
-                t.push("}");
-
-                Ok(t)
-            }
-
-            fn encoding_error<'el>() -> Result<Tokens<'el, Swift<'el>>> {
-                let mut t = Tokens::new();
-
-                t.push(
-                    "static func encodingError(forValue value: Any, codingPath: [CodingKey]) -> \
-                     EncodingError {",
-                );
-
-                t.nested({
-                    let mut args = Tokens::new();
-                    args.push("codingPath: codingPath");
-                    args.push(toks![
-                        "debugDescription: ",
-                        "Cannot encode AnyCodable".quoted()
-                    ]);
-
-                    let mut t = Tokens::new();
-                    t.push(toks![
-                        "let context = EncodingError.Context(",
-                        args.join(", "),
-                        ")"
-                    ]);
-                    t.push("return EncodingError.invalidValue(value, context)");
-                    t
-                });
-
-                t.push("}");
-
-                Ok(t)
-            }
-
-            fn decode_single<'el>(primitives: &[&'el str]) -> Result<Tokens<'el, Swift<'el>>> {
-                let mut t = Tokens::new();
-
-                t.push("static func decode(from c: SingleValueDecodingContainer) throws -> Any {");
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    for p in primitives.iter().cloned() {
-                        t.push_into(|t| {
-                            t.push(toks!["if let value = try? c.decode(", p, ".self) {"]);
-                            t.nested("return value");
-                            t.push("}");
-                        });
-                    }
-
-                    t.push_into(|t| {
-                        t.push(toks!["if c.decodeNil() {"]);
-                        t.nested("return AnyNull()");
-                        t.push("}");
-                    });
-
-                    t.push("throw decodingError(forCodingPath: c.codingPath)");
-
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-
-                Ok(t)
-            }
-
-            fn decode_unkeyed<'el>(primitives: &[&'el str]) -> Result<Tokens<'el, Swift<'el>>> {
-                let mut t = Tokens::new();
-
-                t.push(
-                    "static func decode(from c: inout UnkeyedDecodingContainer) throws -> Any {",
-                );
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    for p in primitives.iter().cloned() {
-                        t.push_into(|t| {
-                            t.push(toks!["if let value = try? c.decode(", p, ".self) {"]);
-                            t.nested("return value");
-                            t.push("}");
-                        });
-                    }
-
-                    t.push_into(|t| {
-                        t.push(toks!["if let value = try? c.decodeNil() {"]);
-
-                        t.nested_into(|t| {
-                            t.push("if value {");
-                            t.nested("return AnyNull()");
-                            t.push("}");
-                        });
-
-                        t.push("}");
-                    });
-
-                    t.push_into(|t| {
-                        t.push("if var c = try? c.nestedUnkeyedContainer() {");
-                        t.nested("return try decodeArray(from: &c)");
-                        t.push("}");
-                    });
-
-                    t.push_into(|t| {
-                        t.push("if var c = try? c.nestedContainer(keyedBy: AnyCodingKey.self) {");
-                        t.nested("return try decodeDictionary(from: &c)");
-                        t.push("}");
-                    });
-
-                    t.push("throw decodingError(forCodingPath: c.codingPath)");
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-
-                Ok(t)
-            }
-
-            fn decode_keyed<'el>(primitives: &[&'el str]) -> Result<Tokens<'el, Swift<'el>>> {
-                let mut t = Tokens::new();
-
-                t.push(
-                    "static func decode(from c: inout KeyedDecodingContainer<AnyCodingKey>, \
-                     forKey key: AnyCodingKey) throws -> Any {",
-                );
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    for p in primitives.iter().cloned() {
-                        t.push_into(|t| {
-                            t.push(toks![
-                                "if let value = try? c.decode(",
-                                p,
-                                ".self, forKey: key) {"
-                            ]);
-                            t.nested("return value");
-                            t.push("}");
-                        });
-                    }
-
-                    t.push_into(|t| {
-                        t.push(toks!["if let value = try? c.decodeNil(forKey: key) {"]);
-
-                        t.nested_into(|t| {
-                            t.push("if value {");
-                            t.nested("return AnyNull()");
-                            t.push("}");
-                        });
-
-                        t.push("}");
-                    });
-
-                    t.push_into(|t| {
-                        t.push("if var c = try? c.nestedUnkeyedContainer(forKey: key) {");
-                        t.nested("return try decodeArray(from: &c)");
-                        t.push("}");
-                    });
-
-                    t.push_into(|t| {
-                        t.push(
-                            "if var c = try? c.nestedContainer(keyedBy: AnyCodingKey.self, \
-                             forKey: key) {",
-                        );
-                        t.nested("return try decodeDictionary(from: &c)");
-                        t.push("}");
-                    });
-
-                    t.push("throw decodingError(forCodingPath: c.codingPath)");
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-
-                Ok(t)
-            }
-
-            fn decode_array<'el>() -> Result<Tokens<'el, Swift<'el>>> {
-                let mut t = Tokens::new();
-
-                t.push(
-                    "static func decodeArray(from c: inout UnkeyedDecodingContainer) throws -> \
-                     [Any] {",
-                );
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    t.push("var array: [Any] = []");
-                    t.push_into(|t| {
-                        t.push("while !c.isAtEnd {");
-                        t.nested("array.append(try decode(from: &c))");
-                        t.push("}");
-                    });
-                    t.push("return array");
-
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-
-                Ok(t)
-            }
-
-            fn decode_dictionary<'el>() -> Result<Tokens<'el, Swift<'el>>> {
-                let mut t = Tokens::new();
-
-                t.push(
-                    "static func decodeDictionary(from c: inout \
-                     KeyedDecodingContainer<AnyCodingKey>) throws -> [String: Any] {",
-                );
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    t.push("var dict = [String: Any]()");
-                    t.push_into(|t| {
-                        t.push("for key in c.allKeys {");
-                        t.nested("dict[key.stringValue] = try decode(from: &c, forKey: key)");
-                        t.push("}");
-                    });
-                    t.push("return dict");
-
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-
-                Ok(t)
-            }
-
-            fn encode_single<'el>(primitives: &[&'el str]) -> Result<Tokens<'el, Swift<'el>>> {
-                let mut t = Tokens::new();
-
-                t.push(
-                    "static func encode(to c: inout SingleValueEncodingContainer, value: Any) \
-                     throws {",
-                );
-
-                t.nested_into(|t| {
-                    t.push("switch value {");
-
-                    for p in primitives.iter().cloned() {
-                        t.push_into(|t| {
-                            t.push(toks!["case let value as ", p, ":"]);
-                            t.nested("try c.encode(value)");
-                        });
-                    }
-
-                    t.push("case _ as AnyNull:");
-                    t.nested("try c.encodeNil()");
-
-                    t.push("default:");
-                    t.nested("throw encodingError(forValue: value, codingPath: c.codingPath)");
-
-                    t.push("}");
-                });
-
-                t.push("}");
-
-                Ok(t)
-            }
-
-            fn encode_unkeyed<'el>(primitives: &[&'el str]) -> Result<Tokens<'el, Swift<'el>>> {
-                let mut t = Tokens::new();
-
-                t.push(
-                    "static func encode(to c: inout UnkeyedEncodingContainer, array: [Any]) \
-                     throws {",
-                );
-
-                t.nested_into(|t| {
-                    t.push("for value in array {");
-                    t.nested_into(|t| {
-                        t.push("switch value {");
-
-                        for p in primitives.iter().cloned() {
-                            t.push_into(|t| {
-                                t.push(toks!["case let value as ", p, ":"]);
-                                t.nested("try c.encode(value)");
-                            });
+                    #(decode_single(&PRIMITIVES))
+
+                    #(decode_unkeyed(&PRIMITIVES))
+
+                    #(decode_keyed(&PRIMITIVES))
+
+                    #(decode_array())
+
+                    #(decode_dictionary())
+
+                    #(encode_single(&PRIMITIVES))
+
+                    #(encode_unkeyed(&PRIMITIVES))
+
+                    #(encode_keyed(&PRIMITIVES))
+                }
+
+                #(any_coding_key())
+
+                #(any_null())
+            };
+
+            return;
+
+            fn init() -> impl FormatInto<Swift> {
+                quote_fn! {
+                    public required init(from decoder: Decoder) throws {
+                        if var array = try? decoder.unkeyedContainer() {
+                            self.value = try AnyCodable.decodeArray(from: &array)
+                            return
                         }
 
-                        t.push("case let value as [Any]:");
-                        t.nested("var c = c.nestedUnkeyedContainer()");
-                        t.nested("try encode(to: &c, array: value)");
+                        if var c = try? decoder.container(keyedBy: AnyCodingKey.self) {
+                            self.value = try AnyCodable.decodeDictionary(from: &c)
+                            return
+                        }
 
-                        t.push("case let value as [String: Any]:");
-                        t.nested("var c = c.nestedContainer(keyedBy: AnyCodingKey.self)");
-                        t.nested("try encode(to: &c, dictionary: value)");
-
-                        t.push("case _ as AnyNull:");
-                        t.nested("try c.encodeNil()");
-
-                        t.push("default:");
-                        t.nested("throw encodingError(forValue: value, codingPath: c.codingPath)");
-
-                        t.push("}");
-                    });
-
-                    t.push("}");
-                });
-
-                t.push("}");
-
-                Ok(t)
+                        let c = try decoder.singleValueContainer()
+                        self.value = try AnyCodable.decode(from: c)
+                    }
+                }
             }
 
-            fn encode_keyed<'el>(primitives: &[&'el str]) -> Result<Tokens<'el, Swift<'el>>> {
-                let mut t = Tokens::new();
+            fn encode() -> impl FormatInto<Swift> {
+                quote_fn! {
+                    public func encode(to encoder: Encoder) throws {
+                        if let arr = self.value as? [Any] {
+                            var c = encoder.unkeyedContainer()
+                            try AnyCodable.encode(to: &c, array: arr)
+                            return
+                        }
 
-                t.push(
-                    "static func encode(to c: inout KeyedEncodingContainer<AnyCodingKey>, \
-                     dictionary: [String: Any]) throws {",
-                );
+                        if let dict = self.value as? [String: Any] {
+                            var c = encoder.container(keyedBy: AnyCodingKey.self)
+                            try AnyCodable.encode(to: &c, dictionary: dict)
+                            return
+                        }
 
-                t.nested_into(|t| {
-                    t.push("for (key, value) in dictionary {");
-                    t.nested_into(|t| {
-                        t.push("let key = AnyCodingKey(stringValue: key)!");
+                        var c = encoder.singleValueContainer()
+                        try AnyCodable.encode(to: &c, value: self.value)
+                    }
+                }
+            }
 
-                        t.push_into(|t| {
-                            t.push("switch value {");
+            fn decoding_error() -> impl FormatInto<Swift> {
+                quote_fn! {
+                    static func decodingError(forCodingPath codingPath: [CodingKey]) -> DecodingError {
+                        let context = DecodingError.Context(
+                            codingPath: codingPath,
+                            debugDescription: "Cannot decode AnyCodable"
+                        )
 
-                            for p in primitives.iter().cloned() {
-                                t.push_into(|t| {
-                                    t.push(toks!["case let value as ", p, ":"]);
-                                    t.nested("try c.encode(value, forKey: key)");
-                                });
+                        return DecodingError.typeMismatch(AnyCodable.self, context)
+                    }
+                }
+            }
+
+            fn encoding_error() -> impl FormatInto<Swift> {
+                quote_fn! {
+                    static func encodingError(forValue value: Any, codingPath: [CodingKey]) -> EncodingError {
+                        let context = EncodingError.Context(
+                            codingPath: codingPath,
+                            debugDescription: "Cannot encode AnyCodable"
+                        )
+
+                        return EncodingError.invalidValue(value, context)
+                    }
+                }
+            }
+
+            fn decode_single<'f>(primitives: &'f [&str]) -> impl FormatInto<Swift> + 'f {
+                quote_fn! {
+                    static func decode(from c: SingleValueDecodingContainer) throws -> Any {
+                        #(for p in primitives.iter().copied() join (#<line>) {
+                            if let value = try? c.decode(#p.self) {
+                                return value
                             }
+                        })
 
-                            t.push("case let value as [Any]:");
-                            t.nested("var c = c.nestedUnkeyedContainer(forKey: key)");
-                            t.nested("try encode(to: &c, array: value)");
+                        if c.decodeNil() {
+                            return AnyNull()
+                        }
 
-                            t.push("case let value as [String: Any]:");
-                            t.nested(
-                                "var c = c.nestedContainer(keyedBy: AnyCodingKey.self, forKey: \
-                                 key)",
-                            );
-                            t.nested("try encode(to: &c, dictionary: value)");
-
-                            t.push("case _ as AnyNull:");
-                            t.nested("try c.encodeNil(forKey: key)");
-
-                            t.push("default:");
-                            t.nested(
-                                "throw encodingError(forValue: value, codingPath: c.codingPath)",
-                            );
-
-                            t.push("}");
-                        });
-                    });
-
-                    t.push("}");
-                });
-
-                t.push("}");
-
-                Ok(t)
+                        throw decodingError(forCodingPath: c.codingPath)
+                    }
+                }
             }
 
-            fn any_coding_key<'el>() -> Tokens<'el, Swift<'el>> {
-                let mut t = Tokens::new();
+            fn decode_unkeyed<'f>(primitives: &'f [&str]) -> impl FormatInto<Swift> + 'f {
+                quote_fn! {
+                    static func decode(from c: inout UnkeyedDecodingContainer) throws -> Any {
+                        #(for p in primitives.iter().copied() join (#<line>) {
+                            if let value = try? c.decode(#p.self) {
+                                return value
+                            }
+                        })
 
-                t.push("class AnyCodingKey: CodingKey {");
+                        if let value = try? c.decodeNil() {
+                            if value {
+                                return AnyNull()
+                            }
+                        }
 
-                t.nested({
-                    let mut t = Tokens::new();
+                        if var c = try? c.nestedUnkeyedContainer() {
+                            return try decodeArray(from: &c)
+                        }
 
-                    t.push("let key: String");
+                        if var c = try? c.nestedContainer(keyedBy: AnyCodingKey.self) {
+                            return try decodeDictionary(from: &c)
+                        }
 
-                    t.push_into(|t| {
-                        t.push("required init?(intValue: Int) {");
-                        t.nested("return nil");
-                        t.push("}");
-                    });
-
-                    t.push_into(|t| {
-                        t.push("required init?(stringValue: String) {");
-                        t.nested("key = stringValue");
-                        t.push("}");
-                    });
-
-                    t.push_into(|t| {
-                        t.push("var intValue: Int? {");
-                        t.nested("return nil");
-                        t.push("}");
-                    });
-
-                    t.push_into(|t| {
-                        t.push("var stringValue: String {");
-                        t.nested("return key");
-                        t.push("}");
-                    });
-
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-
-                t
+                        throw decodingError(forCodingPath: c.codingPath)
+                    }
+                }
             }
 
-            fn any_null<'el>() -> Tokens<'el, Swift<'el>> {
-                let mut t = Tokens::new();
+            fn decode_keyed<'f>(primitives: &'f [&str]) -> impl FormatInto<Swift> + 'f {
+                quote_fn! {
+                    static func decode(from c: inout KeyedDecodingContainer<AnyCodingKey>, forKey key: AnyCodingKey) throws -> Any {
+                        #(for p in primitives.iter().copied() join (#<line>) {
+                            if let value = try? c.decode(#p.self, forKey: key) {
+                                return value
+                            }
+                        })
 
-                t.push("class AnyNull: Codable {");
+                        if let value = try? c.decodeNil(forKey: key) {
+                            if value {
+                                return AnyNull()
+                            }
+                        }
 
-                t.nested({
-                    let mut t = Tokens::new();
+                        if var c = try? c.nestedUnkeyedContainer(forKey: key) {
+                            return try decodeArray(from: &c)
+                        }
 
-                    t.push_into(|t| {
-                        t.push("public init() {");
-                        t.push("}");
-                    });
+                        if var c = try? c.nestedContainer(keyedBy: AnyCodingKey.self, forKey: key) {
+                            return try decodeDictionary(from: &c)
+                        }
 
-                    t.push_into(|t| {
-                        t.push("public required init(from decoder: Decoder) throws {");
+                        throw decodingError(forCodingPath: c.codingPath)
+                    }
+                }
+            }
 
-                        let mut args = Tokens::new();
-                        args.append("codingPath: decoder.codingPath");
-                        args.append(toks![
-                            "debugDescription: ",
-                            "Wrong type for AnyNull".quoted()
-                        ]);
+            fn decode_array() -> impl FormatInto<Swift> {
+                quote_fn! {
+                    static func decodeArray(from c: inout UnkeyedDecodingContainer) throws ->  [Any] {
+                        var array: [Any] = []
 
-                        let cx = toks!["DecodingError.Context(", args.join(", "), ")"];
+                        while !c.isAtEnd {
+                            array.append(try decode(from: &c))
+                        }
 
-                        t.nested_into(|t| {
-                            t.push("let c = try decoder.singleValueContainer()");
-                            t.push("if !c.decodeNil() {");
+                        return array
+                    }
+                }
+            }
 
-                            t.nested(toks![
-                                "throw DecodingError.typeMismatch(AnyNull.self, ",
-                                cx,
-                                ")"
-                            ]);
+            fn decode_dictionary() -> impl FormatInto<Swift> {
+                quote_fn! {
+                    static func decodeDictionary(from c: inout KeyedDecodingContainer<AnyCodingKey>) throws -> [String: Any] {
+                        var dict = [String: Any]()
 
-                            t.push("}");
-                        });
+                        for key in c.allKeys {
+                            dict[key.stringValue] = try decode(from: &c, forKey: key)
+                        }
 
-                        t.push("}");
-                    });
+                        return dict
+                    }
+                }
+            }
 
-                    t.push_into(|t| {
-                        t.push("public func encode(to encoder: Encoder) throws {");
+            fn encode_single<'f>(primitives: &'f [&str]) -> impl FormatInto<Swift> + 'f {
+                quote_fn! {
+                    static func encode(to c: inout SingleValueEncodingContainer, value: Any) throws {
+                        switch value {
+                        #(for p in primitives.iter().copied() join (#<push>) {
+                            case let value as #p:
+                                try c.encode(value)
+                        })
+                        case _ as AnyNull:
+                            try c.encodeNil()
+                        default:
+                            throw encodingError(forValue: value, codingPath: c.codingPath)
+                        }
+                    }
+                }
+            }
 
-                        t.nested_into(|t| {
-                            t.push("var c = encoder.singleValueContainer()");
-                            t.push("try c.encodeNil()");
-                        });
+            fn encode_unkeyed<'f>(primitives: &'f [&str]) -> impl FormatInto<Swift> + 'f {
+                quote_fn! {
+                    static func encode(to c: inout UnkeyedEncodingContainer, array: [Any]) throws {
+                        for value in array {
+                            switch value {
+                            #(for p in primitives.iter().copied() join (#<push>) {
+                                case let value as #p:
+                                    try c.encode(value)
+                            })
+                            case let value as [Any]:
+                                var c = c.nestedUnkeyedContainer()
+                                try encode(to: &c, array: value)
+                            case let value as [String: Any]:
+                                var c = c.nestedContainer(keyedBy: AnyCodingKey.self)
+                                try encode(to: &c, dictionary: value)
+                            case _ as AnyNull:
+                                try c.encodeNil()
+                            default:
+                                throw encodingError(forValue: value, codingPath: c.codingPath)
+                            }
+                        }
+                    }
+                }
+            }
 
-                        t.push("}");
-                    });
+            fn encode_keyed<'f>(primitives: &'f [&str]) -> impl FormatInto<Swift> + 'f {
+                quote_fn! {
+                    static func encode(to c: inout KeyedEncodingContainer<AnyCodingKey>, dictionary: [String: Any]) throws {
+                        for (key, value) in dictionary {
+                            let key = AnyCodingKey(stringValue: key)!
 
-                    t.join_line_spacing()
-                });
+                            switch value {
+                            #(for p in primitives.iter().copied() join (#<push>) {
+                                case let value as #p:
+                                    try c.encode(value, forKey: key)
+                            })
+                            case let value as [Any]:
+                                var c = c.nestedUnkeyedContainer(forKey: key)
+                                try encode(to: &c, array: value)
+                            case let value as [String: Any]:
+                                var c = c.nestedContainer(keyedBy: AnyCodingKey.self, forKey: key)
+                                try encode(to: &c, dictionary: value)
+                            case _ as AnyNull:
+                                try c.encodeNil(forKey: key)
+                            default:
+                                throw encodingError(forValue: value, codingPath: c.codingPath)
+                            }
+                        }
+                    }
+                }
+            }
 
-                t.push("}");
+            fn any_coding_key() -> impl FormatInto<Swift> {
+                quote_fn! {
+                    class AnyCodingKey: CodingKey {
+                        let key: String
 
-                t
+                        required init?(intValue: Int) {
+                            return nil
+                        }
+
+                        required init?(stringValue: String) {
+                            key = stringValue
+                        }
+
+                        var intValue: Int? {
+                            return nil
+                        }
+
+                        var stringValue: String {
+                            return key
+                        }
+                    }
+                }
+            }
+
+            fn any_null() -> impl FormatInto<Swift> {
+                quote_fn! {
+                    class AnyNull: Codable {
+                        public init() {
+                        }
+
+                        public required init(from decoder: Decoder) throws {
+                            let c = try decoder.singleValueContainer()
+
+                            if !c.decodeNil() {
+                                let context = DecodingError.Context(
+                                    codingPath: decoder.codingPath,
+                                    debugDescription: "Wrong type for AnyNull"
+                                )
+                                throw DecodingError.typeMismatch(AnyNull.self, context)
+                            }
+                        }
+
+                        public func encode(to encoder: Encoder) throws {
+                            var c = encoder.singleValueContainer()
+                            try c.encodeNil()
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-impl TupleCodegen for Codegen {
-    fn generate(&self, e: TupleAdded) -> Result<()> {
-        let TupleAdded {
+impl codegen::tuple_added::Codegen for Codegen {
+    fn generate(&self, e: codegen::tuple_added::Args<'_>) {
+        let codegen::tuple_added::Args {
             container,
             name,
             fields,
             ..
         } = e;
 
-        container.push(decodable(name, fields)?);
-        container.push(encodable(name, fields)?);
+        container.push(quote! {
+            #(decodable(name, fields))
 
-        return Ok(());
+            #(encodable(name, fields))
+        });
 
-        fn decodable<'a>(
-            name: &'a SwiftName,
-            fields: &[&'a RpField],
-        ) -> Result<Tokens<'a, Swift<'a>>> {
-            let mut t = Tokens::new();
-            t.push(toks!["extension ", name, ": Decodable {"]);
-            t.nested(init(fields)?);
-            t.push("}");
+        fn decodable<'f>(name: &'f Name, fields: &'f [Loc<Field>]) -> impl FormatInto<Swift> + 'f {
+            quote_fn! {
+                extension #name: Decodable {
+                    public init(from decoder: Decoder) throws {
+                        var values = try decoder.unkeyedContainer()
 
-            return Ok(t);
-
-            fn init<'a>(fields: &[&'a RpField]) -> Result<Tokens<'a, Swift<'a>>> {
-                let mut t = Tokens::new();
-
-                t.push("public init(from decoder: Decoder) throws {");
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    t.push("var values = try decoder.unkeyedContainer()");
-
-                    t.push({
-                        let mut t = Tokens::new();
-
-                        for field in fields {
-                            let s = toks!["self.", field.safe_ident()];
-                            let ty = field.ty.ty();
-
-                            if field.is_optional() {
-                                t.push(toks![s, " = try values.decodeIfPresent(", ty, ".self)"]);
+                        #(for field in fields join (#<push>) {
+                            #(if field.is_optional() {
+                                self.#(field.safe_ident()) = try values.decodeIfPresent(#(&field.ty).self)
                             } else {
-                                t.push(toks![s, " = try values.decode(", ty, ".self)"]);
-                            }
-                        }
-
-                        t
-                    });
-
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-
-                Ok(t)
+                                self.#(field.safe_ident()) = try values.decode(#(&field.ty).self)
+                            })
+                        })
+                    }
+                }
             }
         }
 
-        fn encodable<'a>(
-            name: &'a SwiftName,
-            fields: &[&'a RpField],
-        ) -> Result<Tokens<'a, Swift<'a>>> {
-            let mut t = Tokens::new();
-            t.push(toks!["extension ", name, ": Encodable {"]);
+        fn encodable<'f>(name: &'f Name, fields: &'f [Loc<Field>]) -> impl FormatInto<Swift> + 'f {
+            quote_fn! {
+                extension #name: Encodable {
+                    public func encode(to encoder: Encoder) throws {
+                        var values = encoder.unkeyedContainer()
 
-            t.push({
-                let mut t = Tokens::new();
-                t.nested(encode(fields)?);
-                t.join_line_spacing()
-            });
-
-            t.push("}");
-
-            return Ok(t);
-
-            fn encode<'a>(fields: &[&'a RpField]) -> Result<Tokens<'a, Swift<'a>>> {
-                let mut t = Tokens::new();
-
-                t.push("public func encode(to encoder: Encoder) throws {");
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    t.push("var values = encoder.unkeyedContainer()");
-
-                    t.push({
-                        let mut t = Tokens::new();
-
-                        for field in fields {
-                            let s = toks!["self.", field.safe_ident()];
-
-                            if field.is_optional() {
-                                let var = field.safe_ident();
-
-                                t.push({
-                                    let mut t = Tokens::new();
-
-                                    t.push(toks!["if let ", var.clone(), " = ", s, "{"]);
-                                    t.nested(toks!["try values.encode(", var, ")"]);
-                                    t.push("}");
-
-                                    t
-                                });
+                        #(for field in fields join (#<push>) {
+                            #(if field.is_optional() {
+                                if let #(field.safe_ident()) = self.#(field.safe_ident()) {
+                                    try values.encode(#(field.safe_ident()))
+                                }
                             } else {
-                                t.push(toks!["try values.encode(", s, ")"]);
-                            }
-                        }
-
-                        t
-                    });
-
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-
-                Ok(t)
+                                try values.encode(self.#(field.safe_ident()))
+                            })
+                        })
+                    }
+                }
             }
         }
     }
 }
 
-impl EnumCodegen for Codegen {
-    fn generate(&self, e: EnumAdded) -> Result<()> {
-        let EnumAdded {
+impl codegen::enum_added::Codegen for Codegen {
+    fn generate(&self, e: codegen::enum_added::Args<'_>) {
+        let codegen::enum_added::Args {
             container,
             name,
             body,
             ..
         } = e;
 
-        container.push(decodable(name, body)?);
-        container.push(encodable(name, body)?);
+        container.push(quote! {
+            #(decodable(name, body))
 
-        return Ok(());
+            #(encodable(name, body))
+        });
 
-        fn decodable<'a>(
-            name: &'a SwiftName,
-            body: &'a RpEnumBody,
-        ) -> Result<Tokens<'a, Swift<'a>>> {
-            let mut t = Tokens::new();
-            t.push(toks!["extension ", name, ": Decodable {"]);
-            t.nested(init(body)?);
-            t.push("}");
+        fn decodable<'f>(name: &'f Name, body: &'f RpEnumBody) -> impl FormatInto<Swift> + 'f {
+            quote_fn! {
+                extension #name: Decodable {
+                    public init(from decoder: Decoder) throws {
+                        let value = try decoder.singleValueContainer()
 
-            return Ok(t);
-
-            fn init<'a>(body: &'a RpEnumBody) -> Result<Tokens<'a, Swift<'a>>> {
-                let mut t = Tokens::new();
-
-                t.push("public init(from decoder: Decoder) throws {");
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    t.push("let value = try decoder.singleValueContainer()");
-
-                    t.push({
-                        let mut t = Tokens::new();
-
-                        push!(
-                            t,
-                            "switch try value.decode(",
-                            body.enum_type.ty(),
-                            ".self) {"
-                        );
-
-                        match body.variants {
-                            core::RpVariants::String { ref variants } => {
-                                for v in variants {
-                                    t.push_into(|t| {
-                                        push!(t, "case ", v.value.to_string().quoted(), ":");
-                                        nested!(t, "self = .", v.ident());
-                                    });
-                                }
+                        switch try value.decode(#(&body.enum_type).self) {
+                        #(match &body.variants {
+                            core::RpVariants::String { variants } => {
+                                #(for v in variants join (#<push>) {
+                                    case #(quoted(v.value.to_string())):
+                                        self = .#(v.ident())
+                                })
                             }
-                            core::RpVariants::Number { ref variants } => {
-                                for v in variants {
-                                    t.push_into(|t| {
-                                        push!(t, "case ", v.value.to_string(), ":");
-                                        nested!(t, "self = .", v.ident());
-                                    });
-                                }
+                            core::RpVariants::Number { variants } => {
+                                #(for v in variants join (#<push>) {
+                                    case #(v.value.to_string()):
+                                        self = .#(v.ident())
+                                })
                             }
+                        })
+                        default:
+                            let context = DecodingError.Context(
+                                codingPath: decoder.codingPath,
+                                debugDescription: "enum variant"
+                            )
+
+                            throw DecodingError.dataCorrupted(context)
                         }
-
-                        t.push({
-                            let mut t = Tokens::new();
-
-                            let mut a = Tokens::new();
-                            a.append("codingPath: decoder.codingPath");
-                            a.append(toks!["debugDescription: ", "enum variant".quoted()]);
-
-                            t.push("default:");
-                            nested!(t, "let context = DecodingError.Context(", a.join(", "), ")");
-                            t.nested("throw DecodingError.dataCorrupted(context)");
-
-                            t
-                        });
-                        t.push("}");
-
-                        t
-                    });
-
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-
-                Ok(t)
+                    }
+                }
             }
         }
 
-        fn encodable<'a>(
-            name: &'a SwiftName,
-            body: &'a RpEnumBody,
-        ) -> Result<Tokens<'a, Swift<'a>>> {
-            let mut t = Tokens::new();
-            t.push(toks!["extension ", name, ": Encodable {"]);
+        fn encodable<'f>(name: &'f Name, body: &'f RpEnumBody) -> impl FormatInto<Swift> + 'f {
+            quote_fn! {
+                extension #name: Encodable {
+                    public func encode(to encoder: Encoder) throws {
+                        var value = encoder.singleValueContainer()
 
-            t.push({
-                let mut t = Tokens::new();
-                t.nested(encode(body)?);
-                t.join_line_spacing()
-            });
-
-            t.push("}");
-
-            return Ok(t);
-
-            fn encode<'a>(body: &'a RpEnumBody) -> Result<Tokens<'a, Swift<'a>>> {
-                let mut t = Tokens::new();
-
-                t.push("public func encode(to encoder: Encoder) throws {");
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    t.push("var value = encoder.singleValueContainer()");
-
-                    t.push_into(|t| {
-                        t.push("switch self {");
-
-                        match body.variants {
-                            core::RpVariants::String { ref variants } => {
-                                for v in variants {
-                                    let value = v.value.to_string().quoted();
-
-                                    t.push_into(|t| {
-                                        push!(t, "case .", v.ident(), ":");
-                                        nested!(t, "try value.encode(", value, ")");
-                                    });
-                                }
+                        switch self {
+                        #(match &body.variants {
+                            core::RpVariants::String { variants } => {
+                                #(for v in variants join (#<push>) {
+                                    case .#(v.ident()):
+                                        try value.encode(#(quoted(v.value.to_string())))
+                                })
                             }
-                            core::RpVariants::Number { ref variants } => {
-                                for v in variants {
-                                    let value = v.value.to_string();
-
-                                    t.push_into(|t| {
-                                        push!(t, "case .", v.ident(), ":");
-                                        nested!(t, "try value.encode(", value, ")");
-                                    });
-                                }
+                            core::RpVariants::Number { variants } => {
+                                #(for v in variants {
+                                    case .#(v.ident()):
+                                        try value.encode(#(v.value.to_string()))
+                                })
                             }
+                        })
                         }
-
-                        t.push("}");
-                    });
-
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-
-                Ok(t)
+                    }
+                }
             }
         }
     }
 }
 
-impl StructModelCodegen for Codegen {
-    fn generate(&self, e: StructModelAdded) -> Result<()> {
-        let StructModelAdded {
+impl codegen::struct_model_added::Codegen for Codegen {
+    fn generate(&self, e: codegen::struct_model_added::Args<'_>) {
+        let codegen::struct_model_added::Args {
             container, fields, ..
         } = e;
 
-        if fields.is_empty() {
-            return Ok(());
+        if !fields.is_empty() {
+            container.push(quote! {
+                enum CodingKeys: String, CodingKey {
+                    #(for field in fields join (#<push>) {
+                        case #(field.safe_ident()) = #(quoted(field.name()))
+                    })
+                }
+            });
         }
-
-        container.push({
-            let mut t = Tokens::new();
-
-            t.push("enum CodingKeys: String, CodingKey {");
-
-            for field in fields.iter() {
-                t.nested(toks![
-                    "case ",
-                    field.safe_ident(),
-                    " = ",
-                    field.name().quoted()
-                ]);
-            }
-
-            t.push("}");
-
-            t
-        });
-
-        Ok(())
     }
 }
 
-impl InterfaceCodegen for Codegen {
-    fn generate(&self, e: InterfaceAdded) -> Result<()> {
-        let InterfaceAdded {
+impl codegen::interface_added::Codegen for Codegen {
+    fn generate(&self, e: codegen::interface_added::Args) {
+        let codegen::interface_added::Args {
             container,
             name,
             body,
             ..
         } = e;
 
-        container.push(decodable(name, body)?);
-        container.push(encodable(name, body)?);
+        container.push(quote! {
+            #(decodable(name, body))
 
-        return Ok(());
+            #(encodable(name, body))
+        });
 
-        fn decodable<'a>(
-            name: &'a SwiftName,
-            body: &'a RpInterfaceBody,
-        ) -> Result<Tokens<'a, Swift<'a>>> {
-            let mut t = Tokens::new();
-            t.push(toks!["extension ", name, ": Decodable {"]);
+        fn decodable<'f>(name: &'f Name, body: &'f RpInterfaceBody) -> impl FormatInto<Swift> + 'f {
+            return quote_fn! {
+                extension #name: Decodable {
+                    #(match &body.sub_type_strategy {
+                        core::RpSubTypeStrategy::Tagged { tag, .. } => {
+                            #(ref o => tagged_init(o, body, tag))
+                        }
+                        core::RpSubTypeStrategy::Untagged => {
+                            #(ref o => untagged_init(o, body))
+                        }
+                    })
+                }
+            };
 
-            t.push({
-                let mut t = Tokens::new();
+            fn tagged_init(t: &mut swift::Tokens, body: &RpInterfaceBody, tag: &str) {
+                quote_in! { *t =>
+                    public init(from decoder: Decoder) throws {
+                        let values = try decoder.container(keyedBy: CodingKeys.self)
 
-                match body.sub_type_strategy {
-                    core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                        t.nested(tagged_init(body, tag)?);
-                    }
-                    core::RpSubTypeStrategy::Untagged => {
-                        t.nested(untagged_init(body)?);
+                        switch try values.decode(String.self, forKey: .tag) {
+                        #(for sub_type in &body.sub_types join (#<push>) {
+                            case #(quoted(sub_type.name())):
+                                self = try .#(sub_type.ident.as_str())(#(&sub_type.name)(from: decoder))
+                        })
+                        default:
+                            let context = DecodingError.Context(codingPath: [], debugDescription: #(quoted(tag)))
+                            throw DecodingError.dataCorrupted(context)
+                        }
                     }
                 }
-
-                t.join_line_spacing()
-            });
-
-            t.push("}");
-
-            return Ok(t);
-
-            fn tagged_init<'a>(
-                body: &'a RpInterfaceBody,
-                tag: &'a str,
-            ) -> Result<Tokens<'a, Swift<'a>>> {
-                let mut t = Tokens::new();
-
-                t.push("public init(from decoder: Decoder) throws {");
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    t.push("let values = try decoder.container(keyedBy: CodingKeys.self)");
-
-                    t.push({
-                        let mut t = Tokens::new();
-
-                        t.push("switch try values.decode(String.self, forKey: .tag) {");
-
-                        for sub_type in body.sub_types.iter() {
-                            t.push({
-                                let mut t = Tokens::new();
-
-                                let n = sub_type.ident.as_str();
-
-                                let d = toks![&sub_type.name, "(from: decoder)"];
-                                let d = toks![".", n, "(", d, ")"];
-
-                                t.push(toks!["case ", sub_type.name().quoted(), ":"]);
-                                t.nested(toks!["self = try ", d]);
-
-                                t
-                            });
-                        }
-
-                        t.push({
-                            let mut t = Tokens::new();
-
-                            t.push("default:");
-                            t.nested(toks![
-                                "let context = DecodingError.Context(codingPath: [], \
-                                 debugDescription: ",
-                                tag.quoted(),
-                                ")"
-                            ]);
-                            t.nested("throw DecodingError.dataCorrupted(context)");
-
-                            t
-                        });
-                        t.push("}");
-
-                        t
-                    });
-
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-
-                Ok(t)
             }
 
-            fn untagged_init<'a>(body: &'a RpInterfaceBody) -> Result<Tokens<'a, Swift<'a>>> {
-                let mut t = Tokens::new();
+            fn untagged_init(t: &mut swift::Tokens, body: &RpInterfaceBody) {
+                quote_in! { *t =>
+                    public init(from decoder: Decoder) throws {
+                        #(ref o => for sub_type in &body.sub_types {
+                            let keys = quote!(Set(try decoder.container(keyedBy: #(&sub_type.ident)Keys.self).allKeys));
 
-                t.push("public init(from decoder: Decoder) throws {");
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    for sub_type in &body.sub_types {
-                        let k = toks![sub_type.ident.as_str(), "Keys"];
-
-                        let keys = toks![
-                            "try decoder.container(keyedBy: ",
-                            k.clone(),
-                            ".self).allKeys"
-                        ];
-                        let keys = toks!["Set(", keys, ")"];
-
-                        t.push_into(|t| {
-                            let n = sub_type.ident.as_str();
-                            let d = toks![&sub_type.name, "(from: decoder)"];
-                            let d = toks![".", n, "(", d, ")"];
-
-                            let mut expected = Tokens::new();
+                            let mut expected = Vec::new();
 
                             for f in sub_type.discriminating_fields() {
-                                expected.append(toks![k.clone(), ".", f.safe_ident()]);
+                                expected.push(quote!(#(&sub_type.ident)Keys.#(f.safe_ident())));
                             }
 
-                            let expected = toks!["Set([", expected.join(", "), "])"];
+                            quote_in! { *o =>
+                                if #keys == Set([#(for e in expected join (, ) => #e)]) {
+                                    self = try .#(&sub_type.ident)(#(&sub_type.name)(from: decoder))
+                                    return
+                                }
+                                #<line>
+                            }
+                        })
+                        let context = DecodingError.Context(
+                            codingPath: decoder.codingPath,
+                            debugDescription: "no legal field combination"
+                        )
 
-                            push!(t, "if ", keys, " == ", expected, " {");
-                            nested!(t, "self = try ", d);
-                            nested!(t, "return");
-                            push!(t, "}");
-                        });
+                        throw DecodingError.dataCorrupted(context)
                     }
-
-                    t.push_into(|t| {
-                        let mut args = Tokens::new();
-                        args.append("codingPath: decoder.codingPath");
-                        args.append(toks![
-                            "debugDescription: ",
-                            "no legal field combination".quoted()
-                        ]);
-
-                        push!(
-                            t,
-                            "let context = DecodingError.Context(",
-                            args.join(", "),
-                            ")"
-                        );
-
-                        t.push("throw DecodingError.dataCorrupted(context)");
-                    });
-
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-
-                Ok(t)
+                }
             }
         }
 
-        fn encodable<'a>(
-            name: &'a SwiftName,
-            body: &'a RpInterfaceBody,
-        ) -> Result<Tokens<'a, Swift<'a>>> {
-            let mut t = Tokens::new();
-            t.push(toks!["extension ", name, ": Encodable {"]);
+        fn encodable<'f>(name: &'f Name, body: &'f RpInterfaceBody) -> impl FormatInto<Swift> + 'f {
+            return quote_fn! {
+                extension #name: Encodable {
+                    #(ref o => match body.sub_type_strategy {
+                        core::RpSubTypeStrategy::Tagged { .. } => {
+                            encode_tagged(o, body);
+                        }
+                        core::RpSubTypeStrategy::Untagged => {
+                            encode_untagged(o, body);
+                        }
+                    })
+                }
+            };
 
-            t.push({
-                let mut t = Tokens::new();
+            fn encode_tagged(t: &mut swift::Tokens, body: &RpInterfaceBody) {
+                quote_in! { *t =>
+                    public func encode(to encoder: Encoder) throws {
+                        var values = encoder.container(keyedBy: CodingKeys.self)
 
-                match body.sub_type_strategy {
-                    core::RpSubTypeStrategy::Tagged { .. } => {
-                        t.nested(encode_tagged(body)?);
-                    }
-                    core::RpSubTypeStrategy::Untagged => {
-                        t.nested(encode_untagged(body)?);
+                        switch self {
+                        #(for sub_type in &body.sub_types join (#<push>) {
+                            case .#(&sub_type.ident)(let d):
+                                try values.encode(#(quoted(sub_type.name())), forKey: .tag)
+                                try d.encode(to: encoder)
+                        })
+                        }
                     }
                 }
-
-                t.join_line_spacing()
-            });
-
-            t.push("}");
-
-            return Ok(t);
-
-            fn encode_tagged<'a>(body: &'a RpInterfaceBody) -> Result<Tokens<'a, Swift<'a>>> {
-                let mut t = Tokens::new();
-
-                t.push("public func encode(to encoder: Encoder) throws {");
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    t.push("var values = encoder.container(keyedBy: CodingKeys.self)");
-
-                    t.push_into(|t| {
-                        t.push("switch self {");
-
-                        for sub_type in body.sub_types.iter() {
-                            let n = sub_type.ident.as_str();
-                            let name = sub_type.name();
-                            let ty = toks!["try values.encode(", name.quoted(), ", forKey: .tag)"];
-
-                            t.push({
-                                let mut t = Tokens::new();
-                                t.push(toks!["case .", n, "(let d):"]);
-                                t.nested(ty);
-                                t.nested(toks!["try d.encode(to: encoder)"]);
-                                t
-                            });
-                        }
-
-                        t.push("}");
-                    });
-
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-
-                Ok(t)
             }
 
-            fn encode_untagged<'a>(body: &'a RpInterfaceBody) -> Result<Tokens<'a, Swift<'a>>> {
-                let mut t = Tokens::new();
-
-                t.push("public func encode(to encoder: Encoder) throws {");
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    t.push_into(|t| {
-                        t.push("switch self {");
-
-                        for sub_type in body.sub_types.iter() {
-                            let n = sub_type.ident.as_str();
-
-                            t.push({
-                                let mut t = Tokens::new();
-                                t.push(toks!["case .", n, "(let d):"]);
-                                t.nested(toks!["try d.encode(to: encoder)"]);
-                                t
-                            });
+            fn encode_untagged(o: &mut swift::Tokens, body: &RpInterfaceBody) {
+                quote_in! { *o =>
+                    public func encode(to encoder: Encoder) throws {
+                        switch self {
+                        #(for sub_type in &body.sub_types join (#<push>) {
+                            case .#(sub_type.ident.as_str())(let d):
+                                try d.encode(to: encoder)
+                        })
                         }
-
-                        t.push("}");
-                    });
-
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-
-                Ok(t)
+                    }
+                }
             }
         }
     }
 }
 
-impl InterfaceModelCodegen for Codegen {
-    fn generate(&self, e: InterfaceModelAdded) -> Result<()> {
-        let InterfaceModelAdded {
+impl codegen::interface_model_added::Codegen for Codegen {
+    fn generate(&self, e: codegen::interface_model_added::Args<'_>) {
+        let codegen::interface_model_added::Args {
             container, body, ..
         } = e;
 
-        match body.sub_type_strategy {
-            core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                container.nested_into(|t| {
-                    t.push("enum CodingKeys: String, CodingKey {");
-                    t.nested(toks!["case tag = ", tag.as_str().quoted()]);
-                    t.push("}");
+        match &body.sub_type_strategy {
+            core::RpSubTypeStrategy::Tagged { tag, .. } => {
+                container.push(quote! {
+                    enum CodingKeys: String, CodingKey {
+                        case tag = #(quoted(tag.as_str()))
+                    }
                 });
             }
             core::RpSubTypeStrategy::Untagged => {
-                container.nested({
-                    let mut t = Tokens::new();
+                let all = body
+                    .sub_types
+                    .iter()
+                    .flat_map(|s| s.fields.iter())
+                    .filter(|f| f.is_required())
+                    .map(|f| f.name())
+                    .collect::<BTreeSet<_>>();
 
-                    let all = body
-                        .sub_types
-                        .iter()
-                        .flat_map(|s| s.fields.iter())
-                        .filter(|f| f.is_required())
-                        .map(|f| f.name())
-                        .collect::<BTreeSet<_>>();
+                for sub_type in &body.sub_types {
+                    let mut current = all.clone();
 
-                    for sub_type in &body.sub_types {
-                        let mut current = all.clone();
+                    // rest of the fields that need to be declared to throw of the count in
+                    // case of intersections.
+                    container.push(quote!{
+                        enum #(&sub_type.ident)Keys: String, CodingKey {
+                            #(for f in sub_type.fields.iter().filter(|f| f.is_required()) join (#<push>) {
+                                #(ref o => {
+                                    current.remove(f.name());
+                                    quote_in!(*o => case #(f.safe_ident()) = #(quoted(f.name())));
+                                })
+                            })
 
-                        t.push_into(|t| {
-                            push!(
-                                t,
-                                "enum ",
-                                sub_type.ident.as_str(),
-                                "Keys: String, CodingKey {"
-                            );
-
-                            for f in sub_type.fields.iter().filter(|f| f.is_required()) {
-                                current.remove(f.name());
-                                nested!(t, "case ", f.safe_ident(), " = ", f.name().quoted());
-                            }
-
-                            // rest of the fields that need to be declared to throw of the count in
-                            // case of intersections.
-                            for (n, name) in current.into_iter().enumerate() {
-                                nested!(t, "case _k", n.to_string(), " = ", name.quoted());
-                            }
-
-                            t.push("}");
-                        });
-                    }
-
-                    t.join_line_spacing()
-                });
+                            #(for (n, name) in current.into_iter().enumerate() join (#<push>) {
+                                case _k#(n.to_string()) = #(quoted(name))
+                            })
+                        }
+                    });
+                }
             }
         }
-
-        Ok(())
     }
 }
 
-impl PackageCodegen for Codegen {
-    fn generate(&self, e: PackageAdded) -> Result<()> {
-        e.files.push((self.utils_package(), self.utils()?));
-        Ok(())
+impl codegen::package_added::Codegen for Codegen {
+    fn generate(&self, e: codegen::package_added::Args<'_>) {
+        e.files.push((self.utils_package(), self.utils()));
     }
 }

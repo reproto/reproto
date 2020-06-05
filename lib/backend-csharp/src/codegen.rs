@@ -1,164 +1,133 @@
-//! Code generator for the given path.
-
-use crate::core::errors::Result;
-use crate::core::Handle;
-use crate::csharp_field::CsharpField;
-use crate::flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
-use crate::{Compiler, Options};
-use genco::csharp::{Argument, Class, Enum, Field};
-use genco::{Cons, Csharp};
+use crate::flavored::{Field, RpSubType, RpSubTypeStrategy, RpVariantRef, RpVariants};
+use core::Loc;
+use genco::prelude::*;
 use std::rc::Rc;
 
-#[derive(Clone)]
-pub struct TypeField<'el> {
-    pub field: Field<'el>,
-    pub tag: Cons<'el>,
-}
+macro_rules! decl_codegen {
+    (
+        $(
+        $(#[$ty_m:meta])*
+        $name:ident<$lt:lifetime> {
+            $($(#[$m:meta])* $vis:vis $field:ident: $ty:ty,)*
+        }
+        )*
+    ) => {
+        $(
+        $(#[$ty_m])*
+        pub(crate) mod $name {
+            use super::*;
 
-pub struct ClassAdded<'a, 'el: 'a> {
-    /// Type field to register in the class.
-    pub type_field: Option<TypeField<'el>>,
-    /// Names of all fields in class.
-    pub names: &'a [Cons<'el>],
-    /// Class specification.
-    pub spec: &'a mut Class<'el>,
-    /// Fields of the added class.
-    pub fields: &'a [CsharpField<'el>],
-}
+            pub(crate) trait Codegen {
+                fn generate(&self, e: Args<'_>);
+            }
 
-pub struct TupleAdded<'a, 'el: 'a> {
-    pub spec: &'a mut Class<'el>,
-}
+            pub(crate) struct Args<$lt> {
+                $(
+                    $(#[$m])*
+                    $vis $field: $ty,
+                )*
+            }
+        }
+        )*
 
-pub struct EnumAdded<'a, 'el: 'a> {
-    pub body: &'el RpEnumBody,
-    pub spec: &'a mut Enum<'el>,
-    pub names: Option<&'a Vec<Cons<'el>>>,
-}
+        #[derive(Default)]
+        pub struct Generators {
+            $(pub(crate) $name: Vec<Rc<dyn $name::Codegen>>,)*
+        }
 
-pub struct InterfaceAdded<'a, 'el: 'a> {
-    pub body: &'el RpInterfaceBody,
-    pub spec: &'a mut Class<'el>,
-}
-
-pub struct EndpointExtra<'el> {
-    pub name: Cons<'el>,
-    pub response_ty: Csharp<'el>,
-    pub arguments: Vec<Argument<'el>>,
-}
-
-pub struct ServiceAdded<'a, 'el: 'a> {
-    pub compiler: &'a Compiler,
-    pub body: &'el RpServiceBody,
-    pub extra: &'a [EndpointExtra<'el>],
-    pub spec: &'a mut Class<'el>,
-}
-
-pub struct TypeFieldAdded<'a, 'el: 'a> {
-    /// Tag used for the field.
-    pub tag: Cons<'el>,
-    /// Type field to register in the class.
-    pub field: &'a mut Field<'el>,
-}
-
-pub struct Configure<'a> {
-    pub options: &'a mut Options,
-}
-
-pub trait Codegen {
-    /// Build the given piece of code in the given handle.
-    fn generate(&self, handle: &dyn Handle) -> Result<()>;
-}
-
-impl<T> Codegen for Rc<T>
-where
-    T: Codegen,
-{
-    fn generate(&self, handle: &dyn Handle) -> Result<()> {
-        self.as_ref().generate(handle)
+        impl Generators {
+            $(
+            $(#[$ty_m])*
+            pub(crate) fn $name<$lt>(&self, $($field: $ty,)*) {
+                for gen in &self.$name {
+                    gen.generate($name::Args {
+                        $($field,)*
+                    });
+                }
+            }
+            )*
+        }
     }
 }
 
-/// Generate service-based code.
-pub trait ServiceCodegen {
-    fn generate(&self, e: ServiceAdded) -> Result<()>;
-}
-
-impl<T> ServiceCodegen for Rc<T>
-where
-    T: ServiceCodegen,
-{
-    fn generate(&self, e: ServiceAdded) -> Result<()> {
-        self.as_ref().generate(e)
+decl_codegen! {
+    /// Generator used for classes.
+    class<'a> {
+        /// Annotations to add to the class.
+        pub(crate) annotations: &'a mut Vec<csharp::Tokens>,
     }
-}
 
-/// Generate class-based code.
-pub trait ClassCodegen {
-    fn generate(&self, e: ClassAdded) -> Result<()>;
-}
-
-impl<T> ClassCodegen for Rc<T>
-where
-    T: ClassCodegen,
-{
-    fn generate(&self, e: ClassAdded) -> Result<()> {
-        self.as_ref().generate(e)
+    /// A class field was added.
+    class_field<'a> {
+        pub(crate) field: &'a Loc<Field>,
+        /// Annotations to add to the field.
+        pub(crate) annotations: &'a mut Vec<csharp::Tokens>,
     }
-}
 
-/// Generate tuple-based code.
-pub trait TupleCodegen {
-    fn generate(&self, e: TupleAdded) -> Result<()>;
-}
-
-impl<T> TupleCodegen for Rc<T>
-where
-    T: TupleCodegen,
-{
-    fn generate(&self, e: TupleAdded) -> Result<()> {
-        self.as_ref().generate(e)
+    /// A class constructor was added.
+    class_constructor<'a> {
+        /// Annotations to add to the field.
+        pub(crate) annotations: &'a mut Vec<csharp::Tokens>,
     }
-}
 
-/// Generate interface-based code.
-pub trait InterfaceCodegen {
-    fn generate(&self, e: InterfaceAdded) -> Result<()>;
-}
-
-impl<T> InterfaceCodegen for Rc<T>
-where
-    T: InterfaceCodegen,
-{
-    fn generate(&self, e: InterfaceAdded) -> Result<()> {
-        self.as_ref().generate(e)
+    /// A class constructor argument was added.
+    class_constructor_arg<'a> {
+        /// The fielda dded.
+        pub(crate) field: &'a Loc<Field>,
+        /// Annotations to add to the constructor argument.
+        pub(crate) annotations: &'a mut Vec<csharp::Tokens>,
     }
-}
 
-/// Generate enum-based code.
-pub trait EnumCodegen {
-    fn generate(&self, e: EnumAdded) -> Result<()>;
-}
-
-impl<T> EnumCodegen for Rc<T>
-where
-    T: EnumCodegen,
-{
-    fn generate(&self, e: EnumAdded) -> Result<()> {
-        self.as_ref().generate(e)
+    /// An enum was added.
+    enum_type<'a> {
+        /// Variants associated with the enum.
+        pub(crate) variants: &'a RpVariants,
+        /// Annotations to add to the enum typpe.
+        pub(crate) annotations: &'a mut Vec<csharp::Tokens>,
     }
-}
 
-/// Generate type-field code.
-pub trait TypeFieldCodegen {
-    fn generate(&self, e: TypeFieldAdded) -> Result<()>;
-}
+    /// An enum variant was added.
+    enum_variant<'a> {
+        /// The variant added.
+        pub(crate) variant: RpVariantRef<'a>,
+        /// The value being assigned to the variant.
+        pub(crate) value: &'a mut Option<csharp::Tokens>,
+        /// An enum variant was added.
+        pub(crate) annotations: &'a mut Vec<csharp::Tokens>,
+    }
 
-impl<T> TypeFieldCodegen for Rc<T>
-where
-    T: TypeFieldCodegen,
-{
-    fn generate(&self, e: TypeFieldAdded) -> Result<()> {
-        self.as_ref().generate(e)
+    tuple<'a> {
+        /// The identifier of the tuple.
+        pub(crate) ident: &'a str,
+        /// Fields in the tuple.
+        pub(crate) fields: &'a [Loc<Field>],
+        /// Annotations generated.
+        pub(crate) annotations: &'a mut Vec<csharp::Tokens>,
+        /// Inner code generated.
+        pub(crate) inner: &'a mut Vec<csharp::Tokens>,
+    }
+
+    /// Generate code for an interface.
+    interface<'a> {
+        /// The identifier of the interface.
+        pub(crate) ident: &'a str,
+        /// The current sub type strategy.
+        pub(crate) sub_type_strategy: &'a RpSubTypeStrategy,
+        /// All known sub types.
+        pub(crate) sub_types: &'a [Loc<RpSubType>],
+        /// Annotations generated.
+        pub(crate) annotations: &'a mut Vec<csharp::Tokens>,
+        /// Annotations to use for the tag.
+        pub(crate) tag_annotations: &'a mut Vec<csharp::Tokens>,
+        /// Inner code generated.
+        pub(crate) inner: &'a mut Vec<csharp::Tokens>,
+    }
+
+    /// Generate annotations for a tagged constructor.
+    interface_tag_constructor_arg<'a> {
+        /// The tag.
+        pub(crate) tag: &'a str,
+        /// Annotations generated.
+        pub(crate) annotations: &'a mut Vec<csharp::Tokens>,
     }
 }

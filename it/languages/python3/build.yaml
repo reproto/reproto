@@ -1,0 +1,11 @@
+container: python:3-slim
+env:
+  PYTHONPATH: generated
+
+prepare:
+  - type: run
+    command: pip install requests
+
+run:
+  type: run
+  command: python script.py

@@ -1,0 +1,12 @@
+container: swift:5.2-bionic
+
+steps:
+  - type: copy
+    from: "{{instance}}.swift.disabled"
+    to: Sources/ReprotoTest/main.swift
+  - type: run
+    command: swift build -Xswiftc -g
+
+run:
+  type: run
+  command: .build/debug/ReprotoTest

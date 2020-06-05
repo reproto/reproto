@@ -1,0 +1,7 @@
+name: python2
+lang: python
+output: generated
+args: ["-m", "python2"]
+
+test:
+  - python2 --version

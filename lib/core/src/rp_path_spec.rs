@@ -2,10 +2,11 @@
 
 use crate::errors::Result;
 use crate::{Diagnostics, Flavor, RpEndpointArgument, Translate, Translator};
+use serde::Serialize;
 use std::fmt;
 
 /// A part of a step.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(bound = "F::Type: ::serde::Serialize")]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RpPathPart<F: 'static>
@@ -57,7 +58,7 @@ where
 }
 
 /// A step in a path specification.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(bound = "F::Type: ::serde::Serialize")]
 pub struct RpPathStep<F: 'static>
 where
@@ -97,7 +98,7 @@ where
 }
 
 /// A path specification.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(bound = "F::Type: ::serde::Serialize")]
 pub struct RpPathSpec<F: 'static>
 where

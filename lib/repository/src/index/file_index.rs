@@ -1,8 +1,9 @@
 use crate::checksum::Checksum;
-use crate::core::errors::*;
-use crate::core::{Range, RelativePath, RpPackage, Version};
 use crate::index::{Deployment, Index};
 use crate::objects::{FileObjects, Objects};
+use core::errors::Result;
+use core::{Range, RelativePath, RpPackage, Version};
+use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::VecDeque;
 use std::fs::{self, File};
@@ -99,14 +100,14 @@ impl FileIndex {
         I: IntoIterator<Item = Deployment>,
     {
         let target = self.metadata_path(package);
-        debug!("writing: {}", target.display());
+        log::debug!("writing: {}", target.display());
 
         let mut tmp_target = target.clone();
         tmp_target.set_extension(".tmp");
 
         if let Some(parent) = tmp_target.parent() {
             if !parent.is_dir() {
-                debug!("creating directory: {}", parent.display());
+                log::debug!("creating directory: {}", parent.display());
                 fs::create_dir_all(parent)?;
             }
         }

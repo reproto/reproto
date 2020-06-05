@@ -81,7 +81,7 @@ impl<'a> fmt::Display for RpVariantValue<'a> {
 /// A cheap, type-erasured variant that can be used for value comparisons.
 ///
 /// This is typically created using `RpVariants::iter()`.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct RpVariantRef<'a, F: 'static>
 where
     F: Flavor,
@@ -103,9 +103,27 @@ where
     }
 }
 
+impl<'a, F> Clone for RpVariantRef<'a, F>
+where
+    F: Flavor,
+{
+    fn clone(&self) -> Self {
+        Self {
+            span: self.span,
+            name: self.name,
+            ident: self.ident,
+            comment: self.comment,
+            value: self.value,
+        }
+    }
+}
+
+impl<'a, F> Copy for RpVariantRef<'a, F> where F: Flavor {}
+
 impl<'a, F: 'static> fmt::Display for RpVariantRef<'a, F>
 where
     F: Flavor,
+    F::Name: fmt::Display,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{} as {}", self.name, self.value)

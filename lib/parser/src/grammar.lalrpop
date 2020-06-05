@@ -2,7 +2,7 @@
 use core::{RpNumber, Loc, RpPackage, Source, Span};
 use std::sync::Arc;
 use ast::*;
-use lexer::{self, Token};
+use lexer::{self, Token, Keyword};
 use super::utils;
 use std::borrow::Cow;
 
@@ -327,13 +327,13 @@ extern {
         TypeIdent => Token::TypeIdentifier(<Cow<'input, str>>),
         ident => Token::Identifier(<Cow<'input, str>>),
         number => Token::Number(<RpNumber>),
-        "use" => Token::Use,
-        "as" => Token::As,
-        "enum" => Token::Enum,
-        "type" => Token::Type,
-        "interface" => Token::Interface,
-        "tuple" => Token::Tuple,
-        "service" => Token::Service,
+        "use" => Token::Keyword(Keyword::Use),
+        "as" => Token::Keyword(Keyword::As),
+        "enum" => Token::Keyword(Keyword::Enum),
+        "type" => Token::Keyword(Keyword::Type),
+        "interface" => Token::Keyword(Keyword::Interface),
+        "tuple" => Token::Keyword(Keyword::Tuple),
+        "service" => Token::Keyword(Keyword::Service),
         "(" => Token::LeftParen,
         ")" => Token::RightParen,
         "{" => Token::LeftCurly,
@@ -356,17 +356,17 @@ extern {
         "=" => Token::Equal,
         "//!" => Token::PackageDocComment(<Vec<Cow<'input, str>>>),
         "///" => Token::DocComment(<Vec<Cow<'input, str>>>),
-        any => Token::Any,
-        float => Token::Float,
-        double => Token::Double,
-        u32 => Token::U32,
-        u64 => Token::U64,
-        i32 => Token::I32,
-        i64 => Token::I64,
-        boolean => Token::Boolean,
-        string => Token::String,
-        datetime => Token::Datetime,
-        bytes => Token::Bytes,
-        stream => Token::Stream,
+        any => Token::Keyword(Keyword::Any),
+        float => Token::Keyword(Keyword::Float),
+        double => Token::Keyword(Keyword::Double),
+        u32 => Token::Keyword(Keyword::U32),
+        u64 => Token::Keyword(Keyword::U64),
+        i32 => Token::Keyword(Keyword::I32),
+        i64 => Token::Keyword(Keyword::I64),
+        boolean => Token::Keyword(Keyword::Boolean),
+        string => Token::Keyword(Keyword::String),
+        datetime => Token::Keyword(Keyword::Datetime),
+        bytes => Token::Keyword(Keyword::Bytes),
+        stream => Token::Keyword(Keyword::Stream),
     }
 }

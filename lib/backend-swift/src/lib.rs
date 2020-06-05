@@ -1,36 +1,18 @@
-#[macro_use]
-extern crate genco;
-#[macro_use]
-extern crate log;
-extern crate reproto_backend as backend;
-#[macro_use]
-extern crate reproto_core as core;
-#[macro_use]
-extern crate reproto_manifest as manifest;
-extern crate reproto_naming as naming;
-extern crate reproto_trans as trans;
-extern crate serde;
-#[allow(unused)]
-#[macro_use]
-extern crate serde_derive;
-extern crate toml;
-
+mod codegen;
 mod compiler;
 mod flavored;
 mod module;
 
-use crate::backend::{Initializer, IntoBytes};
 use crate::compiler::Compiler;
-use crate::core::errors::Result;
-use crate::core::{CoreFlavor, Handle};
-use crate::flavored::{RpEnumBody, RpField, RpInterfaceBody, RpPackage, SwiftName};
-use crate::manifest::{Lang, Manifest, NoModule, TryFromToml};
-use crate::trans::Session;
-use genco::swift::Swift;
-use genco::Tokens;
+use crate::flavored::Type;
+use backend::Initializer;
+use core::errors::Result;
+use core::{CoreFlavor, Handle};
+use genco::prelude::*;
+use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
-use std::rc::Rc;
+use trans::Session;
 
 const EXT: &str = "swift";
 const TYPE_SEP: &'static str = "_";
@@ -39,7 +21,7 @@ const TYPE_SEP: &'static str = "_";
 pub struct SwiftLang;
 
 impl Lang for SwiftLang {
-    lang_base!(SwiftModule, compile);
+    manifest::lang_base!(SwiftModule, compile);
 
     fn comment(&self, input: &str) -> Option<String> {
         Some(format!("// {}", input))
@@ -169,30 +151,18 @@ impl TryFromToml for SwiftModule {
 
 pub struct Options {
     /// All types that the struct model should extend.
-    pub struct_model_extends: Tokens<'static, Swift<'static>>,
-    pub type_gens: Vec<Box<dyn TypeCodegen>>,
-    pub tuple_gens: Vec<Box<dyn TupleCodegen>>,
-    pub struct_model_gens: Vec<Box<dyn StructModelCodegen>>,
-    pub enum_gens: Vec<Box<dyn EnumCodegen>>,
-    pub interface_gens: Vec<Box<dyn InterfaceCodegen>>,
-    pub interface_model_gens: Vec<Box<dyn InterfaceModelCodegen>>,
-    pub package_gens: Vec<Box<dyn PackageCodegen>>,
+    pub struct_model_extends: Vec<swift::Tokens>,
     /// The provided Any type that should be used in structs.
-    pub any_type: Vec<(&'static str, Swift<'static>)>,
+    pub any_type: Vec<(&'static str, Type)>,
+    pub gen: codegen::Generators,
 }
 
 impl Options {
     pub fn new() -> Options {
         Options {
-            struct_model_extends: Tokens::new(),
-            type_gens: Vec::new(),
-            tuple_gens: Vec::new(),
-            struct_model_gens: Vec::new(),
-            interface_gens: Vec::new(),
-            interface_model_gens: Vec::new(),
-            enum_gens: Vec::new(),
-            package_gens: Vec::new(),
+            struct_model_extends: Vec::new(),
             any_type: Vec::new(),
+            gen: codegen::Generators::default(),
         }
     }
 }
@@ -203,7 +173,7 @@ pub fn options(modules: Vec<SwiftModule>) -> Result<Options> {
     let mut options = Options::new();
 
     for m in modules {
-        debug!("+module: {:?}", m);
+        log::debug!("+module: {:?}", m);
 
         let initializer: Box<dyn Initializer<Options = Options>> = match m {
             Grpc => Box::new(module::Grpc::new()),
@@ -216,101 +186,6 @@ pub fn options(modules: Vec<SwiftModule>) -> Result<Options> {
 
     Ok(options)
 }
-
-pub struct FileSpec<'a>(pub Tokens<'a, Swift<'a>>);
-
-impl<'el> Default for FileSpec<'el> {
-    fn default() -> Self {
-        FileSpec(Tokens::new())
-    }
-}
-
-impl<'el> IntoBytes<Compiler<'el>> for FileSpec<'el> {
-    fn into_bytes(self, _: &Compiler<'el>, _: &RpPackage) -> Result<Vec<u8>> {
-        let out = self.0.join_line_spacing().to_file()?;
-        Ok(out.into_bytes())
-    }
-}
-
-/// Build codegen hooks.
-macro_rules! codegen {
-    ($c:tt, $e:ty) => {
-        pub trait $c {
-            fn generate(&self, e: $e) -> Result<()>;
-        }
-
-        impl<T> $c for Rc<T>
-        where
-            T: $c,
-        {
-            fn generate(&self, e: $e) -> Result<()> {
-                self.as_ref().generate(e)
-            }
-        }
-    };
-}
-
-/// Event emitted when a struct has been added.
-pub struct TypeAdded<'a, 'c: 'a, 'el: 'a> {
-    pub container: &'a mut Tokens<'el, Swift<'el>>,
-    pub compiler: &'a Compiler<'c>,
-    pub name: &'el SwiftName,
-    pub fields: &'a [&'el RpField],
-}
-
-codegen!(TypeCodegen, TypeAdded);
-
-/// Event emitted when a struct has been added.
-pub struct TupleAdded<'a, 'c: 'a, 'el: 'a> {
-    pub container: &'a mut Tokens<'el, Swift<'el>>,
-    pub compiler: &'a Compiler<'c>,
-    pub name: &'el SwiftName,
-    pub fields: &'a [&'el RpField],
-}
-
-codegen!(TupleCodegen, TupleAdded);
-
-/// Event emitted when a struct has been added.
-pub struct StructModelAdded<'a, 'el: 'a> {
-    pub container: &'a mut Tokens<'el, Swift<'el>>,
-    pub fields: &'a [&'el RpField],
-}
-
-codegen!(StructModelCodegen, StructModelAdded);
-
-/// Event emitted when an enum has been added.
-pub struct EnumAdded<'a, 'el: 'a> {
-    pub container: &'a mut Tokens<'el, Swift<'el>>,
-    pub name: &'el SwiftName,
-    pub body: &'el RpEnumBody,
-}
-
-codegen!(EnumCodegen, EnumAdded);
-
-/// Event emitted when an interface has been added.
-pub struct InterfaceAdded<'a, 'c: 'a, 'el: 'a> {
-    pub container: &'a mut Tokens<'el, Swift<'el>>,
-    pub compiler: &'a Compiler<'c>,
-    pub name: &'el SwiftName,
-    pub body: &'el RpInterfaceBody,
-}
-
-codegen!(InterfaceCodegen, InterfaceAdded);
-
-/// Event emitted when an interface model has been added.
-pub struct InterfaceModelAdded<'a, 'el: 'a> {
-    pub container: &'a mut Tokens<'el, Swift<'el>>,
-    pub body: &'el RpInterfaceBody,
-}
-
-codegen!(InterfaceModelCodegen, InterfaceModelAdded);
-
-/// Event emitted when an interface model has been added.
-pub struct PackageAdded<'a, 'el: 'a> {
-    pub files: &'a mut Vec<(RpPackage, FileSpec<'el>)>,
-}
-
-codegen!(PackageCodegen, PackageAdded);
 
 fn compile(handle: &dyn Handle, session: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let modules = manifest::checked_modules(manifest.modules)?;

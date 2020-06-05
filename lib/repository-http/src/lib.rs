@@ -1,12 +1,5 @@
 //! ## Load objects from a remote repository over HTTP
 
-extern crate futures;
-extern crate hyper;
-extern crate hyper_rustls;
-extern crate reproto_core as core;
-extern crate reproto_repository as repository;
-extern crate url;
-
 use core::errors::Result;
 use core::Source;
 use futures::future::{err, ok};

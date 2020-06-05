@@ -1,6 +1,6 @@
 [package]
 name = "reproto-backend-csharp"
-version = "0.3.39"
+version = "0.4.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
 edition = "2018"
@@ -13,14 +13,13 @@ Rethinking Protocol Generators
 """
 
 [dependencies]
-reproto-backend = {path = "../backend", version = "0.3"}
-reproto-trans = {path = "../trans", version = "0.3"}
-reproto-naming = {path = "../naming", version = "0.3"}
-reproto-core = {path = "../core", version = "0.3"}
-reproto-manifest = {path = "../manifest", version = "0.3"}
+backend = {package = "reproto-backend", path = "../backend", version = "0.4"}
+trans = {package = "reproto-trans", path = "../trans", version = "0.4"}
+naming = {package = "reproto-naming", path = "../naming", version = "0.4"}
+core = {package = "reproto-core", path = "../core", version = "0.4"}
+manifest = {package = "reproto-manifest", path = "../manifest", version = "0.4"}
 
-genco = "0.4.0"
+genco = "0.15.0"
 log = "0.4.8"
-serde = "1.0.111"
-serde_derive = "1.0.111"
+serde = {version = "1.0.111", features = ["derive"]}
 toml = "0.5.6"

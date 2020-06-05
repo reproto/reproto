@@ -1,10 +1,8 @@
 use crate::errors::Result;
 use crate::{AsPackage, RpVersionedPackage};
-use serde;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
-use std::mem;
 use std::result;
 use std::slice;
 
@@ -125,7 +123,7 @@ impl RpPackage {
     pub fn with_replacements(mut self, keywords: &HashMap<String, String>) -> Self {
         for p in &mut self.parts {
             if let Some(keyword) = keywords.get(p.as_str()) {
-                mem::replace(p, keyword.to_string());
+                *p = keyword.to_string();
             }
         }
 
@@ -139,7 +137,7 @@ impl RpPackage {
     {
         for p in &mut self.parts {
             let new_name = naming(p);
-            mem::replace(p, new_name);
+            *p = new_name;
         }
 
         self

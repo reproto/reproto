@@ -1,0 +1,11 @@
+container: python:2-slim
+env:
+  PYTHONPATH: generated
+
+prepare:
+  - type: run
+    command: pip install requests enum34
+
+run:
+  type: run
+  command: python script.py

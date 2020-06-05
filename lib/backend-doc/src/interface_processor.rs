@@ -1,10 +1,10 @@
 //! Processor for service declarations.
 
-use crate::core::errors::Result;
-use crate::core::flavored::{RpInterfaceBody, RpSubType};
 use crate::doc_builder::DocBuilder;
 use crate::macros::FormatAttribute;
 use crate::processor::Processor;
+use core::errors::Result;
+use core::flavored::{RpInterfaceBody, RpSubType};
 
 define_processor!(InterfaceProcessor, RpInterfaceBody, self,
     process => {

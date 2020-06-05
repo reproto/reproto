@@ -1,0 +1,13 @@
+{
+  "name": "reproto-it-js",
+  "version": "1.0.0",
+  "description": "",
+  "devDependencies": {
+    "@babel/cli": "^7.10.1",
+    "@babel/core": "^7.10.2",
+    "@babel/preset-env": "^7.10.2"
+  },
+  "scripts": {
+    "generate": "babel --presets @babel/preset-env --out-dir target src generated"
+  }
+}

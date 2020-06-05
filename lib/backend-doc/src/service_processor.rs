@@ -1,12 +1,12 @@
 //! Processor for service declarations.
 
-use crate::core::errors::*;
-use crate::core::flavored::{RpEndpoint, RpServiceBody};
-use crate::core::Loc;
 use crate::doc_builder::DocBuilder;
 use crate::escape::Escape;
 use crate::macros::FormatAttribute;
 use crate::processor::Processor;
+use core::errors::Result;
+use core::flavored::{RpEndpoint, RpServiceBody};
+use core::Loc;
 
 define_processor!(ServiceProcessor, RpServiceBody, self,
     process => {

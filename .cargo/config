@@ -1,0 +1,4 @@
+[alias]
+it = "run --package it --bin it --"
+build-syntax = "run --package reproto-pack -- --build-syntax=lib/backend-doc/dumps/syntaxdump"
+build-themes = "run --package reproto-pack -- --build-themes=lib/backend-doc/dumps/themedump"

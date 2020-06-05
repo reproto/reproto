@@ -1,0 +1,8 @@
+name: openapi
+lang: openapi
+no_project: true
+
+instances:
+  json:
+    args: ["-m", "json"]
+  yaml: {}

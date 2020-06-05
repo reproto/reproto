@@ -1,0 +1,12 @@
+name: swift
+lang: swift
+output: Sources/Models
+
+test:
+  - docker --version
+
+instances:
+  codable:
+    args: ["-m", "codable"]
+  simple:
+    args: ["-m", "simple"]

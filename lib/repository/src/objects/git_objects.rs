@@ -1,11 +1,11 @@
 //! ## Load objects through a local git repo
 
 use crate::checksum::Checksum;
-use crate::core::errors::*;
-use crate::core::Source;
 use crate::git::GitRepo;
 use crate::objects::{FileObjects, Objects};
 use crate::update::Update;
+use core::errors::Result;
+use core::Source;
 use std::io::Read;
 use std::sync::Arc;
 use url::Url;

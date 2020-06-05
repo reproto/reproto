@@ -1,16 +1,14 @@
 //! Handle parsing of attributes.
 
-use crate::core::errors::Error;
-use crate::core::flavored::{
+use crate::features::Feature;
+use crate::into_model::IntoModel;
+use crate::scope::Scope;
+use core::errors::Error;
+use core::flavored::{
     Attributes, RpAccept, RpChannel, RpEndpointArgument, RpEndpointHttp, RpHttpMethod, RpPathSpec,
     RpValue,
 };
-use crate::core::{self, Diagnostics, Import, Loc, RpStringValidate, Span, Version, WithSpan};
-use crate::features::Feature;
-use crate::into_model::IntoModel;
-use crate::path_parser;
-use crate::regex_parser;
-use crate::scope::Scope;
+use core::{self, Diagnostics, Import, Loc, RpStringValidate, Span, Version, WithSpan};
 use std::collections::HashMap;
 
 /// `#![feature(..)]` attributes.
@@ -230,7 +228,7 @@ where
 
     /// Parse a method.
     fn parse_method(diag: &mut Diagnostics, method: Loc<RpValue>) -> Result<RpHttpMethod, ()> {
-        use crate::core::RpHttpMethod::*;
+        use core::RpHttpMethod::*;
 
         let (method, span) = Loc::take_pair(method);
 

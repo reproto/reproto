@@ -1,0 +1,15 @@
+deadline: 5 minutes
+container: rust:1-buster
+
+# prebuild so that we have cached dependencies
+prepare:
+  - type: run
+    command: cargo build
+
+steps:
+  - type: run
+    command: cargo build --jobs 1
+
+run:
+  type: run
+  command: target/debug/reproto-it

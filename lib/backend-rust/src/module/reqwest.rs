@@ -1,13 +1,12 @@
 //! gRPC module for Rust.
 
-use crate::backend::Initializer;
-use crate::core::errors::Result;
-use crate::core::{self, Loc};
-use crate::flavored::{RpEndpointHttp1, RpPackage, RpPathSpec, RpServiceBody, RustEndpoint};
+use crate::flavored::{RpEndpointHttp1, RpPackage, RpPathSpec, RpServiceBody, RustEndpoint, Type};
 use crate::utils::Comments;
-use crate::{Options, Root, RootCodegen, RustFileSpec, Service, ServiceCodegen, SCOPE_SEP};
-use genco::rust::{imported, local};
-use genco::{Cons, IntoTokens, Quoted, Rust, Tokens};
+use crate::{Options, Root, RootCodegen, Service, ServiceCodegen, SCOPE_SEP};
+use backend::Initializer;
+use core::errors::Result;
+use genco::prelude::*;
+use genco::tokens::{FormatInto, ItemStr, Tokens};
 use std::rc::Rc;
 
 pub struct Module {}
@@ -24,9 +23,9 @@ impl Initializer for Module {
     fn initialize(&self, options: &mut Options) -> Result<()> {
         let utils_package = options.packages.new("reproto")?;
 
-        let imported_utils_package = Rc::new(utils_package.join(SCOPE_SEP));
-        let result = imported(imported_utils_package.clone(), "Result");
-        let path_encode = imported(imported_utils_package.clone(), "PathEncode");
+        let imported_utils_package = Rc::new(format!("crate::{}", utils_package.join(SCOPE_SEP)));
+        let result = Type::from(rust::import(imported_utils_package.clone(), "Result"));
+        let path_encode = Type::from(rust::import(imported_utils_package.clone(), "PathEncode"));
 
         options
             .service
@@ -49,135 +48,82 @@ impl ReqwestUtils {
         Self { utils_package }
     }
 
-    fn reproto<'el>(&self) -> Result<RustFileSpec<'el>> {
-        let mut f = RustFileSpec::default();
+    fn reproto(&self) -> Result<rust::Tokens> {
+        let mut t = rust::Tokens::new();
 
-        let mut errors = Vec::new();
-        errors.push((imported("reqwest", "Error"), "ReqwestError"));
-        errors.push((imported("reqwest", "UrlError"), "UrlError"));
-        errors.push((imported("std::fmt", "Error"), "FormatError"));
+        let errors = vec![
+            (rust::import("reqwest", "Error"), "ReqwestError"),
+            (rust::import("url", "ParseError"), "UrlParseError"),
+            (rust::import("std::fmt", "Error"), "FormatError"),
+        ];
 
-        f.0.push({
-            let mut t = Tokens::new();
+        // basic impl and conversions.
+        {
+            let result = rust::import("std::result", "Result");
 
-            push!(t, "#[derive(Debug)]");
-            push!(t, "pub enum Error {");
+            quote_in! { t =>
+                #[derive(Debug)]
+                pub enum Error {
+                    #(for (ty, v) in errors.iter().cloned() join (,#<push>) => #v(#ty))
+                }
 
-            for &(ref ty, ref variant) in &errors {
-                nested!(t, variant.clone(), "(", ty.clone(), "),");
-            }
+                pub type Result<T, E = Error> = #result<T, E>;
 
-            push!(t, "}");
-
-            t
-        });
-
-        f.0.push({
-            let mut t = Tokens::new();
-            let result = imported("std::result", "Result");
-
-            push!(t, "pub type Result<T> = ", result, "<T, Error>;");
-
-            t
-        });
-
-        for &(ref ty, ref variant) in &errors {
-            f.0.push({
-                let mut t = Tokens::new();
-
-                push!(t, "impl From<", ty.clone(), "> for Error {");
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    push!(t, "fn from(value: ", ty.clone(), ") -> Self {");
-                    nested!(t, "Error::", variant.clone(), "(value)");
-                    push!(t, "}");
-
-                    t
-                });
-
-                push!(t, "}");
-
-                t
-            });
+                #(for (ref ty, variant) in errors.iter().cloned() join (#<line>) =>
+                    impl From<#ty> for Error {
+                        fn from(value: #ty) -> Self {
+                            Error::#variant(value)
+                        }
+                    }
+                )
+            };
         }
 
         // fmt::Display implementation for Error
-        f.0.push({
-            let mut t = Tokens::new();
+        {
+            let display = rust::import("std::fmt", "Display");
+            let formatter = rust::import("std::fmt", "Formatter");
+            let result = rust::import("std::fmt", "Result");
 
-            let display = imported("std::fmt", "Display");
-            let formatter = imported("std::fmt", "Formatter");
-            let result = imported("std::fmt", "Result");
+            t.line();
 
-            push!(t, "impl ", display, " for Error {");
-
-            t.nested_into(|t| {
-                push!(
-                    t,
-                    "fn fmt(&self, fmt: &mut ",
-                    formatter,
-                    ") -> ",
-                    result,
-                    " {"
-                );
-
-                t.nested_into(|t| {
-                    push!(t, "match *self {");
-
-                    for &(_, ref variant) in &errors {
-                        nested!(t, "Error::", variant.clone(), "(ref e) => e.fmt(fmt),");
+            quote_in! { t =>
+                impl #display for Error {
+                    fn fmt(&self, fmt: &mut #formatter) -> #result {
+                        match self {
+                            #(for (_, variant) in &errors =>
+                                #<push>Error::#(*variant)(e) => e.fmt(fmt),
+                            )
+                        }
                     }
+                }
+            };
+        }
 
-                    push!(t, "}");
-                });
+        {
+            let display = &rust::import("std::fmt", "Display");
+            let fmt = &rust::import("std::fmt", "Formatter");
+            let result = &rust::import("std::fmt", "Result");
+            let encode = &rust::import("percent_encoding", "utf8_percent_encode");
+            let ascii_set = &rust::import("percent_encoding", "NON_ALPHANUMERIC");
 
-                push!(t, "}");
-            });
+            t.line();
 
-            push!(t, "}");
+            quote_in! { t =>
+                pub struct PathEncode<T>(pub T);
 
-            t
-        });
+                impl<T> #display for PathEncode<T>
+                where
+                    T: #display
+                {
+                    fn fmt(&self, fmt: &mut #fmt) -> #result {
+                        write!(fmt, "{}", #encode(&self.0.to_string(), #ascii_set))
+                    }
+                }
+            };
+        }
 
-        f.0.push({
-            let mut t = Tokens::new();
-
-            let display = imported("std::fmt", "Display");
-            let fmt = imported("std::fmt", "Formatter");
-            let result = imported("std::fmt", "Result");
-            let encode = imported("reqwest::header::parsing", "http_percent_encode");
-
-            push!(t, "pub struct PathEncode<T>(pub T);");
-
-            t.push({
-                let mut t = Tokens::new();
-
-                push!(t, "impl<T> ", display, " for PathEncode<T>");
-                push!(t, "where");
-                nested!(t, "T: ", display);
-                push!(t, "{");
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    push!(t, "fn fmt(&self, fmt: &mut ", fmt, ") -> ", result, " {");
-                    nested!(t, encode, "(fmt, self.0.to_string().as_bytes())");
-                    push!(t, "}");
-
-                    t
-                });
-
-                push!(t, "}");
-
-                t
-            });
-
-            t.join_line_spacing()
-        });
-
-        Ok(f)
+        Ok(t)
     }
 }
 
@@ -190,17 +136,17 @@ impl RootCodegen for ReqwestUtils {
 }
 
 struct ReqwestService {
-    result: Rust<'static>,
-    path_encode: Rust<'static>,
-    client: Rust<'static>,
+    result: Type,
+    path_encode: Type,
+    client: Type,
 }
 
 impl ReqwestService {
-    pub fn new(result: Rust<'static>, path_encode: Rust<'static>) -> Self {
+    pub fn new(result: Type, path_encode: Type) -> Self {
         Self {
             result,
             path_encode,
-            client: imported("reqwest", "Client"),
+            client: rust::import("reqwest", "Client").into(),
         }
     }
 }
@@ -215,81 +161,60 @@ impl ServiceCodegen for ReqwestService {
             ..
         } = service;
 
-        let name = Cons::from(format!("{}_Reqwest", name));
-        let url_ty = imported("reqwest", "Url");
+        let name = &ItemStr::from(format!("{}_Reqwest", name));
+        let url_ty = &Type::from(rust::import("reqwest", "Url"));
 
-        container.push({
-            let mut t = Tokens::new();
+        quote_in! { *container =>
+            #attributes
+            #[allow(non_camel_case_types)]
+            pub struct #name {
+                client: #(&self.client),
+                url: #url_ty,
+            }
 
-            t.push_unless_empty(attributes.clone());
-            push!(t, "pub struct ", name, "{");
-            nested!(t, "client: ", self.client, ",");
-            nested!(t, "url: ", url_ty, ",");
-            push!(t, "}");
-
-            t
-        });
-
-        container.push({
-            let mut t = Tokens::new();
-
-            push!(t, "impl ", name, " {");
-
-            t.push_unless_empty({
-                let mut t = Tokens::new();
-
-                // constructor.
-                t.nested(Constructor {
+            impl #name {
+                #(Constructor {
                     result: &self.result,
                     client: &self.client,
                     body,
                     url_ty: &url_ty,
-                });
+                })
 
-                // endpoint methods.
-                for e in &body.endpoints {
-                    let http = match e.http1.as_ref() {
-                        Some(http) => http,
-                        None => continue,
-                    };
+                #(for e in &body.endpoints join (#<line>) =>
+                    #(ref tokens =>
+                        let http = match e.http1.as_ref() {
+                            Some(http) => http,
+                            None => continue,
+                        };
 
-                    t.nested({
-                        let mut t = Tokens::new();
-
-                        t.push_unless_empty(Comments(&e.comment));
-                        t.push(Endpoint {
-                            result: &self.result,
-                            path_encode: &self.path_encode,
-                            e,
-                            http,
-                        });
-
-                        t
-                    });
-                }
-
-                t.join_line_spacing()
-            });
-
-            push!(t, "}");
-
-            t
-        });
+                        quote_in! { *tokens =>
+                            #(Comments(&e.comment))
+                            #(Endpoint {
+                                result: &self.result,
+                                path_encode: &self.path_encode,
+                                e,
+                                http,
+                            })
+                        };
+                    )
+                )
+            }
+        };
 
         Ok(())
     }
 }
 
 /// Builds a constructor for the service struct.
-struct Constructor<'a, 'el: 'a> {
+struct Constructor<'el> {
     body: &'el RpServiceBody,
-    result: &'a Rust<'static>,
-    client: &'a Rust<'static>,
-    url_ty: &'a Rust<'static>,
+    result: &'el Type,
+    client: &'el Type,
+    url_ty: &'el Type,
 }
 
-impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Constructor<'a, 'el> {
-    fn into_tokens(self) -> Tokens<'el, Rust<'el>> {
+impl<'el> FormatInto<Rust> for Constructor<'el> {
+    fn format_into(self, t: &mut Tokens<Rust>) {
         let Constructor {
             body,
             result,
@@ -298,105 +223,74 @@ impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Constructor<'a, 'el> {
             ..
         } = self;
 
-        let option = local("Option");
-
-        let mut t = Tokens::new();
-
-        let mut args = Tokens::new();
-        args.append(toks!["client: ", client.clone()]);
-
-        match body.http.url {
-            Some(_) => {
-                args.append(toks!["url: ", option.with_arguments(vec![url_ty.clone()]),]);
-            }
-            None => {
-                args.append(toks!["url: ", url_ty.clone()]);
-            }
+        let option_url_ty = match body.http.url {
+            Some(_) => Type::option(url_ty.clone()),
+            None => url_ty.clone(),
         };
 
-        let s = result.clone().with_arguments(vec![local("Self")]);
+        quote_in! { *t =>
+            pub fn new(client: #client, url: #(&option_url_ty)) -> #result<Self> {
+                #(ref t => {
+                    if let Some(url) = &body.http.url {
+                        quote_in! { *t =>
+                            let url = match url {
+                                Some(url) => url,
+                                None => #(url_ty)::parse(#(quoted(&**url)))?,
+                            };
+                        }
+                    }
+                })
 
-        push!(t, "pub fn new(", args.join(", "), ") -> ", s, " {");
-
-        t.nested({
-            let mut t = Tokens::new();
-
-            t.push_into(|t| match body.http.url {
-                Some(ref url) => {
-                    let url = Loc::borrow(url).clone().quoted();
-
-                    push!(t, "let url = match url {");
-                    nested!(t, "Some(url) => url,");
-                    nested!(t, "None => ", url_ty.clone(), "::parse(", url, ")?,");
-                    push!(t, "};");
-                }
-                None => {}
-            });
-
-            t.push_into(|t| {
-                push!(t, "Ok(Self {");
-                nested!(t, "client,");
-                nested!(t, "url,");
-                push!(t, "})");
-            });
-
-            t.join_line_spacing()
-        });
-
-        push!(t, "}");
-
-        t
+                Ok(Self { client, url })
+            }
+        };
     }
 }
 
 /// Write full path to a string.
-struct WritePath<'a, 'el: 'a> {
+struct WritePath<'el> {
     var: &'el str,
     path: &'el RpPathSpec,
-    path_encode: &'a Rust<'el>,
+    path_encode: &'el Type,
 }
 
-impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for WritePath<'a, 'el> {
-    fn into_tokens(self) -> Tokens<'el, Rust<'el>> {
+impl<'el> FormatInto<Rust> for WritePath<'el> {
+    fn format_into(self, tokens: &mut Tokens<Rust>) {
         let WritePath {
             var,
             path,
             path_encode,
         } = self;
 
-        let mut t = Tokens::new();
-
-        for step in &path.steps {
-            push!(t, var, ".push_str(", "/".quoted(), ");");
-
-            for part in &step.parts {
-                match *part {
-                    core::RpPathPart::Variable(ref arg) => {
-                        let expr = toks![path_encode.clone(), "(", arg.safe_ident(), ")"];
-                        push!(t, "write!(", var, ", ", "{}".quoted(), ", ", expr, ")?;");
-                    }
-                    core::RpPathPart::Segment(ref s) => {
-                        push!(t, var, ".push_str(", s.as_str().quoted(), ");");
-                    }
-                }
-            }
+        quote_in! { *tokens =>
+            #(for step in &path.steps join (#<push>) =>
+                #var.push_str("/");
+                #(for part in &step.parts join (#<push>) =>
+                    #(match part {
+                        core::RpPathPart::Variable(arg) => {
+                            write!(#var, "{}", #(path_encode)(#(arg.safe_ident())))?;
+                        }
+                        core::RpPathPart::Segment(s) => {
+                            #var.push_str(#(quoted(s.as_str())));
+                        }
+                    })
+                )
+            )
         }
-
-        t
     }
 }
 
 /// Build an endpoint method for the service struct.
-struct Endpoint<'a, 'el: 'a> {
-    result: &'a Rust<'static>,
-    path_encode: &'a Rust<'static>,
+struct Endpoint<'el> {
+    result: &'el Type,
+    path_encode: &'el Type,
     e: &'el RustEndpoint,
     http: &'el RpEndpointHttp1,
 }
 
-impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Endpoint<'a, 'el> {
-    fn into_tokens(self) -> Tokens<'el, Rust<'el>> {
-        use crate::core::RpHttpMethod::*;
+impl<'el> FormatInto<Rust> for Endpoint<'el> {
+    fn format_into(self, t: &mut Tokens<Rust>) {
+        use core::RpHttpMethod::*;
 
         let Endpoint {
             result,
@@ -405,91 +299,68 @@ impl<'a, 'el: 'a> IntoTokens<'el, Rust<'el>> for Endpoint<'a, 'el> {
             http,
         } = self;
 
-        let mut t = Tokens::new();
-
         // import trait
-        t.register(imported("std::fmt", "Write").qualified());
+        t.register(rust::import("std::fmt", "Write"));
 
-        let mut args = Tokens::new();
-
-        args.append("&self");
-
-        for a in &e.arguments {
-            args.append({
-                let mut t = Tokens::new();
-
-                t.append(a.safe_ident());
-                t.append(": ");
-                t.append(a.channel.ty());
-
-                t
-            });
-        }
-
-        let args = args.join(", ");
-
-        let res = if let Some(ref res) = http.response {
-            toks![result.clone(), "<", res, ">"]
+        let res = if let Some(res) = &http.response {
+            quote!(#result<#res>)
         } else {
-            toks![result.clone(), "<()>"]
+            quote!(#result<()>)
         };
 
-        push!(t, "pub fn ", e.safe_ident(), "(", args, ") -> ", res, " {");
+        let args = e
+            .arguments
+            .iter()
+            .map(|a| quote!(#(a.safe_ident()): #(a.channel.ty())));
 
-        t.nested({
-            let mut t = Tokens::new();
+        let method = match http.method {
+            Get => "GET",
+            Post => "POST",
+            Put => "PUT",
+            Update => "UPDATE",
+            Delete => "DELETE",
+            Patch => "PATCH",
+            Head => "HEAD",
+        };
 
-            if let Some(ref path) = e.http.path {
-                let mut p = Tokens::new();
+        let method_ty = rust::import("reqwest", "Method");
 
-                push!(p, "let mut path_ = String::new();");
+        quote_in! { *t =>
+            pub async fn #(e.safe_ident())(&self, #(for a in args join(, ) => #a)) -> #res {
+                use std::fmt::Write as _;
 
-                p.push(WritePath {
-                    var: "path_",
-                    path,
-                    path_encode,
-                });
+                #(if let Some(path) = &e.http.path {
+                    let mut path_ = String::new();
 
-                t.push(p);
-                push!(t, "let url_ = self.url.join(&path_)?;");
-            } else {
-                push!(t, "let url_ = self.url.clone();");
+                    #(WritePath {
+                        var: "path_",
+                        path,
+                        path_encode,
+                    })
+
+                    let url_ = self.url.join(&path_)?;
+                } else {
+                    let url_ = self.url.clone();
+                })
+
+                #(if let Some(req) = &e.request {
+                    let req_ = self.client
+                        .request(#method_ty::#method, url_)
+                        .json(&#(req.safe_ident()));
+                } else {
+                    let req_ = self.client
+                        .request(#method_ty::#method, url_);
+                })
+
+                #(if e.response.is_some() {
+                    let res_ = req_.send().await?;
+                    let body_ = res_.json().await?;
+                    Ok(body_)
+                } else {
+                    req_.send().await?;
+                    Ok(())
+                })
             }
-
-            let method = match http.method {
-                Get => "Get",
-                Post => "Post",
-                Put => "Put",
-                Update => "Update",
-                Delete => "Delete",
-                Patch => "Patch",
-                Head => "Head",
-            };
-
-            let m = toks![imported("reqwest", "Method"), "::", method];
-
-            let req = toks!["self.client.request(", m, ", url_)"];
-
-            push!(t, "let mut req_ = ", req, ";");
-
-            if let Some(ref req) = e.request {
-                push!(t, "req_.json(&", req.safe_ident(), ");");
-            }
-
-            if e.response.is_some() {
-                push!(t, "let mut res_ = req_.send()?;");
-                push!(t, "let body_ = res_.json()?;");
-                push!(t, "Ok(body_)");
-            } else {
-                push!(t, "req_.send()?;");
-                push!(t, "Ok(())");
-            }
-
-            t.join_line_spacing()
-        });
-
-        push!(t, "}");
-
-        t
+        }
     }
 }

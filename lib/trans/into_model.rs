@@ -1,16 +1,16 @@
 //! IntoModel is the trait that performs AST to RpIR translation.
 
-use crate::ast::*;
 use crate::attributes;
-use crate::core::errors::Error;
-use crate::core::flavored::*;
-use crate::core::{
-    self, BigInt, Diagnostics, EnabledFeature, Import, Loc, Range, RpNumberKind, RpNumberType,
+use crate::scope::Scope;
+use ast::*;
+use core::errors::Error;
+use core::flavored::*;
+use core::{
+    BigInt, Diagnostics, EnabledFeature, Import, Loc, Range, RpNumberKind, RpNumberType,
     RpNumberValidate, RpStringType, RpStringValidate, Span, SymbolKind, WithSpan,
 };
-use crate::naming::{self, Naming};
-use crate::scope::Scope;
 use linked_hash_map::LinkedHashMap;
+use naming::Naming;
 use std::borrow::Cow;
 use std::collections::{hash_map, BTreeSet, HashMap};
 use std::option;
@@ -683,11 +683,11 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
         return Ok(Loc::new(
             RpField {
                 required: item.required,
-                safe_ident: safe_ident,
-                ident: ident,
+                safe_ident,
+                ident,
                 comment: Comment(&comment).into_model(diag, scope)?,
                 ty,
-                field_as: field_as,
+                field_as,
             },
             span,
         ));
@@ -1506,7 +1506,7 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
                 Field(field) => {
                     let field = try_loop!(field.into_model(diag, scope));
 
-                    check_conflict!(diag, field_idents, field, field.ident(), "field");
+                    check_conflict!(diag, field_idents, field, &field.ident, "field");
                     check_conflict!(diag, field_names, field, field.name(), "field with name");
 
                     check_field_tag!(diag, field, *sub_type_strategy);
@@ -1743,7 +1743,7 @@ impl<'input> IntoModel for (Vec<TypeMember<'input>>, MemberConstraint<'input>) {
                 Field(field) => {
                     let field = try_loop!(field.into_model(diag, scope));
 
-                    check_conflict!(diag, field_idents, field, field.ident(), "field");
+                    check_conflict!(diag, field_idents, field, &field.ident, "field");
                     check_conflict!(diag, field_names, field, field.name(), "field with name");
 
                     if let Some(sub_type_strategy) = sub_type_strategy {

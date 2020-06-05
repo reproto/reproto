@@ -1,3 +1,4 @@
+use serde::Serialize;
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Span {
     pub start: usize,

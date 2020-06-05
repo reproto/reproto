@@ -1,8 +1,7 @@
-use crate::core::errors::*;
-use crate::core::{Diagnostics, Reporter, RpRequiredPackage, RpVersionedPackage, Version};
-use crate::env;
 use crate::utils::{load_manifest, matches, publish_matches, semck_check, simple_config, Match};
 use clap::{App, Arg, ArgMatches, SubCommand};
+use core::errors::{Error, Result};
+use core::{Diagnostics, Reporter, RpRequiredPackage, RpVersionedPackage, Version};
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = SubCommand::with_name("publish").about("Publish specifications");
@@ -136,12 +135,14 @@ pub fn entry(reporter: &mut dyn Reporter, m: &ArgMatches) -> Result<()> {
         } = m;
 
         if pretend {
-            info!(
+            log::info!(
                 "(pretend) publishing: {}@{} (from {})",
-                package, version, source
+                package,
+                version,
+                source
             );
         } else {
-            info!("publishing: {}@{} (from {})", package, version, source);
+            log::info!("publishing: {}@{} (from {})", package, version, source);
             repository.publish(&source, &package, &version, force)?;
         }
     }

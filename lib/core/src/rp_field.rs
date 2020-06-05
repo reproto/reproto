@@ -2,9 +2,10 @@
 
 use crate::errors::Result;
 use crate::{Diagnostics, Flavor, FlavorField, Translate, Translator};
+use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-#[serde(bound = "F::Type: ::serde::Serialize")]
+#[serde(bound = "F::Type: serde::Serialize")]
 pub struct RpField<F: 'static>
 where
     F: Flavor,
@@ -38,7 +39,10 @@ impl<F: 'static> RpField<F>
 where
     F: Flavor,
 {
-    pub fn new<S: AsRef<str>>(ident: S, ty: F::Type) -> Self {
+    pub fn new<S>(ident: S, ty: F::Type) -> Self
+    where
+        S: AsRef<str>,
+    {
         RpField {
             required: true,
             safe_ident: None,
@@ -72,22 +76,9 @@ where
         }
     }
 
-    /// Get the original identifier of the field.
-    pub fn ident(&self) -> &str {
-        &self.ident
-    }
-
     /// Get the JSON name of the field, if it differs from `ident`.
-    ///
-    /// TODO: Return `Option`, currently returns ident. This is a better indication whether
-    /// 'renaming' should occur.
     pub fn name(&self) -> &str {
         self.field_as.as_ref().unwrap_or(&self.ident)
-    }
-
-    /// Get the type of the field.
-    pub fn ty(&self) -> &F::Type {
-        &self.ty
     }
 
     pub fn display(&self) -> String {

@@ -2,7 +2,6 @@ use num_bigint::BigInt;
 use num_integer::Integer;
 use num_traits::cast::ToPrimitive;
 use num_traits::Signed;
-use serde;
 use std::fmt;
 use std::result;
 

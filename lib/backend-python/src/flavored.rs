@@ -2,233 +2,173 @@
 
 #![allow(unused)]
 
-use crate::backend::package_processor;
-use crate::core::errors::Result;
-use crate::core::{
-    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberType,
+use crate::utils::VersionHelper;
+use crate::{Options, TYPE_SEP};
+use backend::package_processor;
+use core::errors::Result;
+use core::{
+    CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberType,
     RpStringType, Translate, Translator,
 };
-use crate::naming::{self, Naming};
-use crate::trans::Packages;
-use crate::utils::{Exception, VersionHelper};
-use crate::{Options, TYPE_SEP};
-use genco::python::{self, Python};
-use genco::{Cons, Element, IntoTokens, Tokens};
+use genco::prelude::*;
+use genco::tokens::{FormatInto, Item, ItemStr};
+use naming::Naming;
 use std::cmp;
 use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
+use trans::Packages;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PythonKind<'el> {
+#[derive(Debug, Clone)]
+pub enum Type {
     Native,
     Integer,
     Float,
     Boolean,
-    String,
-    Array {
-        argument: Box<PythonType<'el>>,
-    },
-    Map {
-        key: Box<PythonType<'el>>,
-        value: Box<PythonType<'el>>,
-    },
-    Name {
-        python: Python<'el>,
-    },
+    String { helper: Rc<dyn VersionHelper> },
+    Array { argument: Box<Type> },
+    Map { key: Box<Type>, value: Box<Type> },
+    Name { import: python::Import },
+    Local { ident: ItemStr },
 }
 
-impl<'el> PythonKind<'el> {
+impl Type {
+    pub fn name<T>(import: T) -> Self
+    where
+        T: Into<python::Import>,
+    {
+        Self::Name {
+            import: import.into(),
+        }
+    }
+
     /// Check if the current type is completely native.
     fn is_native(&self) -> bool {
-        use self::PythonKind::*;
-
-        match *self {
-            Native => true,
-            Integer | Float | Boolean | String => true,
-            Array { ref argument } => argument.kind.is_native(),
-            Map { ref key, ref value } => key.kind.is_native() && value.kind.is_native(),
+        match self {
+            Self::Native => true,
+            Self::Integer | Self::Float | Self::Boolean | Self::String { .. } => true,
+            Self::Array { argument } => argument.is_native(),
+            Self::Map { key, value } => key.is_native() && value.is_native(),
             _ => false,
         }
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct PythonType<'el> {
-    helper: Rc<Box<dyn VersionHelper>>,
-    kind: PythonKind<'el>,
-}
-
-impl<'el> PythonType<'el> {
-    /// Create a new python type instance.
-    pub fn new(helper: Rc<Box<dyn VersionHelper>>, kind: PythonKind<'el>) -> Self {
-        PythonType { helper, kind }
-    }
-}
-
-impl<'el> cmp::PartialEq for PythonType<'el> {
-    fn eq(&self, other: &PythonType<'el>) -> bool {
-        self.kind.eq(&other.kind)
-    }
-}
-
-impl<'el> cmp::Eq for PythonType<'el> {}
-
-impl<'el> PythonType<'el> {
+impl Type {
     /// Build decode method.
     ///
     /// `var` is the name of the variable we finally want to assign.
     /// `l` helps us generate unique local variables, and should be incremented one level for every
     /// nested call of `decode`.
-    pub fn decode<V>(&self, var: V, l: usize) -> Option<Tokens<'el, Python<'el>>>
+    pub fn decode<V>(&self, var: V, l: usize) -> Option<Tokens<Python>>
     where
-        V: Into<Cons<'el>>,
+        V: Into<ItemStr>,
     {
-        use self::PythonKind::*;
+        use self::Type::*;
 
-        let var = var.into();
+        let var = &var.into();
 
-        match self.kind {
-            Integer => {
-                let mut t = Tokens::new();
-                push!(t, "if not isinstance(", var, ", int):");
-                nested!(t, "raise ", Exception("not an integer"));
-                Some(t)
+        match self {
+            Self::Integer => Some(quote! {
+                if not isinstance(#var, int):
+                    raise Exception("not an integer")
+            }),
+            Self::Float => Some(quote! {
+                if not isinstance(#var, float):
+                    raise Exception("not a float")
+            }),
+            Self::Boolean => Some(quote! {
+                if not isinstance(#var, bool):
+                    raise Exception("not a boolean")
+            }),
+            Self::String { helper } => Some(quote! {
+                if not #(helper.is_string(var)):
+                    raise Exception("not a string")
+            }),
+            Self::Native => None,
+            Self::Array { argument } => {
+                let v = &Rc::new(format!("_v{}", l));
+                let a = &Rc::new(format!("_a{}", l));
+
+                Some(quote! {
+                    if not isinstance(#var, list):
+                        raise Exception("not an array")
+
+                    #a = []
+
+                    for #v in #var:
+                        #(if let Some(d) = argument.decode(v.clone(), l + 1) {
+                            #d
+                            #<line>
+                        })
+                        #a.append(#v)
+
+                    #var = #a
+                })
             }
-            Float => {
-                let mut t = Tokens::new();
-                push!(t, "if not isinstance(", var, ", float):");
-                nested!(t, "raise ", Exception("not a float"));
-                Some(t)
+            Self::Map { key, value } => {
+                let o = &Rc::new(format!("_o{}", l));
+                let k = &Rc::new(format!("_k{}", l));
+                let v = &Rc::new(format!("_v{}", l));
+
+                Some(quote! {
+                    if not isinstance(#var, dict):
+                        raise Exception("not an object")
+
+                    #o = {}
+
+                    for #k, #v in #var.items():
+                        #(if let Some(d) = key.decode(k.clone(), l + 1) =>
+                            #d
+                        )
+                        #(if let Some(d) = value.decode(v.clone(), l + 1) =>
+                            #d
+                        )
+                        #o[#k] = #v
+
+                    #var = #o
+                })
             }
-            Boolean => {
-                let mut t = Tokens::new();
-                push!(t, "if not isinstance(", var, ", bool):");
-                nested!(t, "raise ", Exception("not a boolean"));
-                Some(t)
-            }
-            String => {
-                let test = self.helper.is_string(var);
-
-                let mut t = Tokens::new();
-                push!(t, "if not ", test, ":");
-                nested!(t, "raise ", Exception("not a string"));
-                Some(t)
-            }
-            Native => None,
-            Array { ref argument } => {
-                let mut t = Tokens::new();
-
-                let v = Rc::new(format!("_v{}", l));
-                let a = Rc::new(format!("_a{}", l));
-
-                t.push_into(|t| {
-                    push!(t, "if not isinstance(", var, ", list):");
-                    nested!(t, "raise ", Exception("not an array"));
-                });
-
-                push!(t, a, " = []");
-
-                t.push_into(|t| {
-                    push!(t, "for ", v, " in ", var, ":");
-
-                    t.nested_into(|mut t| {
-                        if let Some(d) = argument.decode(v.clone(), l + 1) {
-                            t.push(d);
-                        }
-
-                        push!(t, a, ".append(", v, ")");
-                    });
-                });
-
-                push!(t, var, " = ", a);
-                Some(t.join_line_spacing())
-            }
-            Map { ref key, ref value } => {
-                let mut t = Tokens::new();
-
-                let o = Rc::new(format!("_o{}", l));
-                let k = Rc::new(format!("_k{}", l));
-                let v = Rc::new(format!("_v{}", l));
-
-                t.push_into(|t| {
-                    push!(t, "if not isinstance(", var, ", dict):");
-                    nested!(t, "raise ", Exception("not an object"));
-                });
-
-                push!(t, o, " = {}");
-
-                t.push_into(|t| {
-                    push!(t, "for ", k, ", ", v, " in ", var, ".items():");
-
-                    t.nested_into(|mut t| {
-                        if let Some(d) = key.decode(k.clone(), l + 1) {
-                            t.push(d);
-                        }
-
-                        if let Some(d) = value.decode(v.clone(), l + 1) {
-                            t.push(d);
-                        }
-
-                        push!(t, o, "[", k, "] = ", v);
-                    });
-                });
-
-                push!(t, var, " = ", o);
-                Some(t.join_line_spacing())
-            }
-            Name { ref python } => Some(toks!(
-                var.clone(),
-                " = ",
-                python.clone(),
-                ".decode(",
-                var.clone(),
-                ")"
-            )),
+            Self::Local { ident } => Some(quote!(#(var.clone()) = #ident.decode(#(var.clone())))),
+            Self::Name { import } => Some(quote!(#(var.clone()) = #import.decode(#(var.clone())))),
         }
     }
 
     /// Build encode method.
-    pub fn encode(&self, var: Tokens<'el, Python<'el>>) -> Tokens<'el, Python<'el>> {
-        use self::PythonKind::*;
-
-        match self.kind {
-            Integer | Float | Boolean | Native | String => toks![var],
-            ref v if v.is_native() => toks![var],
-            Array { ref argument } => {
-                let v = argument.encode("v".into());
-                toks!["[", v, " for v in ", var, "]"]
+    pub fn encode(&self, var: Tokens<Python>) -> Tokens<Python> {
+        match self {
+            Self::Integer | Self::Float | Self::Boolean | Self::Native | Self::String { .. } => {
+                quote!(#var)
             }
-            Map { ref key, ref value } => {
-                let k = key.encode("k".into());
-                let v = value.encode("v".into());
-                toks!["dict((", k, ", ", v, ") for (k, v) in ", var, ".items())",]
+            v if v.is_native() => quote!(#var),
+            Self::Array { argument } => {
+                let v = argument.encode(quote!(v));
+                quote!([#v for v in #var])
             }
-            Name { ref python } => toks![var, ".encode()"],
+            Self::Map { key, value } => {
+                let k = key.encode(quote!(k));
+                let v = value.encode(quote!(v));
+                quote!(dict((#k, #v) for (k, v) in #var.items()))
+            }
+            Self::Local { .. } | Self::Name { .. } => quote!(#var.encode()),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PythonName {
-    pub name: Python<'static>,
+pub struct Name {
+    pub ident: ItemStr,
     pub package: RpPackage,
 }
 
-impl fmt::Display for PythonName {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        self.name.fmt(fmt)
+impl<'a> FormatInto<Python> for &'a Name {
+    fn format_into(self, out: &mut Tokens<Python>) {
+        out.append(&self.ident)
     }
 }
 
-impl<'el> From<&'el PythonName> for Element<'el, Python<'el>> {
-    fn from(value: &'el PythonName) -> Element<'el, Python<'el>> {
-        Element::Literal(value.name.clone().to_string().into())
-    }
-}
-
-impl package_processor::Name<PythonFlavor> for PythonName {
+impl package_processor::Name<PythonFlavor> for Name {
     fn package(&self) -> &RpPackage {
         &self.package
     }
@@ -238,8 +178,8 @@ impl package_processor::Name<PythonFlavor> for PythonName {
 pub struct PythonFlavor;
 
 impl Flavor for PythonFlavor {
-    type Type = PythonType<'static>;
-    type Name = PythonName;
+    type Type = Type;
+    type Name = Name;
     type Field = RpField;
     type Endpoint = RpEndpoint;
     type Package = RpPackage;
@@ -249,19 +189,12 @@ impl Flavor for PythonFlavor {
 /// Responsible for translating RpType -> Python type.
 pub struct PythonFlavorTranslator {
     packages: Rc<Packages>,
-    helper: Rc<Box<dyn VersionHelper>>,
+    helper: Rc<dyn VersionHelper>,
 }
 
 impl PythonFlavorTranslator {
-    pub fn new(packages: Rc<Packages>, helper: Rc<Box<dyn VersionHelper>>) -> Self {
+    pub fn new(packages: Rc<Packages>, helper: Rc<dyn VersionHelper>) -> Self {
         Self { packages, helper }
-    }
-
-    fn ty(&self, kind: PythonKind<'static>) -> PythonType<'static> {
-        PythonType {
-            helper: self.helper.clone(),
-            kind: kind,
-        }
     }
 }
 
@@ -269,92 +202,75 @@ impl FlavorTranslator for PythonFlavorTranslator {
     type Source = CoreFlavor;
     type Target = PythonFlavor;
 
-    translator_defaults!(Self, endpoint, enum_type);
+    core::translator_defaults!(Self, endpoint, enum_type, field);
 
-    fn translate_field<T>(
-        &self,
-        translator: &T,
-        diag: &mut Diagnostics,
-        field: core::RpField<Self::Source>,
-    ) -> Result<core::RpField<Self::Target>>
-    where
-        T: Translator<Source = Self::Source, Target = Self::Target>,
-    {
-        let ident = format!("_{}", field.ident);
-        field.with_safe_ident(ident).translate(diag, translator)
+    fn translate_number(&self, _: RpNumberType) -> Result<Type> {
+        Ok(Type::Integer)
     }
 
-    fn translate_number(&self, _: RpNumberType) -> Result<PythonType<'static>> {
-        Ok(self.ty(PythonKind::Integer))
+    fn translate_float(&self) -> Result<Type> {
+        Ok(Type::Float)
     }
 
-    fn translate_float(&self) -> Result<PythonType<'static>> {
-        Ok(self.ty(PythonKind::Float))
+    fn translate_double(&self) -> Result<Type> {
+        Ok(Type::Float)
     }
 
-    fn translate_double(&self) -> Result<PythonType<'static>> {
-        Ok(self.ty(PythonKind::Float))
+    fn translate_boolean(&self) -> Result<Type> {
+        Ok(Type::Boolean)
     }
 
-    fn translate_boolean(&self) -> Result<PythonType<'static>> {
-        Ok(self.ty(PythonKind::Boolean))
+    fn translate_string(&self, _: RpStringType) -> Result<Type> {
+        Ok(Type::String {
+            helper: self.helper.clone(),
+        })
     }
 
-    fn translate_string(&self, _: RpStringType) -> Result<PythonType<'static>> {
-        Ok(self.ty(PythonKind::String))
+    fn translate_datetime(&self) -> Result<Type> {
+        Ok(Type::String {
+            helper: self.helper.clone(),
+        })
     }
 
-    fn translate_datetime(&self) -> Result<PythonType<'static>> {
-        Ok(self.ty(PythonKind::String))
-    }
-
-    fn translate_array(&self, argument: PythonType<'static>) -> Result<PythonType<'static>> {
-        Ok(self.ty(PythonKind::Array {
+    fn translate_array(&self, argument: Type) -> Result<Type> {
+        Ok(Type::Array {
             argument: Box::new(argument),
-        }))
+        })
     }
 
-    fn translate_map(
-        &self,
-        key: PythonType<'static>,
-        value: PythonType<'static>,
-    ) -> Result<PythonType<'static>> {
-        Ok(self.ty(PythonKind::Map {
+    fn translate_map(&self, key: Type, value: Type) -> Result<Type> {
+        Ok(Type::Map {
             key: Box::new(key),
             value: Box::new(value),
-        }))
+        })
     }
 
-    fn translate_any(&self) -> Result<PythonType<'static>> {
-        Ok(self.ty(PythonKind::Native))
+    fn translate_any(&self) -> Result<Type> {
+        Ok(Type::Native)
     }
 
-    fn translate_bytes(&self) -> Result<PythonType<'static>> {
-        Ok(self.ty(PythonKind::String))
+    fn translate_bytes(&self) -> Result<Type> {
+        Ok(Type::String {
+            helper: self.helper.clone(),
+        })
     }
 
-    fn translate_name(
-        &self,
-        _from: &RpPackage,
-        reg: RpReg,
-        name: Loc<RpName>,
-    ) -> Result<PythonType<'static>> {
+    fn translate_name(&self, _from: &RpPackage, reg: RpReg, name: Loc<RpName>) -> Result<Type> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |v| v.join(TYPE_SEP));
 
-        if let Some(ref used) = name.prefix {
+        if let Some(used) = &name.prefix {
             let package = name.package.join(".");
 
-            return Ok(self.ty(PythonKind::Name {
-                python: python::imported(package)
-                    .alias(used.to_string())
-                    .name(ident)
+            return Ok(Type::Name {
+                import: python::import(package, ident)
+                    .with_alias(used.to_string())
                     .into(),
-            }));
+            });
         }
 
-        Ok(self.ty(PythonKind::Name {
-            python: python::local(ident),
-        }))
+        Ok(Type::Local {
+            ident: ident.into(),
+        })
     }
 
     fn translate_package(&self, source: RpVersionedPackage) -> Result<RpPackage> {
@@ -367,7 +283,7 @@ impl FlavorTranslator for PythonFlavorTranslator {
         diag: &mut Diagnostics,
         reg: RpReg,
         name: Loc<core::RpName<CoreFlavor>>,
-    ) -> Result<PythonName>
+    ) -> Result<Name>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
@@ -376,11 +292,11 @@ impl FlavorTranslator for PythonFlavorTranslator {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |v| v.join(TYPE_SEP));
         let package = self.translate_package(name.package)?;
 
-        Ok(PythonName {
-            name: python::local(ident),
+        Ok(Name {
+            ident: ident.into(),
             package,
         })
     }
 }
 
-decl_flavor!(PythonFlavor, core);
+core::decl_flavor!(pub(crate) PythonFlavor, core);

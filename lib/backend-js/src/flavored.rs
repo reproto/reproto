@@ -1,133 +1,172 @@
 //! JavaScript flavor.
 
-#![allow(unused)]
-
-use crate::backend::package_processor;
-use crate::core::errors::Result;
-use crate::core::{
+use crate::TYPE_SEP;
+use backend::package_processor;
+use core::errors::Result;
+use core::{
     self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberType,
     RpStringType, Translate, Translator,
 };
-use crate::naming::{self, Naming};
-use crate::trans::Packages;
-use crate::{Options, TYPE_SEP};
-use genco::js::{self, JavaScript};
-use genco::{Cons, Element, IntoTokens, Tokens};
-use std::collections::HashMap;
-use std::fmt;
-use std::ops::Deref;
+use genco::prelude::*;
+use genco::tokens::{FormatInto, ItemStr};
 use std::rc::Rc;
+use trans::Packages;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum JavaScriptType<'el> {
-    Native,
-    Array {
-        argument: Box<JavaScriptType<'el>>,
-    },
-    Map {
-        key: Box<JavaScriptType<'el>>,
-        value: Box<JavaScriptType<'el>>,
-    },
-    Name {
-        js: JavaScript<'el>,
-    },
+pub enum Type {
+    Integer,
+    Float,
+    String,
+    Bool,
+    Object,
+    Array { argument: Box<Type> },
+    Map { key: Box<Type>, value: Box<Type> },
+    Import { import: js::Import },
+    Local { ident: ItemStr },
 }
 
-impl<'el> JavaScriptType<'el> {
-    /// Build decode method.
-    pub fn decode(&self, var: Tokens<'el, JavaScript<'el>>) -> Tokens<'el, JavaScript<'el>> {
-        use self::JavaScriptType::*;
+impl Type {
+    pub fn decode(&self, t: &mut js::Tokens, var: js::Tokens) {
+        self.decode_depth(t, &var, 0);
+    }
 
-        match *self {
-            Native => toks![var],
-            ref v if v.is_native() => toks![var],
-            Array { ref argument } => {
-                let a = argument.decode("v".into());
-                toks![var, ".map(function(v) { return ", a, "; })"]
+    /// Build decode method which also performs type checking.
+    pub fn decode_depth<T>(&self, t: &mut js::Tokens, var: T, d: usize)
+    where
+        T: FormatInto<JavaScript> + Copy,
+    {
+        match self {
+            Self::Object => (),
+            Self::Integer => {
+                quote_in! { *t =>
+                    if (!Number.isInteger(#var)) {
+                        throw Error("expected integer");
+                    }
+                }
             }
-            Map { ref key, ref value } => {
-                let k = key.decode("k".into());
-                let v = value.decode("data[k]".into());
-
-                let mut t = Tokens::new();
-
-                t.append("(function(data) {");
-                t.append(" let o = {};");
-                t.append(" for (let k in data) {");
-                t.append(toks![" o[", k, "] = ", v, ";"]);
-                t.append(" };");
-                t.append(" return o;");
-                t.append(toks![" })(", var, ")"]);
-
-                t
+            Self::Float => {
+                quote_in! { *t =>
+                    if (!Number.isFinite(#var)) {
+                        throw Error("expected float");
+                    }
+                }
             }
-            Name { ref js } => toks![js.clone(), ".decode(", var, ")"],
+            Self::Bool => {
+                quote_in! { *t =>
+                    if (typeof #var !== "boolean") {
+                        throw Error("expected boolean");
+                    }
+                }
+            }
+            Self::String => {
+                quote_in! { *t =>
+                    if (typeof #var !== "string") {
+                        throw Error("expected string");
+                    }
+                }
+            }
+            Self::Array { argument } => {
+                let o = &format!("o{}", d);
+                let i = &format!("i{}", d);
+                let l = &format!("l{}", d);
+                let v = &format!("v{}", d);
+
+                quote_in! { *t =>
+                    if (!Array.isArray(#var)) {
+                        throw Error("expected array");
+                    }
+
+                    let #o = [];
+
+                    for (let #i = 0, #l = #var.length; #i < #l; #i++) {
+                        let #v = #var[#i];
+
+                        #(ref t => argument.decode_depth(t, v, d + 1))
+
+                        #o.push(#v);
+                    }
+
+                    #var = #o;
+                }
+            }
+            Self::Map { key, value } => {
+                let o = &format!("o{}", d);
+                let k = &format!("k{}", d);
+                let v = &format!("v{}", d);
+
+                quote_in! { *t =>
+                    if (typeof #var !== "object") {
+                        throw Error("expected object");
+                    }
+
+                    let #o = {};
+
+                    for (let [#k, #v] of Object.entries(#var)) {
+                        #(ref t => key.decode_depth(t, k, d + 1))
+                        #(ref t => value.decode_depth(t, v, d + 1))
+
+                        #o[#k] = #v;
+                    }
+
+                    #var = #o;
+                }
+            }
+            Self::Import { import } => quote_in! { *t =>
+                #var = #import.decode(#var);
+            },
+            Self::Local { ident } => quote_in! { *t =>
+                #var = #ident.decode(#var);
+            },
         }
     }
 
     /// Build encode method.
-    pub fn encode(&self, var: Tokens<'el, JavaScript<'el>>) -> Tokens<'el, JavaScript<'el>> {
-        use self::JavaScriptType::*;
-
-        match *self {
-            Native => toks![var],
-            ref v if v.is_native() => toks![var],
-            Array { ref argument } => {
-                let v = argument.encode("v".into());
-                toks![var, ".map(function(v) { return ", v, "; })"]
+    pub fn encode(&self, var: js::Tokens) -> js::Tokens {
+        match self {
+            Self::String => quote!(#var),
+            Self::Float => quote!(#var),
+            Self::Integer => quote!(#var),
+            Self::Bool => quote!(#var),
+            Self::Object => quote!(#var),
+            Self::Array { argument } => {
+                let v = argument.encode(quote!(v));
+                quote!(#var.map(function(v) { return #v; }))
             }
-            Map { ref key, ref value } => {
-                let k = key.encode("k".into());
-                let v = value.encode("data[k]".into());
+            Self::Map { key, value } => {
+                let k = &key.encode(quote!(k));
+                let v = &value.encode(quote!(data[#k]));
 
-                let mut t = Tokens::new();
+                quote! {
+                    (function(data) {
+                        let o = {};
 
-                t.append("(function(data) {");
-                t.append(" let o = {};");
-                t.append(" for (let k in data) {");
-                t.append(toks![" o[", k, "] = ", v, ";"]);
-                t.append(" };");
-                t.append(" return o;");
-                t.append(toks![" })(", var, ")"]);
+                        for (let k in data) {
+                            o[#k] = #v;
+                        }
 
-                t
+                        return o;
+                    })(#var)
+                }
             }
-            Name { ref js } => toks![var, ".encode()"],
-        }
-    }
-
-    /// Check if the current type is completely native.
-    fn is_native(&self) -> bool {
-        use self::JavaScriptType::*;
-
-        match *self {
-            Native => true,
-            Array { ref argument } => argument.is_native(),
-            Map { ref key, ref value } => key.is_native() && value.is_native(),
-            _ => false,
+            Self::Import { .. } => quote!(#var.encode()),
+            Self::Local { .. } => quote!(#var.encode()),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct JavaScriptName {
-    pub name: JavaScript<'static>,
-    pub package: RpPackage,
+pub struct Name {
+    ident: ItemStr,
+    package: RpPackage,
 }
 
-impl fmt::Display for JavaScriptName {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        self.name.fmt(fmt)
+impl<'a> FormatInto<JavaScript> for &'a Name {
+    fn format_into(self, tokens: &mut Tokens<JavaScript>) {
+        tokens.append(&self.ident);
     }
 }
 
-impl<'el> From<&'el JavaScriptName> for Element<'el, JavaScript<'el>> {
-    fn from(value: &'el JavaScriptName) -> Element<'el, JavaScript<'el>> {
-        Element::Literal(value.name.clone().to_string().into())
-    }
-}
-
-impl package_processor::Name<JavaScriptFlavor> for JavaScriptName {
+impl package_processor::Name<JavaScriptFlavor> for Name {
     fn package(&self) -> &RpPackage {
         &self.package
     }
@@ -137,12 +176,12 @@ impl package_processor::Name<JavaScriptFlavor> for JavaScriptName {
 pub struct JavaScriptFlavor;
 
 impl Flavor for JavaScriptFlavor {
-    type Type = JavaScriptType<'static>;
-    type Name = JavaScriptName;
+    type Type = Type;
+    type Name = Name;
     type Field = RpField;
     type Endpoint = RpEndpoint;
     type Package = RpPackage;
-    type EnumType = RpEnumType;
+    type EnumType = Type;
 }
 
 /// Responsible for translating RpType -> JavaScript type.
@@ -160,77 +199,66 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
     type Source = CoreFlavor;
     type Target = JavaScriptFlavor;
 
-    translator_defaults!(Self, field, endpoint, enum_type);
+    core::translator_defaults!(Self, field, endpoint);
 
-    fn translate_number(&self, number: RpNumberType) -> Result<JavaScriptType<'static>> {
-        Ok(JavaScriptType::Native)
+    fn translate_number(&self, _: RpNumberType) -> Result<Type> {
+        Ok(Type::Integer)
     }
 
-    fn translate_float(&self) -> Result<JavaScriptType<'static>> {
-        Ok(JavaScriptType::Native)
+    fn translate_float(&self) -> Result<Type> {
+        Ok(Type::Float)
     }
 
-    fn translate_double(&self) -> Result<JavaScriptType<'static>> {
-        Ok(JavaScriptType::Native)
+    fn translate_double(&self) -> Result<Type> {
+        Ok(Type::Float)
     }
 
-    fn translate_boolean(&self) -> Result<JavaScriptType<'static>> {
-        Ok(JavaScriptType::Native)
+    fn translate_boolean(&self) -> Result<Type> {
+        Ok(Type::Bool)
     }
 
-    fn translate_string(&self, _: RpStringType) -> Result<JavaScriptType<'static>> {
-        Ok(JavaScriptType::Native)
+    fn translate_string(&self, _: RpStringType) -> Result<Type> {
+        Ok(Type::String)
     }
 
-    fn translate_datetime(&self) -> Result<JavaScriptType<'static>> {
-        Ok(JavaScriptType::Native)
+    fn translate_datetime(&self) -> Result<Type> {
+        Ok(Type::String)
     }
 
-    fn translate_array(
-        &self,
-        argument: JavaScriptType<'static>,
-    ) -> Result<JavaScriptType<'static>> {
-        Ok(JavaScriptType::Array {
+    fn translate_array(&self, argument: Type) -> Result<Type> {
+        Ok(Type::Array {
             argument: Box::new(argument),
         })
     }
 
-    fn translate_map(
-        &self,
-        key: JavaScriptType<'static>,
-        value: JavaScriptType<'static>,
-    ) -> Result<JavaScriptType<'static>> {
-        Ok(JavaScriptType::Map {
+    fn translate_map(&self, key: Type, value: Type) -> Result<Type> {
+        Ok(Type::Map {
             key: Box::new(key),
             value: Box::new(value),
         })
     }
 
-    fn translate_any(&self) -> Result<JavaScriptType<'static>> {
-        Ok(JavaScriptType::Native)
+    fn translate_any(&self) -> Result<Type> {
+        Ok(Type::Object)
     }
 
-    fn translate_bytes(&self) -> Result<JavaScriptType<'static>> {
-        Ok(JavaScriptType::Native)
+    fn translate_bytes(&self) -> Result<Type> {
+        Ok(Type::String)
     }
 
-    fn translate_name(
-        &self,
-        _from: &RpPackage,
-        reg: RpReg,
-        name: Loc<RpName>,
-    ) -> Result<JavaScriptType<'static>> {
+    fn translate_name(&self, _from: &RpPackage, reg: RpReg, name: Loc<RpName>) -> Result<Type> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 
-        if let Some(ref used) = name.prefix {
-            let package = name.package.join(".");
-            return Ok(JavaScriptType::Name {
-                js: js::imported(package, ident).alias(used.to_string()),
+        if let Some(used) = &name.prefix {
+            let module = js::Module::Path(format!("{}.js", name.package.join("/")).into());
+
+            return Ok(Type::Import {
+                import: js::import(module, ident).with_alias(used.to_string()),
             });
         }
 
-        Ok(JavaScriptType::Name {
-            js: js::local(ident),
+        Ok(Type::Local {
+            ident: ident.into(),
         })
     }
 
@@ -240,11 +268,11 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
 
     fn translate_local_name<T>(
         &self,
-        translator: &T,
-        diag: &mut Diagnostics,
+        _: &T,
+        _: &mut Diagnostics,
         reg: RpReg,
         name: Loc<core::RpName<CoreFlavor>>,
-    ) -> Result<JavaScriptName>
+    ) -> Result<Name>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
@@ -253,11 +281,26 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |v| v.join(TYPE_SEP));
         let package = self.translate_package(name.package)?;
 
-        Ok(JavaScriptName {
-            name: js::local(ident),
+        Ok(Name {
+            ident: ident.into(),
             package,
         })
     }
+
+    fn translate_enum_type<T>(
+        &self,
+        _: &T,
+        _: &mut Diagnostics,
+        enum_type: core::RpEnumType,
+    ) -> Result<Type>
+    where
+        T: Translator<Source = Self::Source, Target = Self::Target>,
+    {
+        match enum_type {
+            core::RpEnumType::String(string) => self.translate_string(string),
+            core::RpEnumType::Number(number) => self.translate_number(number),
+        }
+    }
 }
 
-decl_flavor!(JavaScriptFlavor, core);
+core::decl_flavor!(pub(crate) JavaScriptFlavor, core);

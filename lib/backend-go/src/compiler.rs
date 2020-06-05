@@ -1,28 +1,31 @@
 //! Backend for Go
 
-use crate::backend::PackageProcessor;
-use crate::core::errors::*;
-use crate::core::{Handle, Loc, RelativePathBuf};
 use crate::flavored::{
     GoFlavor, GoName, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody, RpTypeBody,
 };
-use crate::trans::{self, Translated};
 use crate::{EnumAdded, FieldAdded, FileSpec, InterfaceAdded, Options, Tags, TupleAdded, EXT};
-use genco::go::Go;
-use genco::{IntoTokens, Tokens};
+use backend::PackageProcessor;
+use core::errors::*;
+use core::{Handle, Loc, RelativePathBuf};
+use genco::prelude::*;
+use genco::tokens::{FormatInto, ItemStr};
+use trans::{self, Translated};
 
 /// Documentation comments.
-pub struct Comments<'el, S: 'el>(pub &'el [S]);
+pub struct Comments<I>(pub I);
 
-impl<'el, S: 'el + AsRef<str>> IntoTokens<'el, Go<'el>> for Comments<'el, S> {
-    fn into_tokens(self) -> Tokens<'el, Go<'el>> {
-        let mut t = Tokens::new();
-
-        for c in self.0.iter() {
-            t.push(toks!["// ", c.as_ref()]);
+impl<I> FormatInto<Go> for Comments<I>
+where
+    I: IntoIterator,
+    I::Item: Into<ItemStr>,
+{
+    fn format_into(self, t: &mut Tokens<Go>) {
+        for line in self.0.into_iter() {
+            t.push();
+            t.append(ItemStr::Static("//"));
+            t.space();
+            t.append(line.into());
         }
-
-        t
     }
 }
 
@@ -37,73 +40,82 @@ impl<'el> Compiler<'el> {
         env: &'el Translated<GoFlavor>,
         options: Options,
         handle: &'el dyn Handle,
-    ) -> Result<Compiler<'el>> {
-        let c = Compiler {
+    ) -> Result<Self> {
+        Ok(Self {
             env,
             options,
             handle,
-        };
-
-        Ok(c)
+        })
     }
 
-    fn process_struct<'a, I>(
+    fn process_struct(
         &self,
-        name: &'el GoName,
-        comment: &'el [String],
-        fields: I,
-    ) -> Result<Tokens<'el, Go<'el>>>
-    where
-        I: IntoIterator<Item = &'el RpField>,
-    {
-        let mut t = Tokens::new();
+        t: &mut Tokens<Go>,
+        name: &GoName,
+        comment: &[String],
+        fields: &[Loc<RpField>],
+    ) -> Result<()> {
+        quote_in! { *t =>
+            #(Comments(comment))
+            type #name struct {
+                #(for f in fields.into_iter() join (#<push>) {
+                    #(ref t => {
+                        let mut tags = Tags::new();
 
-        t.push(Comments(comment));
-        t.push(toks!["type ", name, " struct {"]);
+                        for g in &self.options.field_gens {
+                            g.generate(FieldAdded {
+                                tags: &mut tags,
+                                field: f,
+                            })?;
+                        }
 
-        t.nested({
-            let mut t = Tokens::new();
-
-            for f in fields.into_iter() {
-                let ty = if f.is_optional() {
-                    toks!["*", f.ty.clone()]
-                } else {
-                    toks![f.ty.clone()]
-                };
-
-                let mut tags = Tags::new();
-
-                for g in &self.options.field_gens {
-                    g.generate(FieldAdded {
-                        tags: &mut tags,
-                        field: f,
-                    })?;
-                }
-
-                let mut base = toks![f.safe_ident(), ty];
-                base.append_unless_empty(tags);
-
-                t.push_into(|t| {
-                    t.push(Comments(&f.comment));
-                    t.push(base.join_spacing());
-                });
+                        quote_in! { *t =>
+                            #(Comments(&f.comment))
+                            #(f.safe_ident()) #(if f.is_optional() {
+                                *#(&f.ty)
+                            } else {
+                                #(&f.ty)
+                            }) #(tags)
+                        }
+                    })
+                })
             }
+        };
 
-            t.join_line_spacing()
-        });
-
-        t.push("}");
-        Ok(t)
+        Ok(())
     }
 
     pub fn compile(&self) -> Result<()> {
-        let files = self.populate_files()?;
-        self.write_files(files)
+        use genco::fmt;
+
+        let files = self.do_populate_files(|_, new, out| {
+            if !new {
+                out.0.line();
+            }
+
+            Ok(())
+        })?;
+
+        let handle = self.handle();
+
+        for (package, out) in files {
+            let full_path = self.setup_module_path(&package)?;
+
+            log::debug!("+module: {}", full_path);
+
+            let mut w = fmt::IoWriter::new(handle.create(&full_path)?);
+            let config = go::Config::default().with_package(package.join("_"));
+            let fmt = fmt::Config::from_lang::<Go>().with_indentation(fmt::Indentation::Space(2));
+
+            out.0.format_file(&mut w.as_formatter(&fmt), &config)?;
+        }
+
+        Ok(())
     }
 }
 
 impl<'el> PackageProcessor<'el, GoFlavor, GoName> for Compiler<'el> {
-    type Out = FileSpec<'el>;
+    type Out = FileSpec;
     type DeclIter = trans::translated::DeclIter<'el, GoFlavor>;
 
     fn ext(&self) -> &str {
@@ -129,156 +141,100 @@ impl<'el> PackageProcessor<'el, GoFlavor, GoName> for Compiler<'el> {
     }
 
     fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
-        out.0.push(self.process_struct(
-            &body.name,
-            &body.comment,
-            body.fields.iter().map(Loc::borrow),
-        )?);
+        self.process_struct(&mut out.0, &body.name, &body.comment, &body.fields)?;
 
         Ok(())
     }
 
     fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
-        out.0.try_push_into::<Error, _>(|t| {
-            t.push(Comments(&body.comment));
-            t.push(toks!["type ", &body.name, " struct {"]);
-
-            t.nested({
-                let mut t = Tokens::new();
-
-                for f in &body.fields {
-                    let ty = if f.is_optional() {
-                        toks!["*", f.ty.clone()]
+        quote_in! { out.0 =>
+            #(Comments(&body.comment))
+            type #(&body.name) struct {
+                #(for f in &body.fields {
+                    #(Comments(&f.comment))
+                    #(f.safe_ident()) #(if f.is_optional() {
+                        *#(&f.ty)
                     } else {
-                        toks![f.ty.clone()]
-                    };
+                        #(&f.ty)
+                    })
+                })
+            }
 
-                    let tags = Tags::new();
-
-                    let mut base = toks![f.safe_ident(), ty];
-                    base.append_unless_empty(tags);
-
-                    t.push_into(|t| {
-                        t.push(Comments(&f.comment));
-                        t.push(base.join_spacing());
-                    });
-                }
-
-                t.join_line_spacing()
-            });
-
-            t.push("}");
-            Ok(())
-        })?;
-
-        for g in &self.options.tuple_gens {
-            g.generate(TupleAdded {
-                container: &mut out.0,
-                name: &body.name,
-                body: body,
-            })?;
+            #(for g in &self.options.tuple_gens join (#<line>) {
+                #(ref container => g.generate(TupleAdded {
+                    container,
+                    name: &body.name,
+                    body,
+                })?)
+            })
         }
 
         Ok(())
     }
 
     fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
-        out.0.push({
-            let mut t = Tokens::new();
+        quote_in! { out.0 =>
+            #(Comments(&body.comment))
+            type #(&body.name) int
 
-            t.push_into(|t| {
-                t.push(Comments(&body.comment));
-                t.push(toks!["type ", &body.name, " int"])
-            });
-
-            t.push_into(|t| {
-                t.push("const (");
-                t.nested_into(|t| {
+            const (
+                #(ref t => {
                     let mut it = body.variants.iter();
 
-                    if let Some(v) = it.next() {
-                        t.push(toks![
-                            &body.name,
-                            "_",
-                            v.ident.as_str(),
-                            " ",
-                            &body.name,
-                            " = iota",
-                        ]);
+                    quote_in! { *t =>
+                        #(if let Some(v) = it.next() {
+                            #(&body.name)_#(v.ident.as_str()) #(&body.name) = iota
+                        })
+                        #(for v in it join (#<push>) {
+                            #(&body.name)_#(v.ident.as_str())
+                        })
                     }
+                })
+            )
 
-                    while let Some(v) = it.next() {
-                        t.push(toks![&body.name, "_", v.ident.as_str(),]);
-                    }
-                });
-                t.push(")");
-            });
-
-            t.join_line_spacing()
-        });
-
-        for g in &self.options.enum_gens {
-            g.generate(EnumAdded {
-                container: &mut out.0,
-                name: &body.name,
-                body: body,
-            })?;
+            #(for g in &self.options.enum_gens join (#<line>) {
+                #(ref container => g.generate(EnumAdded {
+                    container,
+                    name: &body.name,
+                    body,
+                })?)
+            })
         }
 
         Ok(())
     }
 
     fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
-        out.0.push({
-            let mut t = Tokens::new();
-
-            t.try_push_into::<Error, _>(|t| {
-                t.push_unless_empty(Comments(&body.comment));
-                push!(t, "type ", &body.name, " struct {");
-
-                t.nested_into(|t| {
-                    push!(t, "Value interface {");
-                    nested!(t, "Is", &body.name, "()");
-                    push!(t, "}");
-                });
-
-                push!(t, "}");
-                Ok(())
-            })?;
-
-            t.push({
-                let mut t = Tokens::new();
-
-                for sub_type in &body.sub_types {
-                    t.push(
-                        self.process_struct(
-                            &sub_type.name,
-                            &sub_type.comment,
-                            body.fields
-                                .iter()
-                                .chain(sub_type.fields.iter())
-                                .map(Loc::borrow),
-                        )?,
-                    );
-
-                    t.push_into(|t| {
-                        push!(t, "func (this ", &sub_type.name, ") Is", &body.name, "() {");
-                        push!(t, "}");
-                    });
+        quote_in! { out.0 =>
+            #(Comments(&body.comment))
+            type #(&body.name) struct {
+                Value interface {
+                    Is#(&body.name)()
                 }
+            }
 
-                t.join_line_spacing()
-            });
+            #(for sub_type in &body.sub_types join (#<line>) {
+                #(ref t {
+                    let fields = body.fields
+                        .iter()
+                        .chain(sub_type.fields.iter())
+                        .cloned()
+                        .collect::<Vec<_>>();
 
-            t.join_line_spacing()
-        });
+                    self.process_struct(t, &sub_type.name, &sub_type.comment, &fields)?;
+                })
 
-        for g in &self.options.interface_gens {
-            g.generate(InterfaceAdded {
-                container: &mut out.0,
-                name: &body.name,
-                body: body,
-            })?;
+                func (this #(&sub_type.name)) Is#(&body.name)() {
+                }
+            })
+
+            #(for g in &self.options.interface_gens join (#<line>) {
+                #(ref container => g.generate(InterfaceAdded {
+                    container,
+                    name: &body.name,
+                    body,
+                })?)
+            })
         }
 
         Ok(())

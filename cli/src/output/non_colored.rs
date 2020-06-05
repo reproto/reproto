@@ -1,7 +1,6 @@
 use super::{LockableWrite, Output};
-use crate::core::errors::*;
-use crate::core::{self, Source, Span};
-use log;
+use core::errors::Result;
+use core::{self, Source, Span};
 use std::io;
 
 pub struct NonColored<T> {
@@ -17,7 +16,7 @@ where
     T: LockableWrite,
 {
     pub fn new(out: T) -> NonColored<T> {
-        NonColored { out: out }
+        NonColored { out }
     }
 
     fn print_positional(&self, source: &Source, span: &Span, m: &str) -> Result<()> {

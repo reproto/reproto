@@ -1,10 +1,10 @@
 //! ## Load objects through a local cache directory
 
 use crate::checksum::Checksum;
-use crate::core::errors::*;
-use crate::core::Source;
 use crate::hex_slice::HexSlice;
 use crate::Objects;
+use core::errors::Result;
+use core::Source;
 use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::PathBuf;
@@ -63,7 +63,7 @@ impl<T: Objects> CachedObjects<T> {
                     .checked_sub(age)
                     .unwrap_or_else(|| Duration::new(0, 0));
 
-                debug!(
+                log::debug!(
                     "cache: missing file exists: {} (age: {}s, expires: {}s)",
                     path.display(),
                     age.as_secs(),
@@ -75,7 +75,7 @@ impl<T: Objects> CachedObjects<T> {
                     return Ok((true, path));
                 }
 
-                debug!("cache: removing missing entry: {}", path.display());
+                log::debug!("cache: removing missing entry: {}", path.display());
                 fs::remove_file(&path)?;
             }
         }
@@ -121,7 +121,7 @@ impl<T: Objects> Objects for CachedObjects<T> {
         } else {
             // write cache entry indicating that there is nothing in the remote entry to avoid
             // subsequent requests.
-            debug!(
+            log::debug!(
                 "cache: creating missing cache entry: {}",
                 missing_path.display()
             );

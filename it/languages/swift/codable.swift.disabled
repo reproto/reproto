@@ -1,0 +1,19 @@
+import Foundation
+import Models
+import Glibc
+
+let decoder = JSONDecoder()
+decoder.dateDecodingStrategy = .iso8601
+
+let encoder = JSONEncoder()
+encoder.dateEncodingStrategy = .iso8601
+
+while let line = readLine() {
+    let json = line.data(using: String.Encoding.utf8)!
+    let entry = try decoder.decode(Test_Entry.self, from: json)
+    let data = try encoder.encode(entry)
+    let out = String(data: data, encoding: String.Encoding.utf8)!
+
+    fputs("#<>" + out + "\n", stdout)
+    fflush(stdout)
+}

@@ -1,7 +1,7 @@
 //! Represents a calculated checksum.
 
-use crate::core::errors::*;
 use crate::hex_slice::HexSlice;
+use core::errors::Result;
 use hex::FromHex;
 use serde::{de, ser};
 use std::fmt;

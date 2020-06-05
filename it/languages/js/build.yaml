@@ -1,0 +1,15 @@
+container: node:14-slim
+env:
+  NODE_PATH: target
+
+prepare:
+  - type: run
+    command: npm i
+
+steps:
+  - type: run
+    command: npm run generate
+
+run:
+  type: docker
+  command: node target/script.js

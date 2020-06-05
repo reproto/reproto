@@ -1,16 +1,11 @@
-extern crate lalrpop_util;
-extern crate reproto_ast as ast;
-extern crate reproto_core as core;
-extern crate reproto_path_lexer as path_lexer;
-
 mod parser;
 
-use crate::ast::PathSpec;
-use crate::core::errors::{Error, Result};
+use ast::PathSpec;
+use core::errors::{Error, Result};
 
 pub fn parse(input: &str) -> Result<PathSpec> {
-    use self::path_lexer::Error::*;
     use lalrpop_util::ParseError::*;
+    use path_lexer::Error::*;
 
     let lexer = path_lexer::path_lex(input);
 

@@ -1,11 +1,5 @@
 #![recursion_limit = "1000"]
 
-extern crate lalrpop_util;
-extern crate num_bigint;
-extern crate reproto_ast as ast;
-extern crate reproto_core as core;
-extern crate reproto_lexer as lexer;
-
 #[allow(unused)]
 mod parser;
 mod utils;
@@ -30,8 +24,8 @@ pub fn parse<'input>(
     diag: &mut Diagnostics,
     input: &'input str,
 ) -> result::Result<ast::File<'input>, ()> {
-    use self::lexer::errors::Error::*;
     use lalrpop_util::ParseError::*;
+    use lexer::errors::Error::*;
 
     let lexer = lexer::lex(input);
     let parser = parser::FileParser::new();
@@ -105,8 +99,8 @@ pub fn parse<'input>(
 
 #[cfg(test)]
 mod tests {
-    use super::ast::*;
     use super::*;
+    use ast::*;
     use core::*;
 
     /// Check that a parsed value equals expected.
@@ -127,11 +121,10 @@ mod tests {
     const FILE1: &[u8] = include_bytes!("tests/file1.reproto");
     const INTERFACE1: &[u8] = include_bytes!("tests/interface1.reproto");
 
-    fn parse(
-        input: &'static str,
-    ) -> Box<dyn Iterator<Item = lexer::errors::Result<(usize, lexer::Token<'static>, usize)>>>
-    {
-        Box::new(lexer::lex(input))
+    fn parse<'a>(input: &'a str) -> Vec<(usize, lexer::Token<'a>, usize)> {
+        lexer::lex(input)
+            .collect::<Result<Vec<_>, _>>()
+            .expect("failed to parse")
     }
 
     fn parse_file(input: &'static str) -> File {

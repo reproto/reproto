@@ -10,11 +10,10 @@ mod self_update;
 mod update;
 mod watch;
 
-use crate::core::errors::*;
-use crate::core::{Filesystem, Reporter};
 use crate::output::Output;
 use clap::{App, Arg, ArgMatches};
-use log;
+use core::errors::Result;
+use core::{Filesystem, Reporter};
 
 pub fn base_args<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = out.arg(

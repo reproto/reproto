@@ -1,15 +1,13 @@
-use crate::core::errors::*;
-use crate::core::{
+use core::errors::Result;
+use core::{
     Flavor, Handle, Loc, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody,
     RpName, RpPackage, RpServiceBody, RpTupleBody, RpTypeBody,
 };
-use crate::IntoBytes;
 use std::cmp;
-use std::collections::BTreeMap;
+use std::collections::{btree_map, BTreeMap};
 use std::fmt;
-use std::io::Write;
 
-pub trait Name<F>: Clone + fmt::Display + fmt::Debug + cmp::Eq
+pub trait Name<F>: Clone + fmt::Debug + cmp::Eq
 where
     F: Flavor,
 {
@@ -33,7 +31,7 @@ where
     F: Flavor<Name = N, Package = RpPackage>,
     N: Name<F>,
 {
-    type Out: Default + IntoBytes<Self>;
+    type Out: Default;
     type DeclIter: Iterator<Item = &'el RpDecl<F>>;
 
     /// Access the extension for processing.
@@ -45,7 +43,7 @@ where
     fn handle(&self) -> &'el dyn Handle;
 
     fn default_process(&self, _: &mut Self::Out, name: &'el F::Name) -> Result<()> {
-        warn!("not supported: {}", name);
+        log::warn!("not supported: {:?}", name);
         Ok(())
     }
 
@@ -70,12 +68,12 @@ where
     }
 
     fn populate_files(&self) -> Result<BTreeMap<F::Package, Self::Out>> {
-        self.do_populate_files(|_| Ok(()))
+        self.do_populate_files(|_, _, _| Ok(()))
     }
 
     fn do_populate_files<C>(&self, mut callback: C) -> Result<BTreeMap<F::Package, Self::Out>>
     where
-        C: FnMut(&'el RpDecl<F>) -> Result<()>,
+        C: FnMut(&'el RpDecl<F>, bool, &mut Self::Out) -> Result<()>,
     {
         use self::RpDecl::*;
 
@@ -83,19 +81,20 @@ where
 
         // Process all types discovered so far.
         for decl in self.decl_iter() {
-            callback(decl).and_then(|_| {
-                let mut out = files
-                    .entry(decl.name().package().clone())
-                    .or_insert_with(Self::Out::default);
+            let (new, out) = match files.entry(decl.name().package().clone()) {
+                btree_map::Entry::Vacant(e) => (true, e.insert(Default::default())),
+                btree_map::Entry::Occupied(e) => (false, e.into_mut()),
+            };
 
-                match *decl {
-                    Interface(ref b) => self.process_interface(&mut out, b),
-                    Type(ref b) => self.process_type(&mut out, b),
-                    Tuple(ref b) => self.process_tuple(&mut out, b),
-                    Enum(ref b) => self.process_enum(&mut out, b),
-                    Service(ref b) => self.process_service(&mut out, b),
-                }
-            })?;
+            callback(decl, new, out)?;
+
+            match *decl {
+                Interface(ref b) => self.process_interface(out, b)?,
+                Type(ref b) => self.process_type(out, b)?,
+                Tuple(ref b) => self.process_tuple(out, b)?,
+                Enum(ref b) => self.process_enum(out, b)?,
+                Service(ref b) => self.process_service(out, b)?,
+            }
         }
 
         Ok(files)
@@ -117,28 +116,11 @@ where
             let parent = full_path.parent().unwrap_or(RelativePath::new("."));
 
             if !handle.is_dir(&parent) {
-                debug!("+dir: {}", parent);
+                log::debug!("+dir: {}", parent);
                 handle.create_dir_all(&parent)?;
             }
         }
 
         Ok(full_path)
-    }
-
-    fn write_files(&'el self, files: BTreeMap<F::Package, Self::Out>) -> Result<()> {
-        let handle = self.handle();
-
-        for (package, out) in files {
-            let full_path = self.setup_module_path(&package)?;
-
-            debug!("+module: {}", full_path);
-
-            let mut f = handle.create(&full_path)?;
-            let bytes = out.into_bytes(self, &package)?;
-            f.write_all(&bytes)?;
-            f.flush()?;
-        }
-
-        Ok(())
     }
 }

@@ -1,0 +1,6 @@
+name: dart
+lang: dart
+output: lib
+
+test:
+  - dart --version

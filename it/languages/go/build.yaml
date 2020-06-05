@@ -1,0 +1,5 @@
+container: golang:1.14-buster
+
+run:
+  type: run
+  command: go run test.go

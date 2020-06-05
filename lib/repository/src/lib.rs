@@ -1,18 +1,3 @@
-#![recursion_limit = "1000"]
-
-extern crate bytes;
-extern crate hex;
-#[macro_use]
-extern crate log;
-extern crate reproto_core as core;
-extern crate ring;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate toml;
-extern crate url;
-
 mod checksum;
 mod git;
 mod hex_slice;

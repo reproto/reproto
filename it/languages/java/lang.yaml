@@ -1,0 +1,5 @@
+name: java
+lang: java
+output: src/main/java
+package_prefix: reproto
+args: ["-m", "builder", "-m", "jackson"]

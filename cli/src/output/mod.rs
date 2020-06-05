@@ -5,9 +5,9 @@ mod non_colored;
 pub use self::colored::Colored;
 pub use self::json::Json;
 pub use self::non_colored::NonColored;
-use crate::core::errors::*;
-use crate::core::flavored::RpName;
-use crate::core::{self, Diagnostic, Reported, Source};
+use core::errors::{Error, Result};
+use core::flavored::RpName;
+use core::{self, Diagnostic, Reported, Source};
 use log;
 use std::io::{self, Write};
 

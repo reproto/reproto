@@ -1,14 +1,4 @@
 #![recursion_limit = "1000"]
-extern crate clap;
-extern crate genco;
-#[macro_use]
-extern crate log;
-extern crate pulldown_cmark;
-extern crate reproto_backend as backend;
-extern crate reproto_core as core;
-extern crate reproto_manifest as manifest;
-extern crate reproto_trans as trans;
-extern crate syntect;
 
 #[macro_use]
 mod macros;
@@ -32,16 +22,16 @@ pub const INDEX: &str = "index";
 pub const DEFAULT_THEME: &str = "light";
 pub const DEFAULT_SYNTAX_THEME: &str = "ayu-mirage";
 
-use crate::core::errors::*;
-use crate::core::CoreFlavor;
 use crate::doc_compiler::DocCompiler;
-use crate::manifest::Manifest;
-use crate::trans::Session;
 use clap::{App, Arg, ArgMatches};
+use core::errors::Result;
+use core::CoreFlavor;
+use manifest::Manifest;
 use std::collections::HashMap;
 use syntect::dumps::from_binary;
 use syntect::highlighting::{Theme, ThemeSet};
 use syntect::parsing::SyntaxSet;
+use trans::Session;
 
 include!(concat!(env!("OUT_DIR"), "/themes.rs"));
 
@@ -130,7 +120,7 @@ where
     let syntax_theme = if let Some(syntax_theme) = theme_set.themes.get(syntax_theme) {
         syntax_theme
     } else {
-        warn!(
+        log::warn!(
             "No syntax theme named `{}`, falling back to default",
             syntax_theme
         );
@@ -143,7 +133,7 @@ where
     let theme_css = if let Some(theme_css) = themes.get(theme) {
         theme_css
     } else {
-        warn!("No syntax theme named `{}`, falling back to default", theme);
+        log::warn!("No syntax theme named `{}`, falling back to default", theme);
 
         themes
             .get(DEFAULT_THEME)

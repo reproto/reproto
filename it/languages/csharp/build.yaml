@@ -1,0 +1,14 @@
+deadline: 2 minutes
+container: mcr.microsoft.com/dotnet/core/sdk:3.1
+
+prepare:
+  - type: run
+    command: dotnet build
+
+steps:
+  - type: run
+    command: dotnet build
+
+run:
+  type: run
+  command: dotnet run --project $PWD

@@ -1,6 +1,6 @@
 [package]
 name = "reproto-env"
-version = "0.3.39"
+version = "0.4.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
 edition = "2018"
@@ -15,29 +15,28 @@ Environment base
 """
 
 [dependencies]
-reproto-core = {path = "../core", version = "0.3"}
-reproto-manifest = {path = "../manifest", version = "0.3"}
-reproto-repository = {path = "../repository", version = "0.3"}
-reproto-repository-http = {path = "../repository-http", version = "0.3"}
-reproto-backend-csharp = {path = "../backend-csharp", version = "0.3"}
-reproto-backend-doc = {path = "../backend-doc", version = "0.3"}
-reproto-backend-go = {path = "../backend-go", version = "0.3"}
-reproto-backend-java = {path = "../backend-java", version = "0.3"}
-reproto-backend-js = {path = "../backend-js", version = "0.3"}
-reproto-backend-json = {path = "../backend-json", version = "0.3"}
-reproto-backend-openapi = {path = "../backend-openapi", version = "0.3"}
-reproto-backend-python = {path = "../backend-python", version = "0.3"}
-reproto-backend-reproto = {path = "../backend-reproto", version = "0.3"}
-reproto-backend-rust = {path = "../backend-rust", version = "0.3"}
-reproto-backend-swift = {path = "../backend-swift", version = "0.3"}
-reproto-backend-dart = {path = "../backend-dart", version = "0.3"}
+core = {package = "reproto-core", path = "../core", version = "0.4"}
+manifest = {package = "reproto-manifest", path = "../manifest", version = "0.4"}
+repository = {package = "reproto-repository", path = "../repository", version = "0.4"}
+repository-http = {package = "reproto-repository-http", path = "../repository-http", version = "0.4"}
+csharp = {package = "reproto-backend-csharp", path = "../backend-csharp", version = "0.4"}
+doc = {package = "reproto-backend-doc", path = "../backend-doc", version = "0.4"}
+go = {package = "reproto-backend-go", path = "../backend-go", version = "0.4"}
+java = {package = "reproto-backend-java", path = "../backend-java", version = "0.4"}
+js = {package = "reproto-backend-js", path = "../backend-js", version = "0.4"}
+json = {package = "reproto-backend-json", path = "../backend-json", version = "0.4"}
+openapi = {package = "reproto-backend-openapi", path = "../backend-openapi", version = "0.4"}
+python = {package = "reproto-backend-python", path = "../backend-python", version = "0.4"}
+reproto = {package = "reproto-backend-reproto", path = "../backend-reproto", version = "0.4"}
+rust = {package = "reproto-backend-rust", path = "../backend-rust", version = "0.4"}
+swift = {package = "reproto-backend-swift", path = "../backend-swift", version = "0.4"}
+dart = {package = "reproto-backend-dart", path = "../backend-dart", version = "0.4"}
 
 toml = "0.5.6"
 log = "0.4.8"
 url = "2.1.1"
 url_serde = "0.2.0"
-serde = "1.0.111"
-serde_derive = "1.0.111"
+serde = {version = "1.0.111", features = ["derive"]}
 dirs = "2.0.2"
 
 [lib]

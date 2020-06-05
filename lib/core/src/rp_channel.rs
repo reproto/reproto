@@ -2,9 +2,10 @@
 
 use crate::errors::Result;
 use crate::{Diagnostics, Flavor, Translate, Translator};
+use serde::Serialize;
 use std::fmt;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(bound = "F::Type: ::serde::Serialize")]
 pub enum RpChannel<F: 'static>
 where

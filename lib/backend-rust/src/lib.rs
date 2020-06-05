@@ -1,41 +1,24 @@
-#[macro_use]
-extern crate genco;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate reproto_backend as backend;
-#[macro_use]
-extern crate reproto_core as core;
-#[macro_use]
-extern crate reproto_manifest as manifest;
-extern crate reproto_trans as trans;
-extern crate serde;
-#[allow(unused)]
-#[macro_use]
-extern crate serde_derive;
-extern crate toml;
+#![feature(proc_macro_hygiene)]
 
 mod compiler;
 mod flavored;
 mod module;
-mod rust_file_spec;
 mod utils;
 
-use crate::backend::Initializer;
 use crate::compiler::Compiler;
-use crate::core::errors::*;
-use crate::core::{CoreFlavor, Handle};
-use crate::flavored::RpPackage;
-use crate::manifest::{Lang, Manifest, NoModule, TryFromToml};
-use crate::rust_file_spec::RustFileSpec;
-use crate::trans::{Packages, Session};
-use genco::{Cons, Rust, Tokens};
+use crate::flavored::{RpPackage, Type};
+use backend::Initializer;
+use core::errors::*;
+use core::{CoreFlavor, Handle};
+use genco::prelude::*;
+use genco::tokens::ItemStr;
+use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::rc::Rc;
+use trans::{Packages, Session};
 
-const LIB: &str = "lib";
 const MOD: &str = "mod";
 const EXT: &str = "rs";
 const TYPE_SEP: &'static str = "_";
@@ -45,7 +28,7 @@ const SCOPE_SEP: &'static str = "::";
 pub struct RustLang;
 
 impl Lang for RustLang {
-    lang_base!(RustModule, compile);
+    manifest::lang_base!(RustModule, compile);
 
     fn comment(&self, input: &str) -> Option<String> {
         Some(format!("// {}", input))
@@ -104,6 +87,8 @@ impl Lang for RustLang {
             ("unsized", "_unsized"),
             ("virtual", "_virtual"),
             ("yield", "_yield"),
+            ("try", "_try"),
+            ("await", "_await"),
         ]
     }
 }
@@ -144,14 +129,14 @@ impl TryFromToml for RustModule {
 }
 
 pub struct Options {
-    pub datetime: Option<Rust<'static>>,
+    pub datetime: Option<Type>,
     pub root: Vec<Box<dyn RootCodegen>>,
     pub service: Vec<Box<dyn ServiceCodegen>>,
     pub packages: Rc<Packages>,
 }
 
-pub struct Root<'a, 'el: 'a> {
-    files: &'a mut BTreeMap<RpPackage, RustFileSpec<'el>>,
+pub struct Root<'a> {
+    files: &'a mut BTreeMap<RpPackage, rust::Tokens>,
 }
 
 pub trait RootCodegen {
@@ -161,9 +146,9 @@ pub trait RootCodegen {
 
 pub struct Service<'a, 'el: 'a> {
     body: &'el flavored::RpServiceBody,
-    container: &'a mut Tokens<'el, Rust<'el>>,
-    name: Cons<'el>,
-    attributes: &'a Tokens<'el, Rust<'el>>,
+    container: &'a mut Tokens<Rust>,
+    name: ItemStr,
+    attributes: &'a Tokens<Rust>,
 }
 
 pub trait ServiceCodegen {
@@ -182,7 +167,7 @@ fn options(modules: Vec<RustModule>, packages: Rc<Packages>) -> Result<Options> 
     };
 
     for m in modules {
-        debug!("+module: {:?}", m);
+        log::debug!("+module: {:?}", m);
 
         let initializer: Box<dyn Initializer<Options = Options>> = match m {
             Chrono => Box::new(module::Chrono::new()),

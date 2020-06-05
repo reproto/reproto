@@ -1,7 +1,7 @@
-/// Lexer for reproto IDL.
-use crate::core::RpNumber;
 use crate::errors::{Error, Result};
-use crate::token::Token;
+use crate::token::{Keyword, Token};
+/// Lexer for reproto IDL.
+use core::RpNumber;
 use num_bigint::BigInt;
 use num_traits::Zero;
 use std::borrow::Cow;
@@ -20,33 +20,31 @@ pub struct Lexer<'input> {
     code_close: Option<(usize, usize)>,
 }
 
-pub fn match_keyword(content: &str) -> Option<Token> {
-    use self::Token::*;
-
-    let token = match content {
-        "any" => Any,
-        "interface" => Interface,
-        "type" => Type,
-        "enum" => Enum,
-        "tuple" => Tuple,
-        "service" => Service,
-        "use" => Use,
-        "as" => As,
-        "float" => Float,
-        "double" => Double,
-        "i32" => I32,
-        "i64" => I64,
-        "u32" => U32,
-        "u64" => U64,
-        "boolean" => Boolean,
-        "string" => String,
-        "datetime" => Datetime,
-        "bytes" => Bytes,
-        "stream" => Stream,
+pub fn match_keyword(content: &str) -> Option<Keyword> {
+    let keyword = match content {
+        "any" => Keyword::Any,
+        "interface" => Keyword::Interface,
+        "type" => Keyword::Type,
+        "enum" => Keyword::Enum,
+        "tuple" => Keyword::Tuple,
+        "service" => Keyword::Service,
+        "use" => Keyword::Use,
+        "as" => Keyword::As,
+        "float" => Keyword::Float,
+        "double" => Keyword::Double,
+        "i32" => Keyword::I32,
+        "i64" => Keyword::I64,
+        "u32" => Keyword::U32,
+        "u64" => Keyword::U64,
+        "boolean" => Keyword::Boolean,
+        "string" => Keyword::String,
+        "datetime" => Keyword::Datetime,
+        "bytes" => Keyword::Bytes,
+        "stream" => Keyword::Stream,
         _ => return None,
     };
 
-    Some(token)
+    Some(keyword)
 }
 
 impl<'input> Lexer<'input> {
@@ -107,7 +105,7 @@ impl<'input> Lexer<'input> {
         }
 
         let token = match match_keyword(content) {
-            Some(token) => token,
+            Some(token) => Token::Keyword(token),
             None => {
                 return Ok((start, Token::Identifier(content.into()), end));
             }
@@ -497,12 +495,12 @@ pub fn lex(input: &str) -> Lexer {
     let n2 = source.next();
 
     Lexer {
-        source: source,
+        source,
         source_len: input.len(),
         source_str: input,
-        n0: n0,
-        n1: n1,
-        n2: n2,
+        n0,
+        n1,
+        n2,
         buffer: String::new(),
         code_block: None,
         code_close: None,
@@ -511,6 +509,7 @@ pub fn lex(input: &str) -> Lexer {
 
 #[cfg(test)]
 pub mod tests {
+    use super::Keyword::*;
     use super::Token::*;
     use super::*;
 
@@ -524,8 +523,8 @@ pub mod tests {
             (0, Identifier("hello".into()), 5),
             (6, TypeIdentifier("World".into()), 11),
             (12, LeftCurly, 13),
-            (14, Use, 17),
-            (18, As, 20),
+            (14, Keyword(Use), 17),
+            (18, Keyword(As), 20),
             (21, RightCurly, 22),
             (23, QuotedString("hello world".into()), 36),
         ];

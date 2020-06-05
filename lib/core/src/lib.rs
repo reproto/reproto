@@ -1,20 +1,8 @@
 #![recursion_limit = "1000"]
 #![allow(unknown_lints)]
 
-#[cfg(feature = "std")]
-extern crate backtrace;
-extern crate linked_hash_map;
 extern crate mime as extern_mime;
-extern crate num_bigint;
-extern crate num_integer;
-extern crate num_traits;
-extern crate relative_path;
-pub extern crate reproto_semver as semver;
-extern crate ropey;
 pub extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate url;
 
 #[macro_use]
 mod macros;
@@ -71,10 +59,8 @@ pub use self::loc::Loc;
 pub use self::mime::Mime;
 pub use self::option_entry::OptionEntry;
 pub use self::options::Options;
-pub use self::relative_path::{RelativePath, RelativePathBuf};
 pub use self::reporter::{Reported, Reporter};
 pub use self::resolver::{EmptyResolver, Resolved, ResolvedByPrefix, Resolver};
-pub use self::ropey::Rope;
 pub use self::rp_channel::RpChannel;
 pub use self::rp_code::{RpCode, RpContext};
 pub use self::rp_decl::{RpDecl, RpNamed};
@@ -107,5 +93,7 @@ pub use self::span::Span;
 pub use self::translator::{FlavorTranslator, PackageTranslator, Translate, Translator};
 pub use self::utils::{Encoding, Position};
 pub use self::with_span::WithSpan;
-pub use crate::semver::{Range, Version};
 pub use num_bigint::BigInt;
+pub use relative_path::{RelativePath, RelativePathBuf};
+pub use ropey::Rope;
+pub use semver::{Range, Version};

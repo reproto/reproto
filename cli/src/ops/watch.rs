@@ -1,10 +1,9 @@
 //! build command
 
-use crate::core::errors::Result;
-use crate::core::{Filesystem, Reporter};
-use crate::env;
 use crate::output::Output;
 use clap::{App, Arg, ArgMatches, SubCommand};
+use core::errors::Result;
+use core::{Filesystem, Reporter};
 use std::rc::Rc;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
@@ -63,7 +62,7 @@ pub fn entry(fs: &dyn Filesystem, matches: &ArgMatches, output: &dyn Output) -> 
     let mut reporter = Vec::new();
 
     loop {
-        info!("updating project");
+        log::info!("updating project");
 
         reporter.clear();
 
@@ -100,10 +99,10 @@ pub fn entry(fs: &dyn Filesystem, matches: &ArgMatches, output: &dyn Output) -> 
                 removed.push(p.to_owned());
 
                 if delete {
-                    debug!("deleting: {}", p.display());
+                    log::debug!("deleting: {}", p.display());
                     drain_removed_file(p)?;
                 } else {
-                    warn!("not deleting: {} (`--delete` is not enabled)", p.display());
+                    log::warn!("not deleting: {} (`--delete` is not enabled)", p.display());
                 }
             }
 
@@ -118,7 +117,7 @@ pub fn entry(fs: &dyn Filesystem, matches: &ArgMatches, output: &dyn Output) -> 
                 drain_created_dirs(&mut dirs)?;
             } else {
                 for d in dirs.iter() {
-                    warn!("not deleting: {} (`--delete` is not enabled)", d.display());
+                    log::warn!("not deleting: {} (`--delete` is not enabled)", d.display());
                 }
             }
         }
@@ -128,7 +127,7 @@ pub fn entry(fs: &dyn Filesystem, matches: &ArgMatches, output: &dyn Output) -> 
             let mut paths = paths.try_borrow_mut()?;
 
             for p in watching.symmetric_difference(&paths) {
-                debug!("watch: {}", p.display());
+                log::debug!("watch: {}", p.display());
 
                 if let Some(parent) = p.parent() {
                     watcher.watch(parent, RecursiveMode::NonRecursive)?;
@@ -138,7 +137,7 @@ pub fn entry(fs: &dyn Filesystem, matches: &ArgMatches, output: &dyn Output) -> 
             }
 
             for p in watching.difference(&paths) {
-                debug!("unwatch: {}", p.display());
+                log::debug!("unwatch: {}", p.display());
 
                 if let Some(parent) = p.parent() {
                     watcher.unwatch(parent)?;
@@ -152,7 +151,7 @@ pub fn entry(fs: &dyn Filesystem, matches: &ArgMatches, output: &dyn Output) -> 
         }
 
         if watching.is_empty() {
-            info!("Nothing being watched, exiting...");
+            log::info!("Nothing being watched, exiting...");
             break;
         }
 
@@ -243,7 +242,7 @@ pub fn entry(fs: &dyn Filesystem, matches: &ArgMatches, output: &dyn Output) -> 
     /// Remove directories.
     fn drain_created_dirs(dirs: &mut HashSet<PathBuf>) -> Result<()> {
         for d in dirs.drain() {
-            debug!("deleting: {}", d.display());
+            log::debug!("deleting: {}", d.display());
             // we don't care if it succeeds or not.
             let _ = fs::remove_dir(d);
         }
@@ -300,8 +299,8 @@ pub fn entry(fs: &dyn Filesystem, matches: &ArgMatches, output: &dyn Output) -> 
 
 #[cfg(feature = "notify")]
 mod stalker {
-    use crate::core::errors::Result;
-    use crate::core::{Filesystem, Handle, RelativePath};
+    use core::errors::Result;
+    use core::{Filesystem, Handle, RelativePath};
     use std::cell::RefCell;
     use std::collections::HashSet;
     use std::io;

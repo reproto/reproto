@@ -1,15 +1,13 @@
 //! encoding/json module for Go
 
-use crate::backend::Initializer;
-use crate::core;
-use crate::core::errors::{Error, Result};
 use crate::flavored::{GoName, RpEnumBody, RpInterfaceBody, RpSubType, RpTupleBody};
 use crate::{
     EnumAdded, EnumCodegen, FieldAdded, FieldCodegen, InterfaceAdded, InterfaceCodegen, Options,
     TupleAdded, TupleCodegen,
 };
-use genco::go::{imported, Go};
-use genco::{Quoted, Tokens};
+use backend::Initializer;
+use core::errors::Result;
+use genco::prelude::*;
 use std::rc::Rc;
 
 pub struct Module {}
@@ -34,19 +32,19 @@ impl Initializer for Module {
 }
 
 struct Codegen {
-    new_error: Go<'static>,
-    unmarshal: Go<'static>,
-    marshal: Go<'static>,
-    raw_message: Go<'static>,
+    new_error: go::Import,
+    unmarshal: go::Import,
+    marshal: go::Import,
+    raw_message: go::Import,
 }
 
 impl Codegen {
     pub fn new() -> Codegen {
         Self {
-            new_error: imported("errors", "New"),
-            unmarshal: imported("encoding/json", "Unmarshal"),
-            marshal: imported("encoding/json", "Marshal"),
-            raw_message: imported("encoding/json", "RawMessage"),
+            new_error: go::import("errors", "New"),
+            unmarshal: go::import("encoding/json", "Unmarshal"),
+            marshal: go::import("encoding/json", "Marshal"),
+            raw_message: go::import("encoding/json", "RawMessage"),
         }
     }
 }
@@ -74,130 +72,74 @@ impl EnumCodegen for Codegen {
             ..
         } = e;
 
-        container.push(unmarshal_json(self, name, body));
-        container.push(marshal_json(self, name, body));
+        quote_in! { *container =>
+            #(ref t => unmarshal_json(t, self, name, body))
+
+            #(ref t => marshal_json(t, self, name, body))
+        }
 
         return Ok(());
 
-        fn unmarshal_json<'el>(
-            c: &Codegen,
-            name: &'el GoName,
-            body: &'el RpEnumBody,
-        ) -> Tokens<'el, Go<'el>> {
-            let mut t = Tokens::new();
+        fn unmarshal_json(t: &mut Tokens<Go>, c: &Codegen, name: &GoName, body: &RpEnumBody) {
+            quote_in! { *t =>
+                func (this *#name) UnmarshalJSON(b []byte) error {
+                    var s #(&body.enum_type)
 
-            push!(t, "func (this *", name, ") UnmarshalJSON(b []byte) error {");
-
-            t.nested({
-                let mut t = Tokens::new();
-
-                push!(t, "var s ", body.enum_type);
-
-                t.push_into(|t| {
-                    push!(t, "if err := ", c.unmarshal, "(b, &s); err != nil {");
-                    nested!(t, "return err");
-                    push!(t, "}");
-                });
-
-                t.push_into(|t| {
-                    t.push("switch s {");
-
-                    match body.variants {
-                        core::RpVariants::String { ref variants } => {
-                            for v in variants {
-                                t.push_into(|t| {
-                                    push!(t, "case ", v.value.as_str().quoted(), ":");
-                                    nested!(t, "*this = ", name, "_", v.ident.as_str());
-                                });
-                            }
-                        }
-                        core::RpVariants::Number { ref variants } => {
-                            for v in variants {
-                                t.push_into(|t| {
-                                    push!(t, "case ", v.value.to_string(), ":");
-                                    nested!(t, "*this = ", name, "_", v.ident.as_str());
-                                });
-                            }
-                        }
+                    if err := #(&c.unmarshal)(b, &s); err != nil {
+                        return err
                     }
 
-                    t.push_into(|t| {
-                        push!(t, "default:");
-                        nested!(t, "return ", c.new_error, "(", "bad value".quoted(), ")");
-                    });
+                    switch s {
+                    #(match &body.variants {
+                        core::RpVariants::String { variants } => {
+                            #(for v in variants {
+                                case #(quoted(v.value.as_str())):
+                                    *this = #(name)_#(v.ident.as_str())
+                            })
+                        }
+                        core::RpVariants::Number { variants } => {
+                            #(for v in variants {
+                                case #(v.value.to_string()):
+                                    *this = #(name)_#(v.ident.as_str())
+                            })
+                        }
+                    })
+                    default:
+                        return #(&c.new_error)("bad value")
+                    }
 
-                    t.push("}");
-                });
-
-                t.push("return nil");
-
-                t.join_line_spacing()
-            });
-
-            t.push("}");
-
-            t
+                    return nil
+                }
+            }
         }
 
-        fn marshal_json<'el>(
-            c: &Codegen,
-            name: &'el GoName,
-            body: &'el RpEnumBody,
-        ) -> Tokens<'el, Go<'el>> {
-            let mut t = Tokens::new();
+        fn marshal_json(t: &mut Tokens<Go>, c: &Codegen, name: &GoName, body: &RpEnumBody) {
+            quote_in! { *t =>
+                func (this #name) MarshalJSON() ([]byte, error) {
+                    var s #(&body.enum_type)
 
-            push!(t, "func (this ", name, ") MarshalJSON() ([]byte, error) {");
-
-            t.nested({
-                let mut t = Tokens::new();
-
-                push!(t, "var s ", body.enum_type);
-
-                t.push_into(|t| {
-                    t.push("switch this {");
-
-                    match body.variants {
-                        core::RpVariants::String { ref variants } => {
-                            for v in variants {
-                                t.push_into(|t| {
-                                    t.push(toks!["case ", name, "_", v.ident.as_str(), ":"]);
-                                    t.nested(toks!["s = ", v.value.as_str().quoted()]);
-                                });
-                            }
+                    switch this {
+                    #(match &body.variants {
+                        core::RpVariants::String { variants } => {
+                            #(for v in variants {
+                                case #(name)_#(v.ident.as_str()):
+                                    s = #(quoted(v.value.as_str()))
+                            })
                         }
-                        core::RpVariants::Number { ref variants } => {
-                            for v in variants {
-                                t.push_into(|t| {
-                                    t.push(toks!["case ", name, "_", v.ident.as_str(), ":"]);
-                                    t.nested(toks!["s = ", v.value.to_string()]);
-                                });
-                            }
+                        core::RpVariants::Number { variants } => {
+                            #(for v in variants {
+                                case #(name)_#(v.ident.as_str()):
+                                    s = #(v.value.to_string())
+                            })
                         }
+                    })
+                    default:
+                        return nil, #(&c.new_error)("bad value")
                     }
 
-                    t.push_into(|t| {
-                        push!(t, "default:");
-                        nested!(
-                            t,
-                            "return nil, ",
-                            c.new_error,
-                            "(",
-                            "bad value".quoted(),
-                            ")"
-                        );
-                    });
-
-                    t.push("}");
-                });
-
-                push!(t, "return ", c.marshal, "(s)");
-
-                t.join_line_spacing()
-            });
-
-            t.push("}");
-
-            t
+                    return #(&c.marshal)(s)
+                }
+            }
         }
     }
 }
@@ -211,136 +153,56 @@ impl TupleCodegen for Codegen {
             ..
         } = e;
 
-        container.push(unmarshal_json(self, name, body)?);
-        container.push(marshal_json(self, name, body)?);
+        quote_in! { *container =>
+            #(ref t => unmarshal_json(t, self, name, body))
+
+            #(ref t => marshal_json(t, self, name, body))
+        }
 
         return Ok(());
 
-        fn unmarshal_json<'el>(
-            c: &Codegen,
-            name: &'el GoName,
-            body: &'el RpTupleBody,
-        ) -> Result<Tokens<'el, Go<'el>>> {
-            let mut t = Tokens::new();
+        fn unmarshal_json(t: &mut Tokens<Go>, c: &Codegen, name: &GoName, body: &RpTupleBody) {
+            quote_in! { *t =>
+                func (this *#(name)) UnmarshalJSON(b []byte) error {
+                    var array []#(&c.raw_message)
 
-            t.try_push_into::<Error, _>(|t| {
-                push!(t, "func (this *", name, ") UnmarshalJSON(b []byte) error {");
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    t.push(toks!["var array []", c.raw_message.clone()]);
-
-                    t.push_into(|t| {
-                        t.push(toks![
-                            "if err := ",
-                            c.unmarshal.clone(),
-                            "(b, &array); err != nil {"
-                        ]);
-                        t.nested("return err");
-                        t.push("}");
-                    });
-
-                    t.push({
-                        let mut t = Tokens::new();
-
-                        for (i, f) in body.fields.iter().enumerate() {
-                            let a = toks!["array[", i.to_string(), "]"];
-
-                            let var = f.safe_ident();
-
-                            t.push({
-                                let mut t = Tokens::new();
-
-                                t.push_into(|t| {
-                                    t.push(toks!["var ", var.clone(), " ", f.ty.clone()]);
-
-                                    t.push_into(|t| {
-                                        t.push(toks![
-                                            "if err := ",
-                                            c.unmarshal.clone(),
-                                            "(",
-                                            a,
-                                            ", &",
-                                            var.clone(),
-                                            "); err != nil {"
-                                        ]);
-                                        t.nested("return err");
-                                        t.push("}");
-                                    });
-
-                                    t.push(toks!["this.", f.safe_ident(), " = ", var.clone()]);
-                                });
-
-                                t.join_line_spacing()
-                            });
-                        }
-
-                        t.join_line_spacing()
-                    });
-
-                    t.push("return nil");
-
-                    t.join_line_spacing()
-                });
-
-                t.push("}");
-
-                Ok(())
-            })?;
-
-            Ok(t)
-        }
-
-        fn marshal_json<'el>(
-            c: &Codegen,
-            name: &'el GoName,
-            body: &'el RpTupleBody,
-        ) -> Result<Tokens<'el, Go<'el>>> {
-            let mut t = Tokens::new();
-
-            push!(t, "func (this ", name, ") MarshalJSON() ([]byte, error) {");
-
-            t.nested({
-                let mut t = Tokens::new();
-
-                push!(t, "var array []", c.raw_message);
-
-                t.push({
-                    let mut t = Tokens::new();
-
-                    for f in &body.fields {
-                        let var = f.safe_ident();
-
-                        t.push({
-                            let mut t = Tokens::new();
-                            let ident = toks!["this.", f.safe_ident()];
-
-                            push!(t, var, ", err := ", c.marshal, "(", ident, ")");
-
-                            t.push_into(|t| {
-                                t.push("if err != nil {");
-                                t.nested("return nil, err");
-                                t.push("}");
-                            });
-
-                            push!(t, "array = append(array, ", var, ")");
-
-                            t.join_line_spacing()
-                        });
+                    if err := #(&c.unmarshal)(b, &array); err != nil {
+                        return err
                     }
 
-                    t.join_line_spacing()
-                });
+                    #(for (i, f) in body.fields.iter().enumerate() join (#<line>) {
+                        var #(f.safe_ident()) #(&f.ty)
 
-                push!(t, "return ", c.marshal, "(array)");
+                        if err := #(&c.unmarshal)(array[#i], &#(f.safe_ident())); err != nil {
+                            return err
+                        }
 
-                t.join_line_spacing()
-            });
+                        this.#(f.safe_ident()) = #(f.safe_ident())
+                    })
 
-            t.push("}");
+                    return nil
+                }
+            }
+        }
 
-            Ok(t)
+        fn marshal_json(t: &mut Tokens<Go>, c: &Codegen, name: &GoName, body: &RpTupleBody) {
+            quote_in! { *t =>
+                func (this #name) MarshalJSON() ([]byte, error) {
+                    var array []#(&c.raw_message)
+
+                    #(for f in &body.fields join (#<line>) {
+                        #(f.safe_ident()), err := #(&c.marshal)(this.#(f.safe_ident()))
+
+                        if err != nil {
+                            return nil, err
+                        }
+
+                        array = append(array, #(f.safe_ident()))
+                    })
+
+                    return #(&c.marshal)(array)
+                }
+            }
         }
     }
 }
@@ -354,318 +216,171 @@ impl InterfaceCodegen for Codegen {
             ..
         } = e;
 
-        container.push(unmarshal_json(self, name, body)?);
-        container.push(marshal_json(self, name, body)?);
+        quote_in! { *container =>
+            #(ref t => unmarshal_json(t, self, name, body))
+
+            #(ref t => marshal_json(t, self, name, body))
+        }
 
         return Ok(());
 
-        fn unmarshal_json<'el>(
-            c: &Codegen,
-            name: &'el GoName,
-            body: &'el RpInterfaceBody,
-        ) -> Result<Tokens<'el, Go<'el>>> {
-            let mut t = Tokens::new();
-
-            t.try_push_into::<Error, _>(|t| {
-                push!(t, "func (this *", name, ") UnmarshalJSON(b []byte) error {");
-
-                match body.sub_type_strategy {
-                    core::RpSubTypeStrategy::Tagged { ref tag } => {
-                        t.nested(unmarshal_tagged(c, body, tag)?);
-                    }
-                    core::RpSubTypeStrategy::Untagged => {
-                        t.nested(unmarshal_untagged(c, body)?);
-                    }
+        fn unmarshal_json(t: &mut Tokens<Go>, c: &Codegen, name: &GoName, body: &RpInterfaceBody) {
+            quote_in! { *t =>
+                func (this *#name) UnmarshalJSON(b []byte) error {
+                    #(match &body.sub_type_strategy {
+                        core::RpSubTypeStrategy::Tagged { tag } => {
+                            #(ref t => unmarshal_tagged(t, c, body, tag))
+                        }
+                        core::RpSubTypeStrategy::Untagged => {
+                            #(ref t => unmarshal_untagged(t, c, body))
+                        }
+                    })
                 }
+            };
 
-                push!(t, "}");
-                Ok(())
-            })?;
+            fn unmarshal_sub_type(t: &mut Tokens<Go>, c: &Codegen, sub_type: &RpSubType) {
+                quote_in! { *t =>
+                    sub := #(&sub_type.name){}
 
-            return Ok(t);
+                    if err = #(&c.unmarshal)(b, &sub); err != nil {
+                        return err
+                    }
 
-            fn unmarshal_sub_type<'el>(
-                c: &Codegen,
-                sub_type: &'el RpSubType,
-            ) -> Tokens<'el, Go<'el>> {
-                let mut t = Tokens::new();
-
-                push!(t, "sub := ", &sub_type.name, "{}");
-
-                t.push_into(|t| {
-                    push!(t, "if err = ", c.unmarshal, "(b, &sub); err != nil {");
-                    nested!(t, "return err");
-                    push!(t, "}");
-                });
-
-                t.push_into(|t| {
-                    push!(t, "this.Value = &sub");
-                    push!(t, "return nil");
-                });
-
-                t.join_line_spacing()
+                    this.Value = &sub
+                    return nil
+                }
             }
 
             /// Unmarshal the envelope and extract the type field.
-            fn unmarshal_tagged<'el>(
+            fn unmarshal_tagged(
+                t: &mut Tokens<Go>,
                 c: &Codegen,
-                body: &'el RpInterfaceBody,
-                tag: &'el str,
-            ) -> Result<Tokens<'el, Go<'el>>> {
-                let mut t = Tokens::new();
+                body: &RpInterfaceBody,
+                tag: &str,
+            ) {
+                quote_in! { *t =>
+                    var err error
+                    var ok bool
+                    env := make(map[string]#(&c.raw_message))
 
-                t.push_into(|t| {
-                    push!(t, "var err error");
-                    push!(t, "var ok bool");
-                    push!(t, "env := make(map[string]", c.raw_message, ")");
-                });
-
-                t.push_into(|t| {
-                    push!(t, "if err := ", c.unmarshal, "(b, &env); err != nil {");
-                    nested!(t, "return err");
-                    push!(t, "}");
-                });
-
-                push!(t, "var raw_tag ", c.raw_message);
-
-                t.push_into(|t| {
-                    push!(t, "if raw_tag, ok = env[", tag.quoted(), "]; !ok {");
-                    nested!(t, "return ", c.new_error, "(", "missing tag".quoted(), ")");
-                    push!(t, "}");
-                });
-
-                push!(t, "var tag string");
-
-                t.push_into(|t| {
-                    push!(t, "if err = ", c.unmarshal, "(raw_tag, &tag); err != nil {");
-                    nested!(t, "return err");
-                    push!(t, "}");
-                });
-
-                t.try_push_into::<Error, _>(|t| {
-                    push!(t, "switch (tag) {");
-
-                    for sub_type in &body.sub_types {
-                        push!(t, "case ", sub_type.name().quoted(), ":");
-                        t.nested(unmarshal_sub_type(c, sub_type));
+                    if err := #(&c.unmarshal)(b, &env); err != nil {
+                        return err
                     }
 
-                    push!(t, "default:");
-                    nested!(t, "return ", c.new_error, "(", "bad tag".quoted(), ")");
+                    var raw_tag #(&c.raw_message)
 
-                    push!(t, "}");
-                    Ok(())
-                })?;
+                    if raw_tag, ok = env[#(quoted(tag))]; !ok {
+                        return #(&c.new_error)("missing tag")
+                    }
 
-                Ok(t.join_line_spacing())
+                    var tag string
+
+                    if err = #(&c.unmarshal)(raw_tag, &tag); err != nil {
+                        return err
+                    }
+
+                    switch (tag) {
+                    #(for sub_type in &body.sub_types {
+                        case #(quoted(sub_type.name())):
+                            #(ref t => unmarshal_sub_type(t, c, sub_type))
+                    })
+                    default:
+                        return #(&c.new_error)("bad tag")
+                    }
+                }
             }
 
-            fn unmarshal_untagged<'el>(
-                c: &Codegen,
-                body: &'el RpInterfaceBody,
-            ) -> Result<Tokens<'el, Go<'el>>> {
-                let mut t = Tokens::new();
+            fn unmarshal_untagged(t: &mut Tokens<Go>, c: &Codegen, body: &RpInterfaceBody) {
+                quote_in! { *t =>
+                    var err error
+                    env := make(map[string]#(&c.raw_message))
 
-                t.push_into(|t| {
-                    push!(t, "var err error");
-                    push!(t, "env := make(map[string]", c.raw_message, ")");
-                });
+                    if err := #(&c.unmarshal)(b, &env); err != nil {
+                        return err
+                    }
 
-                t.push_into(|t| {
-                    push!(t, "if err := ", c.unmarshal, "(b, &env); err != nil {");
-                    nested!(t, "return err");
-                    push!(t, "}");
-                });
+                    keys := make(map[string]bool)
 
-                push!(t, "keys := make(map[string]bool)");
+                    for k := range env {
+                        keys[k] = true
+                    }
 
-                t.push_into(|t| {
-                    push!(t, "for k := range env {");
-                    nested!(t, "keys[k] = true");
-                    push!(t, "}");
-                });
+                    var all bool
+                    all = true
 
-                push!(t, "var all bool");
-
-                for sub_type in &body.sub_types {
-                    t.push_into(|t| {
-                        push!(t, "all = true");
-
-                        let mut required = Tokens::new();
-
-                        for f in sub_type.discriminating_fields() {
-                            required.append(f.name().quoted());
+                    #(for sub_type in &body.sub_types join (#<line>) {
+                        for _, k := range([]string{#(for r in sub_type.discriminating_fields() join (, ) => #(quoted(r.name())))}) {
+                            if _, all = keys[k]; !all {
+                                break
+                            }
                         }
 
-                        let required = toks!["[]string{", required.join(", "), "}"];
+                        if all {
+                            #(ref t => unmarshal_sub_type(t, c, sub_type))
+                        }
+                    })
 
-                        push!(t, "for _, k := range(", required, ") {");
-
-                        t.nested_into(|t| {
-                            push!(t, "if _, all = keys[k]; !all {");
-                            nested!(t, "break");
-                            push!(t, "}");
-                        });
-
-                        push!(t, "}");
-                    });
-
-                    t.push_into(|t| {
-                        push!(t, "if all {");
-                        t.nested(unmarshal_sub_type(c, sub_type));
-                        push!(t, "}");
-                    });
+                    return #(&c.new_error)("no combination of fields found")
                 }
-
-                push!(
-                    t,
-                    "return ",
-                    c.new_error,
-                    "(",
-                    "no combination of fields found".quoted(),
-                    ")"
-                );
-                Ok(t.join_line_spacing())
             }
         }
 
-        fn marshal_json<'el>(
-            c: &Codegen,
-            name: &'el GoName,
-            body: &'el RpInterfaceBody,
-        ) -> Result<Tokens<'el, Go<'el>>> {
-            let mut t = Tokens::new();
-
-            t.push({
-                let mut t = Tokens::new();
-
-                push!(t, "func (this ", name, ") MarshalJSON() ([]byte, error) {");
-
-                match body.sub_type_strategy {
-                    core::RpSubTypeStrategy::Tagged { ref tag } => {
-                        t.nested(marshal_tagged(c, body, tag)?);
-                    }
-                    core::RpSubTypeStrategy::Untagged => {
-                        t.nested(marshal_untagged(c, body)?);
-                    }
+        fn marshal_json(t: &mut Tokens<Go>, c: &Codegen, name: &GoName, body: &RpInterfaceBody) {
+            quote_in! { *t =>
+                func (this #name) MarshalJSON() ([]byte, error) {
+                    #(match body.sub_type_strategy {
+                        core::RpSubTypeStrategy::Tagged { ref tag } => {
+                            #(ref t => marshal_tagged(t, c, body, tag))
+                        }
+                        core::RpSubTypeStrategy::Untagged => {
+                            #(ref t => marshal_untagged(t, c, body))
+                        }
+                    })
                 }
-
-                push!(t, "}");
-
-                t
-            });
-
-            return Ok(t);
+            };
 
             /// Marshal the envelope and extract the type field.
-            fn marshal_tagged<'el>(
-                c: &Codegen,
-                body: &'el RpInterfaceBody,
-                tag: &'el str,
-            ) -> Result<Tokens<'el, Go<'el>>> {
-                let mut t = Tokens::new();
+            fn marshal_tagged(t: &mut Tokens<Go>, c: &Codegen, body: &RpInterfaceBody, tag: &str) {
+                quote_in! { *t =>
+                    var b []byte
+                    var err error
+                    env := make(map[string]#(&c.raw_message))
 
-                t.push_into(|t| {
-                    push!(t, "var b []byte");
-                    push!(t, "var err error");
-                    push!(t, "env := make(map[string]", c.raw_message, ")");
-                });
+                    switch v := this.Value.(type) {
+                    #(for sub_type in &body.sub_types {
+                        case *#(&sub_type.name):
+                            if b, err = #(&c.marshal)(v); err != nil {
+                                return nil, err
+                            }
 
-                t.push_into(|t| {
-                    push!(t, "switch v := this.Value.(type) {");
+                            if err = #(&c.unmarshal)(b, &env); err != nil {
+                                return nil, err
+                            }
 
-                    for sub_type in &body.sub_types {
-                        t.push(marshal_tagged_sub_type(c, sub_type, tag));
+                            if env[#(quoted(tag))], err = #(&c.marshal)(#(quoted(sub_type.name()))); err != nil {
+                                return nil, err
+                            }
+
+                            return #(&c.marshal)(env)
+                    })
+                    default:
+                        return nil, #(&c.new_error)(#_(#(&body.name): no sub-type set))
                     }
-
-                    t.push_into(|t| {
-                        let m = format!("{}: no sub-type set", body.name);
-                        let error = toks!(c.new_error.clone(), "(", m.quoted(), ")");
-                        push!(t, "default:");
-                        nested!(t, "return nil, ", error);
-                    });
-
-                    push!(t, "}");
-                });
-
-                return Ok(t.join_line_spacing());
+                }
             }
 
             /// Marshal the sub-type immediately.
-            fn marshal_untagged<'el>(
-                c: &Codegen,
-                body: &'el RpInterfaceBody,
-            ) -> Result<Tokens<'el, Go<'el>>> {
-                let mut t = Tokens::new();
-
-                t.push({
-                    let mut t = Tokens::new();
-
-                    t.push_into(|t| {
-                        push!(t, "switch v := this.Value.(type) {");
-
-                        for sub_type in &body.sub_types {
-                            push!(t, "case *", &sub_type.name, ":");
-                            nested!(t, "return ", c.marshal, "(v)");
-                        }
-
-                        t.push_into(|t| {
-                            let m = format!("{}: no sub-type set", body.name);
-                            let error = toks!(c.new_error.clone(), "(", m.quoted(), ")");
-
-                            push!(t, "default:");
-                            nested!(t, "return nil, ", error);
-                        });
-
-                        push!(t, "}");
-                    });
-
-                    t.join_line_spacing()
-                });
-
-                return Ok(t.join_line_spacing());
-            }
-
-            fn marshal_tagged_sub_type<'el>(
-                c: &Codegen,
-                sub_type: &'el RpSubType,
-                tag: &'el str,
-            ) -> Tokens<'el, Go<'el>> {
-                let mut t = Tokens::new();
-
-                push!(t, "case *", &sub_type.name, ":");
-
-                t.nested({
-                    let mut t = Tokens::new();
-
-                    t.push_into(|t| {
-                        push!(t, "if b, err = ", c.marshal, "(v); err != nil {");
-                        nested!(t, "return nil, err");
-                        push!(t, "}");
-                    });
-
-                    t.push_into(|t| {
-                        push!(t, "if err = ", c.unmarshal, "(b, &env); err != nil {");
-                        nested!(t, "return nil, err");
-                        push!(t, "}");
-                    });
-
-                    let o = toks!("env[", tag.quoted(), "]");
-
-                    t.push_into(|t| {
-                        let m = toks!(c.marshal.clone(), "(", sub_type.name().quoted(), ")");
-
-                        push!(t, "if ", o, ", err = ", m, "; err != nil {");
-                        nested!(t, "return nil, err");
-                        push!(t, "}");
-                    });
-
-                    push!(t, "return ", c.marshal, "(env)");
-
-                    t.join_line_spacing()
-                });
-
-                t
+            fn marshal_untagged(t: &mut Tokens<Go>, c: &Codegen, body: &RpInterfaceBody) {
+                quote_in! { *t =>
+                    switch v := this.Value.(type) {
+                    #(for sub_type in &body.sub_types {
+                        case *#(&sub_type.name):
+                            return #(&c.marshal)(v)
+                    })
+                    default:
+                        return nil, #(&c.new_error)(#_(#(&body.name): no sub-type set))
+                    }
+                }
             }
         }
     }

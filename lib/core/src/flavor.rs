@@ -2,6 +2,7 @@
 
 use crate::errors::Result;
 use crate::{Loc, RpEndpoint, RpEnumType, RpField, RpName, RpPackage, RpType, RpVersionedPackage};
+use serde::Serialize;
 use std::borrow::Cow;
 use std::cmp;
 use std::fmt;
@@ -26,9 +27,9 @@ where
 /// The flavor of intermediate representation being used.
 pub trait Flavor: fmt::Debug + Clone + cmp::Eq + hash::Hash {
     /// The type that this flavor serializes to.
-    type Type: fmt::Debug + Clone + cmp::Eq;
+    type Type: fmt::Debug + Clone;
     /// The local field name.
-    type Name: fmt::Display + fmt::Debug + Clone + cmp::Eq;
+    type Name: fmt::Debug + Clone;
     /// The field that this flavor serializes to.
     type Field: FlavorField;
     /// The endpoint that this flavor serializes to.
@@ -36,7 +37,7 @@ pub trait Flavor: fmt::Debug + Clone + cmp::Eq + hash::Hash {
     /// The package type.
     type Package: fmt::Debug + Clone + cmp::Eq + cmp::Ord + hash::Hash + Default + AsPackage;
     /// Enum type.
-    type EnumType: fmt::Debug + Clone + cmp::Eq;
+    type EnumType: fmt::Debug + Clone;
 }
 
 /// The first flavor where packages are fully qualified.

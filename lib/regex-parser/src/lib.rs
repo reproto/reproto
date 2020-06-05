@@ -1,15 +1,11 @@
-extern crate lalrpop_util;
-extern crate reproto_core as core;
-extern crate reproto_regex_lexer as regex_lexer;
-
 mod parser;
 
-use crate::core::errors::{Error, Result};
-use crate::core::regex::Regex;
+use core::errors::{Error, Result};
+use core::regex::Regex;
 
 pub fn parse(input: &str) -> Result<Regex> {
-    use self::regex_lexer::Error::*;
     use lalrpop_util::ParseError::*;
+    use regex_lexer::Error::*;
 
     let lexer = regex_lexer::regex_lex(input);
 

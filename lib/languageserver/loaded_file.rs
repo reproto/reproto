@@ -1,9 +1,9 @@
 //! A file that is loaded into a workspace.
 
-use crate::core::errors::Result;
-use crate::core::{Diagnostics, Encoding, Position, RpVersionedPackage, Source, Span};
 use crate::models::{Completion, Jump, Prefix, Range, Reference, Rename, Symbol};
 use crate::triggers::Triggers;
+use core::errors::Result;
+use core::{Diagnostics, Encoding, Position, RpVersionedPackage, Source, Span};
 use std::collections::HashMap;
 use url::Url;
 

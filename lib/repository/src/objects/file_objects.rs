@@ -2,9 +2,9 @@
 
 use super::Objects;
 use crate::checksum::Checksum;
-use crate::core::errors::*;
-use crate::core::Source;
 use crate::hex_slice::HexSlice;
+use core::errors::Result;
+use core::Source;
 use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
@@ -55,7 +55,7 @@ impl Objects for FileObjects {
 
         if let Some(parent) = target.parent() {
             if !parent.is_dir() {
-                debug!("creating directory: {}", parent.display());
+                log::debug!("creating directory: {}", parent.display());
                 fs::create_dir_all(parent)?;
             }
         }
@@ -63,7 +63,7 @@ impl Objects for FileObjects {
         let mut tmp_target = target.clone();
         tmp_target.set_extension(".tmp");
 
-        debug!("writing: {}", target.display());
+        log::debug!("writing: {}", target.display());
         io::copy(source, &mut File::create(&tmp_target)?)?;
         fs::rename(tmp_target, target)?;
         return Ok(true);

@@ -1,17 +1,12 @@
 //! Derive a schema from the given input.
 
-use crate::ast;
-use crate::compile;
-use crate::core::errors::Result;
-use crate::core::{Reporter, RpPackage, RpVersionedPackage, Source};
-use crate::derive;
-use crate::env;
-use crate::manifest::{Lang, Language};
 use clap::{App, Arg, ArgMatches, SubCommand};
-use genco::IoFmt;
+use core::errors::Result;
+use core::{Reporter, RpPackage, RpVersionedPackage, Source};
+use manifest::{Lang, Language};
 use std::any::Any;
-use std::fmt::Write;
 use std::io;
+use std::io::Write;
 use std::path::Path;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {
@@ -127,14 +122,12 @@ pub fn entry(reporter: &mut dyn Reporter, matches: &ArgMatches) -> Result<()> {
 
     compile::simple_compile(
         |path, content| {
-            let mut buf = IoFmt(&mut stdout);
-
             if let Some(comment) = lang.comment(format!(" File: {}", path).as_str()) {
-                writeln!(buf, "{}", comment)?;
-                writeln!(buf, "")?;
+                writeln!(stdout, "{}", comment)?;
+                writeln!(stdout, "")?;
             }
 
-            buf.write_str(content)?;
+            stdout.write_all(content.as_bytes())?;
             Ok(())
         },
         simple_compile,

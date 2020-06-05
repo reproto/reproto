@@ -1,10 +1,9 @@
 //! Update action that synchronizes all repositories.
 
-use crate::core::errors::*;
-use crate::env;
-use crate::repository::Update;
 use crate::utils::load_manifest;
 use clap::{App, ArgMatches, SubCommand};
+use core::errors::Result;
+use repository::Update;
 use std::collections::HashSet;
 
 pub fn options<'a, 'b>() -> App<'a, 'b> {

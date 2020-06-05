@@ -1,7 +1,7 @@
 //! gRPC module for Rust.
 
-use crate::backend::Initializer;
 use crate::Options;
+use backend::Initializer;
 
 pub struct Module {}
 

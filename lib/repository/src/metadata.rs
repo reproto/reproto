@@ -1,7 +1,8 @@
 //! Deployment metadata
 
 use crate::checksum::Checksum;
-use crate::core::Version;
+use core::Version;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Deployment {

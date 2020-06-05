@@ -3,30 +3,22 @@ use clap::{App, Arg, SubCommand};
 
 #[cfg(feature = "self-updates")]
 mod internal {
-    extern crate flate2;
-    extern crate futures;
-    extern crate hyper;
-    extern crate hyper_rustls;
-    extern crate same_file;
-    extern crate tar;
-
-    use self::flate2::read::GzDecoder;
-    use self::futures::{executor, Future, StreamExt};
-    use self::hyper::client::HttpConnector;
-    use self::hyper::header;
-    use self::hyper::{Body, Client, Method, Request, Response, StatusCode, Uri};
-    use self::hyper_rustls::HttpsConnector;
-    use self::tar::Archive;
-    use crate::core::errors::{Error, Result};
-    use crate::core::Version;
-    use crate::env;
     use crate::VERSION;
     use clap::ArgMatches;
+    use core::errors::{Error, Result};
+    use core::Version;
+    use flate2::read::GzDecoder;
+    use futures::{executor, Future, StreamExt};
+    use hyper::client::HttpConnector;
+    use hyper::header;
+    use hyper::{Body, Client, Method, Request, Response, StatusCode, Uri};
+    use hyper_rustls::HttpsConnector;
     use std::fs::{self, File};
     use std::io::{self, Cursor};
     use std::path::Path;
     use std::pin::Pin;
     use std::sync::Arc;
+    use tar::Archive;
     use url::Url;
 
     #[cfg(target_os = "macos")]
@@ -116,7 +108,7 @@ mod internal {
         let version = match candidate {
             Some(version) => version,
             None => {
-                info!("reproto is up-to-date!");
+                log::info!("reproto is up-to-date!");
                 return Ok(());
             }
         };
@@ -140,7 +132,7 @@ mod internal {
                 )
             })?;
 
-            info!("wrote: {}", archived.display());
+            log::info!("wrote: {}", archived.display());
         }
 
         let bin = config.bin_home.join(binary);
@@ -174,7 +166,7 @@ mod internal {
             }
 
             if !bin_in_path {
-                warn!(
+                log::warn!(
                     "{}: is not in your PATH. This is required for reproto to work!",
                     config.bin_home.display()
                 );
@@ -194,19 +186,19 @@ mod internal {
                     let path = ::std::str::from_utf8(path_bytes.as_ref())?;
 
                     if path != binary {
-                        warn!("got unexpected file in archive: {}", path);
+                        log::warn!("got unexpected file in archive: {}", path);
                         continue;
                     }
                 }
 
                 if let Some(parent) = out.parent() {
                     if !parent.is_dir() {
-                        info!("creating directory: {}", parent.display());
+                        log::info!("creating directory: {}", parent.display());
                         fs::create_dir_all(parent)?;
                     }
                 }
 
-                info!("writing: {}", out.display());
+                log::info!("writing: {}", out.display());
                 let mut w = File::create(out)?;
                 io::copy(&mut file, &mut w)?;
 
@@ -232,19 +224,19 @@ mod internal {
 
             #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
             fn set_executable(_p: &mut fs::Permissions) {
-                warn!("cannot update permissions on this platform");
+                log::warn!("cannot update permissions on this platform");
             }
         }
 
         fn setup_symlink(archived: &Path, bin: &Path) -> Result<()> {
             if let Some(parent) = bin.parent() {
                 if !parent.is_dir() {
-                    info!("creating directory: {}", parent.display());
+                    log::info!("creating directory: {}", parent.display());
                     fs::create_dir_all(parent)?;
                 }
             }
 
-            info!("creating symlink: {}", bin.display());
+            log::info!("creating symlink: {}", bin.display());
 
             if bin.is_file() {
                 fs::remove_file(bin)?;

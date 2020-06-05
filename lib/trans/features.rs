@@ -1,7 +1,7 @@
 //! Declares features and what version they are introduced for.
 
-use crate::core::errors::Error;
-use crate::core::Version;
+use core::errors::Error;
+use core::Version;
 use std::collections::HashMap;
 
 pub struct Features {

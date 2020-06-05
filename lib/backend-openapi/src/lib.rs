@@ -1,21 +1,3 @@
-#[macro_use]
-extern crate log;
-#[allow(unused)]
-#[macro_use]
-extern crate reproto_backend as backend;
-extern crate reproto_core as core;
-#[macro_use]
-extern crate reproto_manifest as manifest;
-extern crate reproto_trans as trans;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate linked_hash_map;
-extern crate reproto_naming as naming;
-extern crate serde_json as json;
-extern crate serde_yaml as yaml;
-extern crate toml;
-
 mod spec;
 
 const OPENAPI_VERSION: &str = "3.0.0";
@@ -35,27 +17,25 @@ macro_rules! number_rule {
 }
 
 use self::spec::*;
-use crate::core::errors::*;
-use crate::core::flavored::{
+use core::errors::Result;
+use core::flavored::{
     RpChannel, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpTupleBody, RpType,
     RpTypeBody, RpVersionedPackage,
 };
-use crate::core::{
-    CoreFlavor, Handle, Loc, RelativePath, RelativePathBuf, RpHttpMethod, RpNumberKind,
-};
-use crate::manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
-use crate::trans::{Session, Translated};
+use core::{CoreFlavor, Handle, Loc, RelativePath, RelativePathBuf, RpHttpMethod, RpNumberKind};
 use linked_hash_map::LinkedHashMap;
+use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::cell::RefCell;
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};
 use std::path::Path;
+use trans::{Session, Translated};
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct OpenApiLang;
 
 impl Lang for OpenApiLang {
-    lang_base!(OpenApiModule, compile);
+    manifest::lang_base!(OpenApiModule, compile);
 }
 
 #[derive(Debug)]
@@ -178,7 +158,7 @@ impl<'handle> Compiler<'handle> {
 
                 let (spec, path) = builder.build(&dir, package, service)?;
 
-                debug!("+file: {}", path);
+                log::debug!("+file: {}", path);
 
                 let out = self.handle.create(&path)?;
 
@@ -329,7 +309,7 @@ impl<'builder> SpecBuilder<'builder> {
 
         if let Some(parent) = path.parent() {
             if !self.handle.is_dir(parent) {
-                debug!("+dir: {}", parent);
+                log::debug!("+dir: {}", parent);
                 self.handle.create_dir_all(parent)?;
             }
         }
@@ -540,12 +520,12 @@ impl<'builder> SpecBuilder<'builder> {
         array.format = Some(spec::Format::Tuple);
 
         for (index, field) in body.fields().enumerate() {
-            let schema = self.type_to_schema(queue, field.ty())?;
+            let schema = self.type_to_schema(queue, &field.ty)?;
             array.properties.insert(index, schema);
             array.required.push(index);
 
             // reference to external type, so add to queue.
-            if let core::RpType::Name { ref name } = *field.ty() {
+            if let core::RpType::Name { name } = &field.ty {
                 queue.push_back(Queued::Named(name));
             }
         }
@@ -582,7 +562,7 @@ impl<'builder> SpecBuilder<'builder> {
 
     /// Allocate a conflict-free name.
     fn allocate_name(&self, name: &RpName) -> Result<String> {
-        use crate::naming::Naming;
+        use naming::Naming;
 
         let mut all_names = self
             .all_names
@@ -669,7 +649,7 @@ impl<'builder> SpecBuilder<'builder> {
         queue: &mut VecDeque<Queued<'builder>>,
         ty: &'builder RpType,
     ) -> Result<spec::Schema<'builder>> {
-        use crate::core::RpType::*;
+        use core::RpType::*;
 
         let out = match *ty {
             Name { ref name } => {
@@ -725,7 +705,7 @@ impl<'builder> SpecBuilder<'builder> {
         fields: impl IntoIterator<Item = &'builder Loc<RpField>>,
     ) -> Result<()> {
         for field in fields {
-            let mut schema = self.type_to_schema(queue, field.ty())?;
+            let mut schema = self.type_to_schema(queue, &field.ty)?;
 
             if field.is_required() {
                 object.required.push(field.safe_ident());
@@ -742,7 +722,7 @@ impl<'builder> SpecBuilder<'builder> {
             object.properties.insert(field.safe_ident(), schema);
 
             // reference to external type, so add to queue.
-            if let core::RpType::Name { ref name } = *field.ty() {
+            if let core::RpType::Name { name } = &field.ty {
                 queue.push_back(Queued::Named(name));
             }
         }

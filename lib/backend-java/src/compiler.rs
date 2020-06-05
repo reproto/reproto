@@ -1,862 +1,576 @@
 //! Java backend for reproto
 
-use crate::codegen::{
-    ClassAdded, EnumAdded, GetterAdded, InterfaceAdded, ServiceAdded, TupleAdded,
-};
-use crate::core::errors::*;
-use crate::core::{self, Handle, Loc};
 use crate::flavored::{
-    JavaField, JavaFlavor, RpCode, RpDecl, RpEnumBody, RpInterfaceBody, RpServiceBody, RpTupleBody,
-    RpTypeBody,
+    Field, JavaFlavor, Primitive, RpCode, RpContext, RpDecl, RpEnumBody, RpInterfaceBody,
+    RpServiceBody, RpTupleBody, RpTypeBody, RpVariants,
 };
-use crate::java_file::JavaFile;
-use crate::naming::{self, Naming};
-use crate::trans::{Packages, Translated};
-use crate::utils::{Observer, Override};
 use crate::Options;
-use genco::java::{
-    self, imported, local, Argument, Class, Constructor, Enum, Field, Interface, Method, Modifier,
-    BOOLEAN, INTEGER,
-};
-use genco::{Cons, Element, Java, Quoted, Tokens};
-use std::rc::Rc;
+use core::errors::Result;
+use core::{Handle, Loc, RelativePathBuf};
+use genco::fmt;
+use genco::prelude::*;
+use genco::tokens::from_fn;
+use naming::Naming;
+use trans::Translated;
 
-/// Helper macro to implement listeners opt loop.
-fn code<'el>(codes: &'el [Loc<RpCode>]) -> Tokens<'el, Java<'el>> {
-    let mut t = Tokens::new();
-
-    for c in codes {
-        if let core::RpContext::Java { ref imports, .. } = c.context {
-            for import in imports {
-                if let Some(split) = import.rfind('.') {
-                    let (package, name) = import.split_at(split);
-                    let name = &name[1..];
-                    t.register(imported(package, name));
-                }
-            }
-
-            t.append({
-                let mut t = Tokens::new();
-
-                for line in &c.lines {
-                    t.push(line.as_str());
-                }
-
-                t
-            });
-        }
-    }
-
-    t
-}
-
-macro_rules! call_codegen {
-    ($source:expr, $event:expr) => {
-        for g in $source {
-            g.generate($event)?;
-        }
-    };
-}
-
-pub struct Compiler<'el> {
-    pub env: &'el Translated<JavaFlavor>,
+#[allow(unused)]
+pub struct Compiler<'a> {
+    env: &'a Translated<JavaFlavor>,
     options: Options,
-    variant_naming: naming::ToUpperSnake,
-    null_string: Element<'static, Java<'static>>,
-    suppress_warnings: Java<'static>,
-    string_builder: Java<'static>,
-    objects: Java<'static>,
-    object: Java<'static>,
-    string: Java<'static>,
-    pub optional: Java<'static>,
-    illegal_argument: Java<'static>,
+    to_upper: naming::ToUpperCamel,
+    suppress_warnings: java::Import,
+    string_builder: java::Import,
+    objects: java::Import,
+    object: java::Import,
+    string: java::Import,
+    illegal_argument: java::Import,
 }
 
-impl<'el> Compiler<'el> {
-    pub fn new(env: &'el Translated<JavaFlavor>, options: Options) -> Compiler<'el> {
-        Compiler {
+impl<'a> Compiler<'a> {
+    pub fn new(env: &'a Translated<JavaFlavor>, options: Options) -> Self {
+        Self {
             env,
             options,
-            variant_naming: naming::to_upper_snake(),
-            null_string: "null".quoted(),
-            objects: imported("java.util", "Objects"),
-            suppress_warnings: imported("java.lang", "SuppressWarnings"),
-            string_builder: imported("java.lang", "StringBuilder"),
-            object: imported("java.lang", "Object"),
-            string: imported("java.lang", "String"),
-            optional: imported("java.util", "Optional"),
-            illegal_argument: imported("java.lang", "IllegalArgumentException"),
+            to_upper: naming::to_upper_camel(),
+            objects: java::import("java.util", "Objects"),
+            suppress_warnings: java::import("java.lang", "SuppressWarnings"),
+            string_builder: java::import("java.lang", "StringBuilder"),
+            object: java::import("java.lang", "Object"),
+            string: java::import("java.lang", "String"),
+            illegal_argument: java::import("java.lang", "IllegalArgumentException"),
         }
     }
 
-    pub fn compile(&self, packages: &Packages, handle: &dyn Handle) -> Result<()> {
-        for generator in &self.options.root_generators {
-            generator.generate(handle)?;
-        }
-
-        if self.options.uses_observer {
-            let package = packages.new("io.reproto")?;
-
-            JavaFile::new(package, "Observer", |out| {
-                out.push(Observer);
-                Ok(())
-            })
-            .process(handle)?;
-        }
-
+    pub fn compile(&self, handle: &dyn Handle) -> Result<()> {
         for decl in self.env.toplevel_decl_iter() {
-            self.compile_decl(handle, decl)?;
+            let package = decl.name().package.join(".");
+
+            let path = decl
+                .name()
+                .package
+                .parts()
+                .cloned()
+                .fold(RelativePathBuf::new(), |p, part| p.join(part));
+
+            if !handle.is_dir(&path) {
+                log::debug!("+dir: {}", path);
+                handle.create_dir_all(&path)?;
+            }
+
+            let path = path.join(format!("{}.java", decl.ident()));
+
+            let mut out = java::Tokens::new();
+            self.process_decl(&mut out, 0usize, decl)?;
+
+            log::debug!("+class: {}", path);
+
+            let fmt = fmt::Config::from_lang::<java::Java>();
+            let config = java::Config::default().with_package(package);
+
+            let mut file = handle.create(&path)?;
+            let mut w = fmt::IoWriter::new(&mut file);
+
+            out.format_file(&mut w.as_formatter(&fmt), &config)?;
         }
 
         Ok(())
     }
 
-    fn compile_decl(&self, handle: &dyn Handle, decl: &RpDecl) -> Result<()> {
-        JavaFile::new(decl.name().package.clone(), decl.ident(), |out| {
-            self.process_decl(decl, 0usize, out)
+    fn field<'f>(&'f self, f: &'f Loc<Field>) -> impl FormatInto<Java> + 'f {
+        from_fn(move |t| {
+            let mut ann = Vec::new();
+            self.options.gen.class_field(f, &mut ann);
+
+            quote_in! { *t =>
+                #(for a in ann join (#<push>) => #a)
+                #(if self.options.immutable => final#<space>)#(f.field_type()) #(f.safe_ident())
+            }
         })
-        .process(handle)
     }
 
-    fn field_mods(&self) -> Vec<Modifier> {
-        use self::Modifier::*;
+    fn constructor<'f>(
+        &'f self,
+        name: &'f str,
+        fields: &'f [Loc<Field>],
+    ) -> impl FormatInto<Java> + 'f {
+        from_fn(move |t| {
+            if !self.options.build_constructor {
+                return;
+            }
 
-        if self.options.immutable {
-            vec![Private, Final]
-        } else {
-            vec![Private]
-        }
-    }
+            let mut arguments = Vec::new();
 
-    fn new_field_spec(&self, ty: &Java<'el>, name: &'el str) -> Field<'el> {
-        let mut field = Field::new(ty.clone(), name);
-        field.modifiers = self.field_mods();
-        field
-    }
+            for f in fields {
+                let mut ann = Vec::new();
+                self.options.gen.class_constructor_arg(f, &mut ann);
 
-    fn build_constructor<F>(&self, fields: F) -> Constructor<'el>
-    where
-        F: IntoIterator<Item = &'el Loc<JavaField<'static>>>,
-    {
-        let mut c = Constructor::new();
+                arguments.push(quote! {
+                    #(for a in ann => #a#<space>)#(f.field_type()) #(f.safe_ident())
+                });
+            }
 
-        for field in fields {
-            let spec = &field.spec;
+            let mut annotations = Vec::new();
+            self.options.gen.class_constructor(fields, &mut annotations);
 
-            let argument = Argument::new(spec.ty(), spec.var());
-
-            if !self.options.nullable {
-                if let Some(non_null) = self.require_non_null(spec, &argument, field.name()) {
-                    c.body.push(non_null);
+            quote_in! {*t =>
+                #(for a in annotations join (#<push>) => #a)
+                public #name(
+                    #(for a in arguments join (,#<push>) => #a)
+                ) {
+                    #(for f in fields join (#<push>) {
+                        #(if !f.is_optional() && !f.ty.is_primitive() {
+                            #(&self.objects).requireNonNull(#(f.safe_ident()), #_(#(&f.ident): must not be null));
+                        })
+                        this.#(f.safe_ident()) = #(f.safe_ident());
+                    })
                 }
             }
-
-            c.arguments.push(argument.clone());
-
-            push!(c.body, "this.", spec.var(), " = ", argument.var(), ";");
-        }
-
-        c
+        })
     }
 
-    /// Build a require-non-null check.
-    fn require_non_null(
-        &self,
-        field: &Field<'el>,
-        argument: &Argument<'el>,
-        name: &'el str,
-    ) -> Option<Tokens<'el, Java<'el>>> {
-        use self::Java::*;
+    fn process_enum(&self, t: &mut java::Tokens, depth: usize, body: &RpEnumBody) -> Result<()> {
+        let mut inner = Vec::new();
 
-        match field.ty() {
-            Primitive { .. } => None,
-            _ => {
-                let req = toks![self.objects.clone(), ".requireNonNull"];
+        self.options
+            .gen
+            .enum_ty(&body.ident, &body.enum_type, &mut inner);
 
-                Some(toks![req, "(", argument.var(), ", ", name.quoted(), ");",])
-            }
-        }
-    }
-
-    fn build_hash_code<F>(&self, fields: F) -> Method<'el>
-    where
-        F: IntoIterator<Item = &'el Loc<JavaField<'static>>>,
-    {
-        let mut hash_code = Method::new("hashCode");
-
-        hash_code.annotation(Override);
-        hash_code.returns = INTEGER;
-
-        hash_code.body.push("int result = 1;");
-
-        for field in fields {
-            let field = &field.spec;
-
-            let field_toks = toks!["this.", field.var()];
-
-            let value = match field.ty() {
-                ref primitive @ Java::Primitive { .. } => {
-                    if *primitive == INTEGER {
-                        field_toks.clone()
-                    } else {
-                        toks![primitive.as_boxed(), ".hashCode(", field_toks.clone(), ")"]
+        quote_in! {*t =>
+            #(java::block_comment(&body.comment))
+            public #(if depth > 0 => static) enum #(&body.ident) {
+                #(match &body.variants {
+                    RpVariants::String { variants } => {
+                        #(for variant in variants join (,#<push>) {
+                            #(self.to_upper.convert(variant.ident()))(#(quoted(&variant.value)))
+                        })
                     }
-                }
-                _ => toks![field_toks.clone(), ".hashCode()"],
-            };
-
-            let value = if self.options.nullable {
-                match field.ty() {
-                    Java::Primitive { .. } => value,
-                    _ => toks!["(", field_toks.clone(), " != null ? 0 : ", value, ")"],
-                }
-            } else {
-                value
-            };
-
-            hash_code
-                .body
-                .push(toks!["result = result * 31 + ", value, ";"]);
-        }
-
-        hash_code.body.push("return result;");
-        hash_code
-    }
-
-    fn build_equals<F>(&self, name: Cons<'el>, fields: F) -> Method<'el>
-    where
-        F: IntoIterator<Item = &'el Loc<JavaField<'static>>>,
-    {
-        let argument = Argument::new(self.object.clone(), "other");
-
-        let mut equals = Method::new("equals");
-
-        equals.annotation(Override);
-        equals.returns = BOOLEAN;
-        equals.arguments.push(argument.clone());
-
-        // check if argument is null.
-        {
-            let mut null_check = Tokens::new();
-
-            null_check.push(toks!["if (", argument.var(), " == null) {"]);
-            null_check.nested("return false;");
-            null_check.push("}");
-
-            equals.body.push(null_check);
-        }
-
-        // check that argument is expected type.
-        equals.body.push({
-            let mut t = Tokens::new();
-
-            t.push(toks![
-                "if (!(",
-                argument.var(),
-                " instanceof ",
-                name.clone(),
-                ")) {",
-            ]);
-            t.nested("return false;");
-            t.push("}");
-            t
-        });
-
-        // cast argument.
-        equals.body.push({
-            let mut t = Tokens::new();
-
-            t.push(toks![
-                "@",
-                self.suppress_warnings.clone(),
-                "(",
-                "unchecked".quoted(),
-                ")",
-            ]);
-
-            t.push(toks![
-                "final ",
-                name.clone(),
-                " o = (",
-                name.clone(),
-                ") ",
-                argument.var(),
-                ";",
-            ]);
-
-            t
-        });
-
-        for field in fields {
-            let field = &field.spec;
-            let field_toks = toks!["this.", field.var()];
-            let o = toks!["o.", field.var()];
-
-            let equals_condition = match field.ty() {
-                Java::Primitive { .. } => toks![field_toks.clone(), " != ", o.clone()],
-                _ => toks!["!", field_toks.clone(), ".equals(", o.clone(), ")"],
-            };
-
-            let mut equals_check = Tokens::new();
-
-            equals_check.push(toks!["if (", equals_condition, ") {"]);
-            equals_check.nested("return false;");
-            equals_check.push("}");
-
-            if self.options.nullable {
-                let mut null_check = Tokens::new();
-
-                null_check.push(toks!["if (", o, " != null) {"]);
-                null_check.nested("return false;");
-                null_check.push("}");
-
-                let mut field_check = Tokens::new();
-
-                field_check.push(toks!["if (", field_toks, " == null) {"]);
-                field_check.nested(null_check);
-                field_check.push("} else {");
-                field_check.nested(equals_check);
-                field_check.push("}");
-
-                equals.body.push(field_check);
-            } else {
-                equals.body.push(equals_check);
-            }
-        }
-
-        equals.body.push("return true;");
-        equals.body = equals.body.join_line_spacing();
-
-        equals
-    }
-
-    fn build_to_string<F>(&self, name: Cons<'el>, fields: F) -> Method<'el>
-    where
-        F: IntoIterator<Item = &'el Loc<JavaField<'static>>>,
-    {
-        let mut to_string = Method::new("toString");
-
-        to_string.annotation(Override);
-        to_string.returns = self.string.clone();
-
-        to_string.body.push(toks![
-            "final ",
-            self.string_builder.clone(),
-            " b = new ",
-            self.string_builder.clone(),
-            "();",
-        ]);
-
-        let mut body = Tokens::new();
-
-        for field in fields {
-            let field_toks = toks!["this.", field.spec.var()];
-
-            let format = match field.spec.ty() {
-                java @ Java::Primitive { .. } => {
-                    toks![java.as_boxed(), ".toString(", field_toks.clone(), ")"]
-                }
-                _ => {
-                    let format = toks![field_toks.clone(), ".toString()"];
-
-                    if self.options.nullable {
-                        toks![
-                            field_toks.clone(),
-                            " == null ? ",
-                            self.null_string.clone(),
-                            " : ",
-                            format,
-                        ]
-                    } else {
-                        format
+                    RpVariants::Number { variants } => {
+                        #(for variant in variants join (,#<push>) {
+                            #(self.to_upper.convert(variant.ident()))(#(match body.enum_type.as_primitive() {
+                                Some(Primitive::Long) => #(display(&variant.value))L,
+                                _ => #(display(&variant.value)),
+                            }))
+                        })
                     }
+                });
+
+                #(&body.enum_type) value;
+
+                #(&body.ident)(final #(&body.enum_type) value) {
+                    this.value = value;
                 }
-            };
 
-            let field_key = Rc::new(format!("{}=", field.name())).quoted();
-
-            body.push({
-                let mut t = Tokens::new();
-                t.push(toks!["b.append(", field_key, ");"]);
-                t.push(toks!["b.append(", format, ");"]);
-                t
-            });
-        }
-
-        // join each field with ", "
-        let mut class_appends = Tokens::new();
-
-        class_appends.push(toks!["b.append(", name.quoted(), ");"]);
-        class_appends.push(toks!["b.append(", "(".quoted(), ");",]);
-
-        let sep = toks![Element::PushSpacing, "b.append(", ", ".quoted(), ");"];
-        class_appends.push(body.join(sep));
-        class_appends.push(toks!["b.append(", ")".quoted(), ");",]);
-
-        to_string.body.push(class_appends);
-        to_string.body.push(toks!["return b.toString();"]);
-        to_string.body = to_string.body.join_line_spacing();
-
-        to_string
-    }
-
-    fn add_class<F>(
-        &self,
-        name: Cons<'el>,
-        fields: F,
-        methods: &mut Vec<Method<'el>>,
-        constructors: &mut Vec<Constructor<'el>>,
-    ) -> Result<()>
-    where
-        F: Clone + IntoIterator<Item = &'el Loc<JavaField<'static>>>,
-    {
-        if self.options.build_constructor {
-            constructors.push(self.build_constructor(fields.clone()));
-        }
-
-        if self.options.build_hash_code {
-            methods.push(self.build_hash_code(fields.clone()));
-        }
-
-        if self.options.build_equals {
-            methods.push(self.build_equals(name.clone(), fields.clone()));
-        }
-
-        if self.options.build_to_string {
-            methods.push(self.build_to_string(name.clone(), fields.clone()));
+                #(for i in inner join (#<line>) => #i)
+            }
         }
 
         Ok(())
     }
 
-    fn build_enum_constructor(&self, fields: &[Field<'el>]) -> Constructor<'el> {
-        use self::Modifier::*;
+    fn process_tuple(&self, t: &mut java::Tokens, depth: usize, body: &RpTupleBody) -> Result<()> {
+        let mut inner = Vec::new();
+        let mut annotations = Vec::new();
+        self.options
+            .gen
+            .class(&body.ident, &body.fields, &mut inner, &mut annotations);
+        self.options
+            .gen
+            .tuple(&body.ident, &body.fields, &mut inner, &mut annotations);
 
-        let mut c = Constructor::new();
-        c.modifiers = vec![Modifier::Private];
+        quote_in! { *t =>
+            #(java::block_comment(&body.comment))
+            #(for a in annotations join (#<push>) => #a)
+            public #(if depth > 0 => static) class #(&body.ident) {
+                #(for f in &body.fields join (#<push>) {
+                    #(self.field(f));
+                })
 
-        for field in fields {
-            let mut argument = Argument::new(field.ty(), field.var());
-            argument.modifiers = vec![Final];
+                #(self.constructor(&body.ident, &body.fields))
 
-            if !self.options.nullable {
-                if let Some(non_null) = self.require_non_null(&field, &argument, "value".into()) {
-                    c.body.push(non_null);
-                }
+                #(for f in &body.fields join (#<line>) {
+                    #(self.getter(f, false))
+
+                    #(self.setter(f, false))
+                })
+
+                #(self.to_string(&body.ident, &body.fields))
+
+                #(self.hash_code(&body.fields))
+
+                #(self.equals(&body.ident, &body.fields))
+
+                #(for i in inner join (#<line>) => #i)
+
+                #(code(&body.codes))
+
+                #(for d in &body.decls join (#<line>) {
+                    #(ref t => self.process_decl(t, depth + 1, d)?)
+                })
             }
-
-            c.body
-                .push(toks!["this.", field.var(), " = ", argument.var(), ";",]);
-
-            c.arguments.push(argument);
         }
 
-        c
+        Ok(())
     }
 
-    fn enum_from_value_method(&self, name: Cons<'el>, field: &Field<'static>) -> Method<'el> {
-        use self::Modifier::*;
+    fn process_type(&self, t: &mut java::Tokens, depth: usize, body: &RpTypeBody) -> Result<()> {
+        let mut inner = Vec::new();
+        let mut annotations = Vec::new();
 
-        let argument = Argument::new(field.ty(), field.var());
+        self.options
+            .gen
+            .class(&body.ident, &body.fields, &mut inner, &mut annotations);
 
-        // use naming convention that won't be generated
-        let cond = match field.ty() {
-            Java::Primitive { .. } => toks!["v_value.", field.var(), " == ", argument.var()],
-            _ => toks!["v_value.", field.var(), ".equals(", argument.var(), ")"],
+        quote_in! { *t =>
+            #(java::block_comment(&body.comment))
+            #(for a in annotations join (#<push>) => #a)
+            public #(if depth > 0 => static) class #(&body.ident) {
+                #(for f in &body.fields join (#<push>) {
+                    #(self.field(f));
+                })
+
+                #(self.constructor(&body.ident, &body.fields))
+
+                #(for f in &body.fields join (#<line>) {
+                    #(self.getter(f, false))
+
+                    #(self.setter(f, false))
+                })
+
+                #(self.to_string(&body.ident, &body.fields))
+
+                #(self.hash_code(&body.fields))
+
+                #(self.equals(&body.ident, &body.fields))
+
+                #(for i in inner join (#<line>) => #i)
+
+                #(code(&body.codes))
+
+                #(for d in &body.decls join (#<line>) {
+                    #(ref t => self.process_decl(t, depth + 1, d)?)
+                })
+            }
         };
 
-        let mut return_matched = Tokens::new();
-
-        return_matched.push(toks!["if (", cond, ") {"]);
-        return_matched.nested(toks!["return v_value;"]);
-        return_matched.push("}");
-
-        let mut value_loop = Tokens::new();
-
-        value_loop.push(toks![
-            "for (final ",
-            name.clone(),
-            " v_value : ",
-            "values()) {",
-        ]);
-
-        value_loop.nested(return_matched);
-        value_loop.push("}");
-
-        let mut from_value = Method::new("fromValue");
-
-        from_value.modifiers = vec![Public, Static];
-        from_value.returns = local(name.clone());
-
-        let throw = toks![
-            "throw new ",
-            self.illegal_argument.clone(),
-            "(",
-            argument.var().quoted(),
-            ");",
-        ];
-
-        from_value.body.push(value_loop);
-        from_value.body.push(throw);
-        from_value.body = from_value.body.join_line_spacing();
-
-        from_value.arguments.push(argument);
-
-        from_value
-    }
-
-    fn enum_to_value_method(&self, field: &Field<'el>) -> Method<'el> {
-        let mut to_value = Method::new("toValue");
-        to_value.returns = field.ty();
-        to_value.body.push(toks!["return this.", field.var(), ";"]);
-        to_value
-    }
-
-    fn process_enum(&self, body: &'el RpEnumBody) -> Result<Enum<'el>> {
-        let mut spec = Enum::new(body.ident.clone());
-
-        spec.fields
-            .push(self.new_field_spec(&body.enum_type, "value"));
-
-        match body.variants {
-            core::RpVariants::String { ref variants } => {
-                for variant in variants {
-                    let name = self.variant_naming.convert(variant.ident());
-                    push!(
-                        spec.variants,
-                        name,
-                        "(",
-                        variant.value.clone().quoted(),
-                        ")"
-                    );
-                }
-            }
-            core::RpVariants::Number { ref variants } => {
-                for variant in variants {
-                    let name = self.variant_naming.convert(variant.ident());
-
-                    let value = match body.enum_type {
-                        java::LONG => format!("{}L", variant.value),
-                        _ => variant.value.to_string(),
-                    };
-
-                    push!(spec.variants, name, "(", value, ")");
-                }
-            }
-        }
-
-        spec.constructors
-            .push(self.build_enum_constructor(&spec.fields));
-
-        let variant_field = java::Field::new(body.enum_type.clone(), "value");
-
-        let mut from_value = self.enum_from_value_method(spec.name(), &variant_field);
-        let mut to_value = self.enum_to_value_method(&variant_field);
-
-        call_codegen!(
-            &self.options.enum_generators,
-            EnumAdded {
-                body: body,
-                spec: &mut spec,
-                from_value: &mut from_value,
-                to_value: &mut to_value,
-            }
-        );
-
-        spec.methods.push(from_value);
-        spec.methods.push(to_value);
-        spec.body.push_unless_empty(code(&body.codes));
-
-        Ok(spec)
-    }
-
-    fn process_tuple(&self, body: &'el RpTupleBody) -> Result<Class<'el>> {
-        let mut spec = Class::new(body.ident.clone());
-
-        self.add_class(
-            spec.name(),
-            &body.fields,
-            &mut spec.methods,
-            &mut spec.constructors,
-        )?;
-
-        for field in &body.fields {
-            if self.options.build_getters {
-                let mut getter = field.getter();
-
-                call_codegen!(
-                    &self.options.getter_generators,
-                    GetterAdded {
-                        name: field.name(),
-                        getter: &mut getter,
-                    }
-                );
-
-                spec.methods.push(getter);
-            }
-
-            if self.options.build_setters {
-                if let Some(setter) = field.setter() {
-                    spec.methods.push(setter);
-                }
-            }
-
-            spec.fields.push(field.spec.clone());
-        }
-
-        spec.body.push_unless_empty(code(&body.codes));
-
-        call_codegen!(
-            &self.options.tuple_generators,
-            TupleAdded { spec: &mut spec }
-        );
-
-        Ok(spec)
-    }
-
-    fn process_type(&self, body: &'el RpTypeBody) -> Result<Class<'el>> {
-        let mut spec = Class::new(body.ident.clone());
-        let names: Vec<_> = body.fields.iter().map(|f| f.name()).collect();
-
-        for field in &body.fields {
-            spec.fields.push(field.spec.clone());
-
-            if self.options.build_getters {
-                let mut getter = field.getter();
-
-                call_codegen!(
-                    &self.options.getter_generators,
-                    GetterAdded {
-                        name: field.name(),
-                        getter: &mut getter,
-                    }
-                );
-
-                spec.methods.push(getter);
-            }
-
-            if self.options.build_setters {
-                if let Some(setter) = field.setter() {
-                    spec.methods.push(setter);
-                }
-            }
-        }
-
-        spec.body.push_unless_empty(code(&body.codes));
-
-        self.add_class(
-            spec.name(),
-            &body.fields,
-            &mut spec.methods,
-            &mut spec.constructors,
-        )?;
-
-        for generator in &self.options.class_generators {
-            generator.generate(ClassAdded {
-                names: &names,
-                spec: &mut spec,
-                interface: None,
-            })?;
-        }
-
-        Ok(spec)
+        Ok(())
     }
 
     fn process_interface(
         &self,
+        t: &mut java::Tokens,
         depth: usize,
-        body: &'el RpInterfaceBody,
-    ) -> Result<Interface<'el>> {
-        use self::Modifier::*;
-        let mut spec = Interface::new(body.ident.clone());
-
-        for field in &body.fields {
-            let mut m = field.getter_without_body();
-            m.modifiers = vec![];
-            spec.methods.push(m);
-        }
-
-        spec.body.push_unless_empty(code(&body.codes));
-
-        for sub_type in &body.sub_types {
-            let mut class = Class::new(sub_type.ident.clone());
-            class.modifiers = vec![Public, Static];
-
-            class.body.push_unless_empty(code(&sub_type.codes));
-
-            class.implements = vec![local(spec.name())];
-
-            // override methods for interface fields.
-            for field in &body.fields {
-                if self.options.build_getters {
-                    let mut getter = field.getter();
-                    getter.annotation(Override);
-
-                    call_codegen!(
-                        &self.options.getter_generators,
-                        GetterAdded {
-                            name: field.name(),
-                            getter: &mut getter,
-                        }
-                    );
-
-                    class.methods.push(getter);
-                }
-
-                if self.options.build_setters {
-                    if let Some(mut setter) = field.setter() {
-                        setter.annotation(Override);
-                        class.methods.push(setter);
-                    }
-                }
-            }
-
-            for field in &sub_type.fields {
-                if self.options.build_getters {
-                    let mut getter = field.getter();
-
-                    call_codegen!(
-                        &self.options.getter_generators,
-                        GetterAdded {
-                            name: field.name(),
-                            getter: &mut getter,
-                        }
-                    );
-
-                    class.methods.push(getter);
-                }
-
-                if self.options.build_setters {
-                    if let Some(setter) = field.setter() {
-                        class.methods.push(setter);
-                    }
-                }
-            }
-
-            let mut fields = body.fields.iter().collect::<Vec<_>>();
-            fields.extend(sub_type.fields.iter());
-            let names: Vec<_> = fields.iter().map(|f| f.name()).collect();
-
-            class.fields.extend(fields.iter().map(|f| f.spec.clone()));
-
-            self.add_class(
-                class.name(),
-                fields,
-                &mut class.methods,
-                &mut class.constructors,
-            )?;
-
-            for generator in &self.options.class_generators {
-                generator.generate(ClassAdded {
-                    names: &names,
-                    spec: &mut class,
-                    interface: Some(body),
-                })?;
-            }
-
-            // Process sub-type declarations.
-            for d in &sub_type.decls {
-                self.process_decl(d, depth + 1, &mut class.body)?;
-            }
-
-            spec.body.push(class);
-        }
-
-        for generator in &self.options.interface_generators {
-            generator.generate(InterfaceAdded {
-                body: body,
-                spec: &mut spec,
-            })?;
-        }
-
-        Ok(spec)
-    }
-
-    fn process_service(&self, body: &'el RpServiceBody) -> Result<Interface<'el>> {
-        let mut spec = Interface::new(body.ident.as_str());
-
-        for generator in &self.options.service_generators {
-            generator.generate(ServiceAdded {
-                body: body,
-                spec: &mut spec,
-            })?;
-        }
-
-        Ok(spec)
-    }
-
-    pub fn process_decl(
-        &self,
-        decl: &'el RpDecl,
-        depth: usize,
-        container: &mut Tokens<'el, Java<'el>>,
+        body: &RpInterfaceBody,
     ) -> Result<()> {
-        use crate::core::RpDecl::*;
+        let mut annotations = Vec::new();
+        let mut inner = Vec::new();
+        self.options.gen.interface(
+            &body.ident,
+            &body.sub_types,
+            &body.sub_type_strategy,
+            &mut annotations,
+            &mut inner,
+        );
 
-        match *decl {
-            Interface(ref interface) => {
-                let mut spec = self.process_interface(depth + 1, interface)?;
+        quote_in! { *t =>
+            #(java::block_comment(&body.comment))
+            #(for a in annotations join (#<push>) => #a)
+            public #(if depth > 0 => static) interface #(&body.ident) {
+                #(for f in &body.fields join (#<line>) {
+                    #(self.getter_without_body(f))
 
-                for d in &interface.decls {
-                    self.process_decl(d, depth + 1, &mut spec.body)?;
-                }
+                    #(self.setter_without_body(f))
+                })
 
-                container.push(spec);
-            }
-            Type(ref ty) => {
-                let mut spec = self.process_type(ty)?;
+                #(code(&body.codes))
 
-                // Inner classes should be static.
-                if depth > 0 {
-                    spec.modifiers.push(Modifier::Static);
-                }
+                #(for s in &body.sub_types join (#<line>) {
+                    #(ref t {
+                        let fields = body.fields.iter().chain(&s.fields).cloned().collect::<Vec<_>>();
+                        let mut inner = Vec::new();
+                        let mut annotations = Vec::new();
 
-                for d in &ty.decls {
-                    self.process_decl(d, depth + 1, &mut spec.body)?;
-                }
+                        self.options.gen.class(&s.ident, &fields, &mut inner, &mut annotations);
+                        self.options.gen
+                            .interface_sub_type(&body.sub_type_strategy, &mut annotations);
 
-                container.push(spec);
-            }
-            Tuple(ref ty) => {
-                let mut spec = self.process_tuple(ty)?;
+                        quote_in!{*t =>
+                            #(java::block_comment(&s.comment))
+                            #(for a in annotations join (#<push>) => #a)
+                            public static class #(&s.ident) implements #(&body.ident) {
+                                #(for f in &fields join (#<push>) {
+                                    #(self.field(f));
+                                })
 
-                // Inner classes should be static.
-                if depth > 0 {
-                    spec.modifiers.push(Modifier::Static);
-                }
+                                #(self.constructor(&s.ident, &fields))
 
-                for d in &ty.decls {
-                    self.process_decl(d, depth + 1, &mut spec.body)?;
-                }
+                                #(for f in &body.fields join (#<line>) {
+                                    #(self.getter(f, true))
 
-                container.push(spec);
-            }
-            Enum(ref ty) => {
-                let mut spec = self.process_enum(ty)?;
+                                    #(self.setter(f, true))
+                                })
 
-                // Inner classes should be static.
-                if depth > 0 {
-                    spec.modifiers.push(Modifier::Static);
-                }
+                                #(for f in &s.fields join (#<line>) {
+                                    #(self.getter(f, false))
 
-                container.push(spec);
-            }
-            Service(ref ty) => {
-                let mut spec = self.process_service(ty)?;
+                                    #(self.setter(f, false))
+                                })
 
-                // Inner classes should be static.
-                if depth > 0 {
-                    spec.modifiers.push(Modifier::Static);
-                }
+                                #(self.to_string(&s.ident, &fields))
 
-                for d in &ty.decls {
-                    self.process_decl(d, depth + 1, &mut spec.body)?;
-                }
+                                #(self.hash_code(&fields))
 
-                container.push(spec);
+                                #(self.equals(&s.ident, &fields))
+
+                                #(for i in inner join (#<line>) => #i)
+
+                                #(code(&s.codes))
+
+                                #(for d in &s.decls join (#<line>) {
+                                    #(ref t => self.process_decl(t, depth + 2, d)?)
+                                })
+                            }
+                        }
+                    })
+                });
+
+                #(for d in &body.decls join (#<line>) {
+                    #(ref t => self.process_decl(t, depth + 1, d)?)
+                })
+
+                #(for i in inner join (#<line>) => #i)
             }
         }
 
         Ok(())
     }
+
+    fn process_service(&self, _: &mut java::Tokens, _: usize, _: &RpServiceBody) -> Result<()> {
+        Ok(())
+    }
+
+    fn process_decl(&self, t: &mut java::Tokens, depth: usize, decl: &RpDecl) -> Result<()> {
+        match decl {
+            RpDecl::Interface(interface) => {
+                self.process_interface(t, depth, interface)?;
+            }
+            RpDecl::Type(ty) => {
+                self.process_type(t, depth, ty)?;
+            }
+            RpDecl::Tuple(ty) => {
+                self.process_tuple(t, depth, ty)?;
+            }
+            RpDecl::Enum(ty) => {
+                self.process_enum(t, depth, ty)?;
+            }
+            RpDecl::Service(ty) => {
+                self.process_service(t, depth, ty)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Create a new setter method without a body.
+    fn setter_without_body<'f>(&'f self, f: &'f Field) -> impl FormatInto<Java> + 'f {
+        from_fn(move |t| {
+            if !self.options.build_setters || self.options.immutable {
+                return;
+            }
+
+            let name = self.to_upper.convert(&f.ident);
+
+            quote_in! {*t =>
+                public void set#name(final #(&f.ty) #(f.safe_ident()));
+            }
+        })
+    }
+
+    fn setter<'f>(&'f self, f: &'f Field, is_override: bool) -> impl FormatInto<Java> + 'f {
+        from_fn(move |t| {
+            if !self.options.build_setters || self.options.immutable {
+                return;
+            }
+
+            let ident = f.safe_ident();
+            let name = self.to_upper.convert(&f.ident);
+
+            quote_in! { *t =>
+                #(if is_override => @Override)
+                public void set#name(final #(&f.ty) #ident) {
+                    this.#ident = #ident;
+                }
+            }
+        })
+    }
+
+    /// Create a new getter method without a body.
+    fn getter_without_body<'f>(&'f self, f: &'f Field) -> impl FormatInto<Java> + 'f {
+        from_fn(move |t| {
+            if !self.options.build_getters {
+                return;
+            }
+
+            let name = self.to_upper.convert(&f.ident);
+
+            // Avoid `getClass`, a common built-in method for any Object.
+            let name = match name.as_str() {
+                "Class" => "Class_",
+                accessor => accessor,
+            };
+
+            quote_in! {*t =>
+                #(java::block_comment(&f.comment))
+                public #(f.field_type()) get#name();
+            }
+        })
+    }
+
+    /// Build a new complete getter.
+    fn getter<'f>(&'f self, f: &'f Loc<Field>, is_override: bool) -> impl FormatInto<Java> + 'f {
+        from_fn(move |t| {
+            if !self.options.build_getters {
+                return;
+            }
+
+            let mut ann = Vec::new();
+            self.options.gen.class_getter(f, &mut ann);
+
+            let ident = f.safe_ident();
+            let name = self.to_upper.convert(&f.ident);
+
+            // Avoid `getClass`, a common built-in method for any Object.
+            let name = match name.as_str() {
+                "Class" => "Class_",
+                accessor => accessor,
+            };
+
+            quote_in! { *t =>
+                #(java::block_comment(&f.comment))
+                #(for a in ann join (#<push>) => #a)
+                #(if is_override => @Override)
+                public #(f.field_type()) get#name() {
+                    return this.#ident;
+                }
+            }
+        })
+    }
+
+    /// Build a toString function.
+    fn to_string<'f>(
+        &'f self,
+        name: &'f str,
+        fields: &'f [Loc<Field>],
+    ) -> impl FormatInto<Java> + 'f {
+        from_fn(move |t| {
+            if !self.options.build_to_string {
+                return;
+            }
+
+            if fields.is_empty() {
+                quote_in! { *t =>
+                    @Override
+                    public String toString() {
+                        return #_(#name());
+                    }
+                }
+
+                return;
+            }
+
+            let string_builder = &self.string_builder;
+
+            quote_in! { *t =>
+                @Override
+                public String toString() {
+                    final #string_builder b = new #string_builder();
+
+                    b.append(#_(#name#("(")));
+                    #(for f in fields join (#<push>b.append(", ");#<push>) {
+                        b.append(#_(#(&f.ident)=));
+                        b.append(#(f.to_string(quote!(this.#(f.safe_ident())))));
+                    })
+                    b.append(")");
+
+                    return b.toString();
+                }
+            }
+        })
+    }
+
+    /// Build a hashCode function.
+    fn hash_code<'f>(&'f self, fields: &'f [Loc<Field>]) -> impl FormatInto<Java> + 'f {
+        from_fn(move |t| {
+            if !self.options.build_hash_code {
+                return;
+            }
+
+            let string_builder = &self.string_builder;
+
+            quote_in! { *t =>
+                @Override
+                public int hashCode() {
+                    int result = 1;
+                    final #string_builder b = new #string_builder();
+                    #(for f in fields join (#<push>) {
+                        result = result * 31 + #(f.hash_code(quote!(this.#(f.safe_ident()))));
+                    })
+                    return result;
+                }
+            }
+        })
+    }
+
+    /// Build a equals function.
+    fn equals<'f>(&'f self, name: &'f str, fields: &'f [Loc<Field>]) -> impl FormatInto<Java> + 'f {
+        from_fn(move |t| {
+            if !self.options.build_equals {
+                return;
+            }
+
+            quote_in! { *t =>
+                @Override
+                public boolean equals(final Object other_) {
+                    if (other_ == null) {
+                        return false;
+                    }
+
+                    if (!(other_ instanceof #name)) {
+                        return false;
+                    }
+
+                    @SuppressWarnings("unchecked")
+                    final #name o_ = (#name)other_;
+
+                    #(for f in fields join (#<line>) {
+                        if (#(f.not_equals(quote!(this.#(f.safe_ident())), quote!(o_.#(f.safe_ident()))))) {
+                            return false;
+                        }
+                    })
+
+                    return true;
+                }
+            }
+        })
+    }
+}
+
+/// Helper macro to implement listeners opt loop.
+fn code(codes: &[Loc<RpCode>]) -> impl FormatInto<Java> + '_ {
+    from_fn(move |t| {
+        for c in codes {
+            if let RpContext::Java { imports, .. } = &c.context {
+                for import in imports {
+                    if let Some(split) = import.rfind('.') {
+                        let (package, name) = import.split_at(split);
+                        let name = &name[1..];
+                        t.register(java::import(package, name));
+                    }
+                }
+
+                quote_in! {*t =>
+                    #(for line in &c.lines join (#<push>) => #line)
+                }
+            }
+        }
+    })
 }

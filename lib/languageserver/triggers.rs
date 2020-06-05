@@ -1,7 +1,6 @@
 //! Data structure to handle location triggers.
-use crate::core::Position;
 use crate::models::Range;
-use crate::ty;
+use core::Position;
 use std::collections::{BTreeMap, Bound};
 
 #[derive(Debug, Clone)]
@@ -50,7 +49,7 @@ impl<T> Triggers<T> {
 #[cfg(test)]
 mod tests {
     use super::Triggers;
-    use crate::core::Position;
+    use core::Position;
 
     #[test]
     fn test_trigger() {

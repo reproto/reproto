@@ -1,105 +1,136 @@
-//! Code generator for the given path.
-
-use crate::core::errors::Result;
-use crate::core::Handle;
-use crate::flavored::{RpEnumBody, RpInterfaceBody, RpServiceBody};
-use crate::Options;
-use genco::java::{Class, Enum, Interface, Method};
+use crate::flavored::{Field, RpSubType, RpSubTypeStrategy, Type};
+use core::Loc;
+use genco::lang::java;
 use std::rc::Rc;
 
-/// Generate helper implementations for codegen traits.
-macro_rules! codegen {
-    ($type:tt, $e:ty) => {
-        impl<T> $type for Rc<T>
-        where
-            T: $type,
-        {
-            fn generate(&self, e: $e) -> Result<()> {
-                self.as_ref().generate(e)
+macro_rules! decl_codegen {
+    (
+        $(
+        $(#[$ty_m:meta])*
+        $name:ident<$lt:lifetime> {
+            $($(#[$m:meta])* $vis:vis $field:ident: $ty:ty,)*
+        }
+        )*
+    ) => {
+        $(
+        $(#[$ty_m])*
+        pub(crate) mod $name {
+            use super::*;
+
+            pub(crate) trait Codegen {
+                fn generate(&self, e: Args<'_>);
+            }
+
+            pub(crate) struct Args<$lt> {
+                $(
+                    $(#[$m])*
+                    $vis $field: $ty,
+                )*
             }
         }
-    };
+        )*
+
+        #[derive(Default)]
+        pub struct Generators {
+            $(pub(crate) $name: Vec<Rc<dyn $name::Codegen>>,)*
+        }
+
+        impl Generators {
+            $(
+            $(#[$ty_m])*
+            pub(crate) fn $name<$lt>(&self, $($field: $ty,)*) {
+                for gen in &self.$name {
+                    gen.generate($name::Args {
+                        $($field,)*
+                    });
+                }
+            }
+            )*
+        }
+    }
 }
 
-pub struct GetterAdded<'a, 'el: 'a> {
-    pub name: &'el str,
-    pub getter: &'a mut Method<'el>,
+decl_codegen! {
+    /// Generator used for classes.
+    class<'a> {
+        /// The name of the type being generated for.
+        pub(crate) ident: &'a str,
+        /// Fields associated with class.
+        pub(crate) fields: &'a [Loc<Field>],
+        /// Additional declarations.
+        pub(crate) inner: &'a mut Vec<java::Tokens>,
+        /// Annotations to add to the class.
+        pub(crate) annotations: &'a mut Vec<java::Tokens>,
+    }
+
+    /// Generator used for interfaces.
+    interface<'a> {
+        /// The identifier for the interface.
+        pub(crate) ident: &'a str,
+        /// Sub types associated with the interface.
+        pub(crate) sub_types: &'a [Loc<RpSubType>],
+        /// The sub type strategy associated with the interface.
+        pub(crate) sub_type_strategy: &'a RpSubTypeStrategy,
+        /// Annotations to add to the interface.
+        pub(crate) annotations: &'a mut Vec<java::Tokens>,
+        /// Innter content to add to the interface class.
+        pub(crate) inner: &'a mut Vec<java::Tokens>,
+    }
+
+    /// Generator used for interface sub-types.
+    interface_sub_type<'a> {
+        /// The sub type strategy associated with the interface.
+        pub(crate) sub_type_strategy: &'a RpSubTypeStrategy,
+        /// Annotations to add to the interface.
+        pub(crate) annotations: &'a mut Vec<java::Tokens>,
+    }
+
+    /// Generator used for class constructors.
+    class_constructor<'a> {
+        /// Fields associated with constructor.
+        pub(crate) fields: &'a [Loc<Field>],
+        /// Annotations to add to the class.
+        pub(crate) annotations: &'a mut Vec<java::Tokens>,
+    }
+
+    tuple<'a> {
+        /// The name of the type being generated for.
+        pub(crate) ident: &'a str,
+        /// Fields associated with tuple.
+        pub(crate) fields: &'a [Loc<Field>],
+        /// Additional inner declarations.
+        pub(crate) inner: &'a mut Vec<java::Tokens>,
+        /// Annotations to add to the class.
+        pub(crate) annotations: &'a mut Vec<java::Tokens>,
+    }
+
+    enum_ty<'a> {
+        /// The name of the type being generated for.
+        pub(crate) ident: &'a str,
+        /// The type of the enum.
+        pub(crate) enum_type: &'a Type,
+        /// Additional declarations generated.
+        pub(crate) inner: &'a mut Vec<java::Tokens>,
+    }
+
+    class_constructor_arg<'a> {
+        /// Field associated with the constructor argument.
+        pub(crate) field: &'a Loc<Field>,
+        /// Annotations to add to the class.
+        pub(crate) annotations: &'a mut Vec<java::Tokens>,
+    }
+
+    class_field<'a> {
+        /// Field declaration being generated for.
+        pub(crate) field: &'a Loc<Field>,
+        /// Annotations to add to the class field.
+        pub(crate) annotations: &'a mut Vec<java::Tokens>,
+    }
+
+    class_getter<'a> {
+        /// Field declaration being generated for.
+        pub(crate) field: &'a Loc<Field>,
+        /// Annotations to add to the class field.
+        pub(crate) annotations: &'a mut Vec<java::Tokens>,
+    }
 }
-
-pub struct ClassAdded<'a, 'el: 'a> {
-    pub names: &'a [&'el str],
-    pub spec: &'a mut Class<'el>,
-    pub interface: Option<&'a RpInterfaceBody>,
-}
-
-pub struct TupleAdded<'a, 'el: 'a> {
-    pub spec: &'a mut Class<'el>,
-}
-
-pub struct EnumAdded<'a, 'el: 'a> {
-    pub body: &'el RpEnumBody,
-    pub spec: &'a mut Enum<'el>,
-    pub from_value: &'a mut Method<'el>,
-    pub to_value: &'a mut Method<'el>,
-}
-
-pub struct InterfaceAdded<'a, 'el: 'a> {
-    pub body: &'el RpInterfaceBody,
-    pub spec: &'a mut Interface<'el>,
-}
-
-pub struct ServiceAdded<'a, 'el: 'a> {
-    pub body: &'el RpServiceBody,
-    pub spec: &'a mut Interface<'el>,
-}
-
-pub struct Configure<'a> {
-    pub options: &'a mut Options,
-}
-
-pub trait Codegen {
-    /// Build the given piece of code in the given handle.
-    fn generate(&self, handle: &dyn Handle) -> Result<()>;
-}
-
-/// Generate service-based code.
-pub trait ServiceCodegen {
-    fn generate(&self, e: ServiceAdded) -> Result<()>;
-}
-
-codegen!(ServiceCodegen, ServiceAdded);
-
-/// Generate code for getters.
-pub trait GetterCodegen {
-    fn generate(&self, e: GetterAdded) -> Result<()>;
-}
-
-codegen!(GetterCodegen, GetterAdded);
-
-/// Generate class-based code.
-pub trait ClassCodegen {
-    fn generate(&self, e: ClassAdded) -> Result<()>;
-}
-
-codegen!(ClassCodegen, ClassAdded);
-
-/// Generate tuple-based code.
-pub trait TupleCodegen {
-    fn generate(&self, e: TupleAdded) -> Result<()>;
-}
-
-codegen!(TupleCodegen, TupleAdded);
-
-/// Generate interface-based code.
-pub trait InterfaceCodegen {
-    fn generate(&self, e: InterfaceAdded) -> Result<()>;
-}
-
-codegen!(InterfaceCodegen, InterfaceAdded);
-
-/// Generate enum-based code.
-pub trait EnumCodegen {
-    fn generate(&self, e: EnumAdded) -> Result<()>;
-}
-
-codegen!(EnumCodegen, EnumAdded);

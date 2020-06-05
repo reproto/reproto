@@ -1,0 +1,8 @@
+name: js
+lang: js
+output: generated
+
+test:
+  - npm --version
+  - node --version
+  - make --version

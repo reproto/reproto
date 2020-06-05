@@ -1,10 +1,7 @@
 //! Update action that synchronizes all repositories.
 
-#[cfg(feature = "languageserver")]
-extern crate reproto_languageserver as ls;
-
-use crate::core::errors::Result;
 use clap::{App, Arg, ArgMatches, SubCommand};
+use core::errors::Result;
 use log;
 use std::fs;
 use std::io;
@@ -46,7 +43,7 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
             None => None,
         };
 
-        ls::server(log, input, output, level)?;
+        languageserver::server(log, input, output, level)?;
         Ok(())
     }
 

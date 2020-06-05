@@ -1,17 +1,17 @@
 //! Processor trait.
 
 use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
-use crate::core::errors::*;
-use crate::core::flavored::{RpDecl, RpField, RpName, RpType, RpVersionedPackage};
-use crate::core::{self, AsPackage, CoreFlavor, Loc};
 use crate::doc_builder::DocBuilder;
 use crate::escape::Escape;
 use crate::macros::FormatAttribute;
 use crate::rendering::markdown_to_html;
-use crate::trans::Translated;
+use core::errors::*;
+use core::flavored::{RpDecl, RpField, RpName, RpType, RpVersionedPackage};
+use core::{self, AsPackage, CoreFlavor, Loc};
 use std::ops::DerefMut;
 use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
+use trans::Translated;
 
 pub trait Processor<'session> {
     /// Access the current builder.
@@ -106,7 +106,7 @@ pub trait Processor<'session> {
     }
 
     fn write_type(&self, ty: &RpType) -> Result<()> {
-        use crate::core::RpType::*;
+        use core::RpType::*;
 
         write!(self.out(), "<span class=\"ty\">")?;
 
@@ -159,7 +159,7 @@ pub trait Processor<'session> {
             html!(self, span {class => "kind"} ~ "field");
 
             html!(self, span {class => "field-key"} => {
-                html!(self, span {class => "field-id"} ~ Escape(field.ident()));
+                html!(self, span {class => "field-id"} ~ Escape(&field.ident));
 
                 if field.is_optional() {
                     html!(self, span {class => "field-modifier"} ~ "?");
@@ -170,7 +170,7 @@ pub trait Processor<'session> {
 
             self.write_type(&field.ty)?;
 
-            if field.ident() != field.name() {
+            if field.ident != field.name() {
                 html!(self, span {class => "keyword"} ~ "as");
                 html!(self, span {class => "field-name"} ~ Escape(field.name()));
             }

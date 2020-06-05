@@ -279,6 +279,7 @@ where
 impl<F: 'static> fmt::Display for RpDecl<F>
 where
     F: Flavor,
+    F::Name: fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::RpDecl::*;

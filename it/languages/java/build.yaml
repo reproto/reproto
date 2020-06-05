@@ -1,0 +1,13 @@
+container: maven:3-openjdk-14
+
+prepare:
+  - type: run
+    command: mvn package dependency:build-classpath -Dmdep.outputFile=.classpath
+
+steps:
+  - type: run
+    command: mvn -o package
+
+run:
+  type: run
+  command: java -cp `cat .classpath`:target/classes Test

@@ -1,0 +1,5 @@
+container: google/dart:latest
+
+run:
+  type: run
+  command: dart lib/main.dart

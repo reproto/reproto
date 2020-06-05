@@ -1,5 +1,5 @@
-use crate::core::errors::Result;
-use crate::core::{Flavor, RpDecl, RpFile, RpName, RpReg};
+use core::errors::Result;
+use core::{Flavor, RpDecl, RpFile, RpName, RpReg};
 use linked_hash_map::LinkedHashMap;
 use std::collections::{BTreeMap, LinkedList};
 

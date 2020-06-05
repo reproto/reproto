@@ -1,33 +1,15 @@
-#[macro_use]
-extern crate genco;
-#[macro_use]
-extern crate reproto_backend as backend;
-#[macro_use]
-extern crate reproto_core as core;
-#[macro_use]
-extern crate reproto_manifest as manifest;
-extern crate reproto_naming as naming;
-extern crate reproto_trans as trans;
-extern crate serde;
-#[allow(unused)]
-#[macro_use]
-extern crate serde_derive;
-extern crate toml;
-
-#[macro_use]
-mod utils;
 mod compiler;
 mod flavored;
+mod utils;
 
-use crate::backend::IntoBytes;
 use crate::compiler::Compiler;
-use crate::core::errors::Result;
-use crate::core::{CoreFlavor, Handle, Loc, RpField, RpPackage, Span};
-use crate::manifest::{Lang, Manifest, NoModule, TryFromToml};
-use crate::trans::Session;
-use genco::{JavaScript, Tokens};
+use core::errors::Result;
+use core::{CoreFlavor, Handle};
+use genco::prelude::*;
+use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
 use std::path::Path;
+use trans::Session;
 
 const TYPE_SEP: &str = "_";
 const EXT: &str = "js";
@@ -36,7 +18,7 @@ const EXT: &str = "js";
 pub struct JsLang;
 
 impl Lang for JsLang {
-    lang_base!(JsModule, compile);
+    manifest::lang_base!(JsModule, compile);
 
     fn comment(&self, input: &str) -> Option<String> {
         Some(format!("# {}", input))
@@ -142,33 +124,21 @@ impl Options {
     }
 }
 
-pub struct FileSpec<'el>(pub Tokens<'el, JavaScript<'el>>);
+pub struct FileSpec(pub Tokens<JavaScript>);
 
-impl<'el> Default for FileSpec<'el> {
+impl Default for FileSpec {
     fn default() -> Self {
         FileSpec(Tokens::new())
-    }
-}
-
-impl<'el> IntoBytes<Compiler<'el>> for FileSpec<'el> {
-    fn into_bytes(self, _: &Compiler<'el>, _: &RpPackage) -> Result<Vec<u8>> {
-        let out = self.0.join_line_spacing().to_file()?;
-        Ok(out.into_bytes())
     }
 }
 
 fn compile(handle: &dyn Handle, env: Session<CoreFlavor>, manifest: Manifest) -> Result<()> {
     let packages = env.packages()?;
 
-    let variant_field = Loc::new(
-        RpField::new("value", flavored::JavaScriptType::Native),
-        Span::empty(),
-    );
-
     let env = env.translate(flavored::JavaScriptFlavorTranslator::new(packages))?;
 
     let _modules: Vec<JsModule> = manifest::checked_modules(manifest.modules)?;
     let options = Options::new();
 
-    Compiler::new(&env, &variant_field, options, handle).compile()
+    Compiler::new(&env, options, handle).compile()
 }

@@ -1,6 +1,6 @@
 use self::cmark::{CodeBlockKind, Event, Options, Parser, Tag};
-use crate::core::errors::*;
 use crate::doc_builder::DocBuilder;
+use core::errors::Result;
 use pulldown_cmark as cmark;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::Theme;

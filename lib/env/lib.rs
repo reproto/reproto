@@ -1,38 +1,13 @@
-extern crate reproto_backend_csharp as csharp;
-extern crate reproto_backend_dart as dart;
-extern crate reproto_backend_doc as doc;
-extern crate reproto_backend_go as go;
-extern crate reproto_backend_java as java;
-extern crate reproto_backend_js as js;
-extern crate reproto_backend_json as json;
-extern crate reproto_backend_openapi as openapi;
-extern crate reproto_backend_python as python;
-extern crate reproto_backend_reproto as reproto;
-extern crate reproto_backend_rust as rust;
-extern crate reproto_backend_swift as swift;
-extern crate reproto_core as core;
-extern crate reproto_manifest as manifest;
-extern crate reproto_repository as repository;
-extern crate reproto_repository_http as repository_http;
-#[macro_use]
-extern crate log;
-extern crate toml;
-extern crate url;
-#[macro_use]
-extern crate serde_derive;
-extern crate dirs;
-extern crate serde;
-
 mod config;
 mod config_env;
 mod initialize;
 
 pub use self::config_env::ConfigEnvironment;
 pub use self::initialize::initialize;
-use crate::core::errors::Result;
-use crate::core::{RelativePath, Resolver};
-use crate::manifest::{Lang, Language, Manifest};
-use crate::repository::{
+use core::errors::Result;
+use core::{RelativePath, Resolver};
+use manifest::{Lang, Language, Manifest};
+use repository::{
     index_from_path, index_from_url, objects_from_path, objects_from_url, Index, IndexConfig,
     NoIndex, NoObjects, Objects, ObjectsConfig, Paths, Repository, Resolvers,
 };
@@ -83,8 +58,8 @@ fn load_objects(
         (index.objects_url()?, index_publishing)
     };
 
-    debug!("index: {}", index_url);
-    debug!("objects: {}", objects_url);
+    log::debug!("index: {}", index_url);
+    log::debug!("objects: {}", objects_url);
 
     let objects_path = Path::new(objects_url);
 
@@ -218,16 +193,16 @@ pub fn convert_lang(input: Language) -> Box<dyn Lang> {
     use self::Language::*;
 
     match input {
-        Csharp => Box::new(crate::csharp::CsharpLang),
-        Dart => Box::new(crate::dart::DartLang),
-        Go => Box::new(crate::go::GoLang),
-        Java => Box::new(crate::java::JavaLang),
-        Js => Box::new(crate::js::JsLang),
-        Json => Box::new(crate::json::JsonLang),
-        Python => Box::new(crate::python::PythonLang),
-        Reproto => Box::new(crate::reproto::ReprotoLang),
-        Rust => Box::new(crate::rust::RustLang),
-        Swift => Box::new(crate::swift::SwiftLang),
-        OpenApi => Box::new(crate::openapi::OpenApiLang),
+        Csharp => Box::new(csharp::CsharpLang),
+        Dart => Box::new(dart::DartLang),
+        Go => Box::new(go::GoLang),
+        Java => Box::new(java::JavaLang),
+        Js => Box::new(js::JsLang),
+        Json => Box::new(json::JsonLang),
+        Python => Box::new(python::PythonLang),
+        Reproto => Box::new(reproto::ReprotoLang),
+        Rust => Box::new(rust::RustLang),
+        Swift => Box::new(swift::SwiftLang),
+        OpenApi => Box::new(openapi::OpenApiLang),
     }
 }

@@ -3,17 +3,6 @@
 //! Project manifests can be loaded as a convenient method for setting up language or
 //! project-specific configuration for reproto.
 
-#[macro_use]
-extern crate log;
-extern crate relative_path;
-pub extern crate reproto_core as core;
-extern crate reproto_naming as naming;
-pub extern crate reproto_trans as trans;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate toml;
-
 use core::errors::Result;
 use core::{
     CoreFlavor, Range, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage,
@@ -21,6 +10,7 @@ use core::{
 };
 use naming::Naming;
 use relative_path::{RelativePath, RelativePathBuf};
+use serde::Deserialize;
 use std::any::Any;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -50,7 +40,7 @@ macro_rules! lang_base {
         fn compile(
             &self,
             handle: &dyn core::Handle,
-            env: $crate::trans::Session<$crate::core::CoreFlavor>,
+            env: trans::Session<core::CoreFlavor>,
             manifest: $crate::Manifest,
         ) -> Result<()> {
             $compile(handle, env, manifest)
@@ -338,7 +328,7 @@ pub fn parse_spec<T: 'static>(base: &Path, id: &str, value: toml::Value) -> Resu
 where
     T: TryFromToml,
 {
-    use self::toml::Value::*;
+    use toml::Value::*;
 
     match value {
         String(value) => T::try_from_string(base, id, value),
@@ -613,7 +603,7 @@ impl Manifest {
                     continue;
                 }
 
-                trace!("resolved package `{}` to build", package);
+                log::trace!("resolved package `{}` to build", package);
                 sources.push(Source { package, source });
             }
         }

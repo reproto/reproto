@@ -1,10 +1,10 @@
 //! Utilities for loading configuration files.
 
-use crate::core::errors::*;
+use core::errors::Result;
+use serde::Deserialize;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use toml;
 
 #[derive(Debug, Deserialize)]
 pub struct Repository {

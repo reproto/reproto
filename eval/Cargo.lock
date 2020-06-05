@@ -229,6 +229,22 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "genco"
+version = "0.5.0-alpha.16"
+dependencies = [
+ "genco-macros 0.5.0-alpha.16",
+]
+
+[[package]]
+name = "genco-macros"
+version = "0.5.0-alpha.16"
+dependencies = [
+ "proc-macro2 1.0.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quote 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "syn 1.0.30 (git+https://github.com/udoprog/syn?branch=parse-without-eager-brace)",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -583,7 +599,6 @@ dependencies = [
  "reproto-naming 0.3.39",
  "reproto-trans 0.3.39",
  "serde 1.0.111 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.111 (registry+https://github.com/rust-lang/crates.io-index)",
  "toml 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -623,7 +638,7 @@ dependencies = [
 name = "reproto-backend-python"
 version = "0.3.39"
 dependencies = [
- "genco 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "genco 0.5.0-alpha.16",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "reproto-backend 0.3.39",
  "reproto-core 0.3.39",
@@ -639,7 +654,7 @@ dependencies = [
 name = "reproto-backend-reproto"
 version = "0.3.39"
 dependencies = [
- "genco 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "genco 0.5.0-alpha.16",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "reproto-backend 0.3.39",
  "reproto-core 0.3.39",
@@ -653,7 +668,7 @@ dependencies = [
 name = "reproto-backend-rust"
 version = "0.3.39"
 dependencies = [
- "genco 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "genco 0.5.0-alpha.16",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "reproto-backend 0.3.39",
  "reproto-core 0.3.39",
@@ -973,6 +988,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "syn"
 version = "1.0.30"
+source = "git+https://github.com/udoprog/syn?branch=parse-without-eager-brace#2a9200dfaf7261ea1af1c97a3f5e18bff02b7831"
+dependencies = [
+ "proc-macro2 1.0.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quote 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unicode-xid 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "syn"
+version = "1.0.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "proc-macro2 1.0.18 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1233,6 +1258,7 @@ dependencies = [
 "checksum smallvec 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)" = "211a489e65e94b103926d2054ae515a1cdb5d515ea0ef414fee23b7e043ce748"
 "checksum string_cache 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2940c75beb4e3bf3a494cef919a747a2cb81e52571e212bfbd185074add7208a"
 "checksum strsim 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)" = "6446ced80d6c486436db5c078dde11a9f73d42b57fb273121e160b84f63d894c"
+"checksum syn 1.0.30 (git+https://github.com/udoprog/syn?branch=parse-without-eager-brace)" = "<none>"
 "checksum syn 1.0.30 (registry+https://github.com/rust-lang/crates.io-index)" = "93a56fabc59dce20fe48b6c832cc249c713e7ed88fa28b0ee0a3bfcaae5fe4e2"
 "checksum term 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "edd106a334b7657c10b7c540a0106114feadeb4dc314513e97df481d5d966f42"
 "checksum termion 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "689a3bdfaab439fd92bc87df5c4c78417d3cbe537487274e9b0b2dce76e92096"

@@ -2,6 +2,7 @@
 
 use crate::errors::Result;
 use crate::{Range, RpPackage};
+use serde::Serialize;
 use std::fmt;
 
 #[derive(Debug, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

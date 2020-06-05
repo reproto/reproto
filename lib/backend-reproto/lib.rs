@@ -1,56 +1,82 @@
-#[macro_use]
-extern crate genco;
-#[macro_use]
-extern crate log;
-extern crate reproto_backend as backend;
-extern crate reproto_core as core;
-extern crate reproto_lexer as lexer;
-#[macro_use]
-extern crate reproto_manifest as manifest;
-extern crate reproto_trans as trans;
-extern crate toml;
-
-use crate::core::errors::Result;
-use crate::core::flavored::{
-    RpDecl, RpEndpoint, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody, RpTupleBody,
-    RpTypeBody, RpVariantRef,
+use core::errors::Result;
+use core::flavored::{
+    RpDecl, RpEndpoint, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody, RpSubType,
+    RpTupleBody, RpTypeBody, RpVariantRef,
 };
-use crate::core::{CoreFlavor, Handle, RelativePathBuf, DEFAULT_TAG};
-use crate::manifest::{Lang, Manifest, NoModule, TryFromToml};
-use crate::trans::Session;
-use genco::{Custom, Formatter, IntoTokens, IoFmt, Quoted, Tokens, WriteTokens};
+use core::{CoreFlavor, Handle, Loc, RelativePathBuf, DEFAULT_TAG};
+use genco::fmt;
+use genco::prelude::*;
+use genco::tokens::{FormatInto, ItemStr};
+use manifest::{Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
-use std::fmt::{self, Write};
+use std::fmt::Write as _;
 use std::path::Path;
+use trans::Session;
 
-pub struct Comments<'el, S: 'el>(&'el [S]);
+pub enum Interior<'a> {
+    Field(&'a Loc<RpField>),
+    Decl(&'a RpDecl),
+    SubType(&'a Loc<RpSubType>),
+}
 
-impl<'el, S> IntoTokens<'el, Reproto> for Comments<'el, S>
-where
-    S: AsRef<str>,
-{
-    fn into_tokens(self) -> Tokens<'el, Reproto> {
-        let mut t = Tokens::new();
+impl FormatInto<Reproto> for Interior<'_> {
+    fn format_into(self, t: &mut Tokens<Reproto>) {
+        match self {
+            Self::Field(f) => {
+                format_field(t, f);
+                t.append(";");
+            }
+            Self::Decl(d) => format(t, d),
+            Self::SubType(sub_type) => {
+                let interior = sub_type
+                    .fields
+                    .iter()
+                    .map(Interior::Field)
+                    .chain(sub_type.decls.iter().map(Interior::Decl));
 
-        for line in self.0 {
-            let line = line.as_ref();
-
-            if line.is_empty() {
-                t.push("///");
-            } else {
-                t.push(toks!["/// ", line]);
+                quote_in! { *t =>
+                    #(if let Some(ref alias) = sub_type.sub_type_name {
+                        #(sub_type.ident.as_str()) as #(quoted(alias.as_str()))
+                    } else {
+                        #(sub_type.ident.as_str())
+                    }) {
+                        #(for i in interior join (#<line>) => #i)
+                    }
+                }
             }
         }
-
-        t
     }
 }
 
-#[derive(Clone, Copy, Default, Debug)]
+pub struct Comments<I>(I);
+
+impl<I> FormatInto<Reproto> for Comments<I>
+where
+    I: IntoIterator,
+    I::Item: Into<ItemStr>,
+{
+    fn format_into(self, t: &mut Tokens<Reproto>) {
+        for line in self.0 {
+            let line = line.into();
+
+            t.push();
+
+            if line.is_empty() {
+                t.append("///");
+            } else {
+                t.append("///");
+                t.space();
+                t.append(line);
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ReprotoLang;
 
 impl Lang for ReprotoLang {
-    lang_base!(ReprotoModule, compile);
+    manifest::lang_base!(ReprotoModule, compile);
 
     fn comment(&self, input: &str) -> Option<String> {
         Some(format!("//{}", input.to_string()))
@@ -70,15 +96,15 @@ impl TryFromToml for ReprotoModule {
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
-pub enum Reproto {}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Reproto(());
 
-impl Custom for Reproto {
-    type Extra = ();
+impl genco::lang::Lang for Reproto {
+    type Config = ();
+    type Format = ();
+    type Item = ();
 
-    fn quote_string(out: &mut Formatter, input: &str) -> fmt::Result {
-        out.write_char('"')?;
-
+    fn write_quoted(out: &mut fmt::Formatter, input: &str) -> fmt::Result {
         for c in input.chars() {
             match c {
                 '\t' => out.write_str("\\t")?,
@@ -92,8 +118,6 @@ impl Custom for Reproto {
                 c => out.write_char(c)?,
             }
         }
-
-        out.write_char('"')?;
 
         Ok(())
     }
@@ -117,7 +141,7 @@ fn compile(handle: &dyn Handle, env: Session<CoreFlavor>, _manifest: Manifest) -
             .unwrap_or_else(|| root.clone());
 
         if !handle.is_dir(&parent) {
-            debug!("+dir: {}", parent);
+            log::debug!("+dir: {}", parent);
             handle.create_dir_all(&parent)?;
         }
 
@@ -135,280 +159,150 @@ fn compile(handle: &dyn Handle, env: Session<CoreFlavor>, _manifest: Manifest) -
         let mut body = Tokens::new();
 
         for decl in &file.decls {
-            body.push(format(decl)?);
+            format(&mut body, decl);
+            body.line();
         }
 
-        let body = body.join_line_spacing();
+        log::debug!("+file: {}", path);
+        body.line();
 
-        debug!("+file: {}", path);
-        IoFmt(&mut handle.create(&path)?).write_file(body, &mut ())?;
+        let mut w = fmt::IoWriter::new(handle.create(&path)?);
+        let fmt = fmt::Config::from_lang::<Reproto>().with_indentation(fmt::Indentation::Space(2));
+
+        body.format_file(&mut w.as_formatter(&fmt), &())?;
     }
 
     Ok(())
 }
 
 /// Format a single declaration as a reproto specification.
-pub fn format<'el>(decl: &'el RpDecl) -> Result<Tokens<'el, Reproto>> {
-    let result = match *decl {
-        core::RpDecl::Type(ref type_) => format_type(type_),
-        core::RpDecl::Interface(ref interface) => format_interface(interface),
-        core::RpDecl::Tuple(ref tuple) => format_tuple(tuple),
-        core::RpDecl::Enum(ref en) => format_enum(en),
-        core::RpDecl::Service(ref service) => format_service(service),
-    };
-
-    return result;
-
-    fn format_type<'el>(body: &'el RpTypeBody) -> Result<Tokens<'el, Reproto>> {
-        let mut t = Tokens::new();
-
-        t.push_unless_empty(Comments(&body.comment));
-        t.push(toks!["type ", body.ident.as_str(), " {"]);
-
-        t.nested({
-            let mut t = Tokens::new();
-
-            for f in &body.fields {
-                t.push(format_field(f)?);
-            }
-
-            for d in &body.decls {
-                t.push(format(d)?);
-            }
-
-            t.join_line_spacing()
-        });
-
-        t.push("}");
-
-        Ok(t)
+pub fn format(out: &mut Tokens<Reproto>, decl: &RpDecl) {
+    match decl {
+        core::RpDecl::Type(type_) => format_type(out, type_),
+        core::RpDecl::Interface(interface) => format_interface(out, interface),
+        core::RpDecl::Tuple(tuple) => format_tuple(out, tuple),
+        core::RpDecl::Enum(en) => format_enum(out, en),
+        core::RpDecl::Service(service) => format_service(out, service),
     }
+}
 
-    fn format_interface<'el>(body: &'el RpInterfaceBody) -> Result<Tokens<'el, Reproto>> {
-        let mut t = Tokens::new();
+fn format_type(out: &mut Tokens<Reproto>, body: &RpTypeBody) {
+    let interior = body
+        .fields
+        .iter()
+        .map(Interior::Field)
+        .chain(body.decls.iter().map(Interior::Decl));
 
-        match body.sub_type_strategy {
-            core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
-                if tag != DEFAULT_TAG {
-                    t.push(toks![
-                        "#[type_info(strategy = ",
-                        "tagged".quoted(),
-                        ", tag = ",
-                        tag.as_str().quoted(),
-                        ")]",
-                    ]);
-                }
+    quote_in! { *out =>
+        #(Comments(&body.comment))
+        type #(body.ident.as_str()) {
+            #(for i in interior join (#<line>) => #i)
+        }
+    }
+}
+
+fn format_interface(out: &mut Tokens<Reproto>, body: &RpInterfaceBody) {
+    let interior = body
+        .sub_types
+        .iter()
+        .map(Interior::SubType)
+        .chain(body.decls.iter().map(Interior::Decl));
+
+    quote_in! { *out =>
+        #(match &body.sub_type_strategy {
+            core::RpSubTypeStrategy::Tagged { tag, .. } if tag != DEFAULT_TAG => {
+                #[type_info(strategy = "tagged", tag = #(quoted(tag.as_str())))]
             }
             core::RpSubTypeStrategy::Untagged => {
-                push!(t, "#[type_info(strategy = ", "untagged".quoted(), ")]");
+                #[type_info(strategy = "untagged")]
             }
+            _ => {}
+        })
+        #(Comments(&body.comment))
+        interface #(body.ident.as_str()) {
+            #(for i in interior join (#<line>) => #i)
         }
-
-        t.push_unless_empty(Comments(&body.comment));
-        t.push(toks!["interface ", body.ident.as_str(), " {"]);
-
-        t.nested({
-            let mut t = Tokens::new();
-
-            for sub_type in body.sub_types.iter() {
-                t.push({
-                    let mut t = Tokens::new();
-
-                    if let Some(ref alias) = sub_type.sub_type_name {
-                        t.push(toks![
-                            sub_type.ident.as_str(),
-                            " as ",
-                            alias.as_str().quoted(),
-                            " {",
-                        ]);
-                    } else {
-                        t.push(toks![sub_type.ident.as_str(), " {"]);
-                    }
-
-                    t.nested({
-                        let mut t = Tokens::new();
-
-                        for f in &sub_type.fields {
-                            t.push(format_field(f)?);
-                        }
-
-                        for d in &sub_type.decls {
-                            t.push(format(d)?);
-                        }
-
-                        t.join_line_spacing()
-                    });
-
-                    t.push("}");
-
-                    t
-                });
-            }
-
-            for d in &body.decls {
-                t.push(format(d)?);
-            }
-
-            t.join_line_spacing()
-        });
-
-        t.push("}");
-
-        Ok(t)
     }
+}
 
-    fn format_tuple<'el>(body: &'el RpTupleBody) -> Result<Tokens<'el, Reproto>> {
-        let mut t = Tokens::new();
+fn format_tuple(out: &mut Tokens<Reproto>, body: &RpTupleBody) {
+    let interior = body
+        .fields
+        .iter()
+        .map(Interior::Field)
+        .chain(body.decls.iter().map(Interior::Decl));
 
-        t.push_unless_empty(Comments(&body.comment));
-        t.push(toks!["tuple ", body.ident.as_str(), " {"]);
-
-        t.nested({
-            let mut t = Tokens::new();
-
-            for f in &body.fields {
-                t.push(format_field(f)?);
-            }
-
-            for d in &body.decls {
-                t.push(format(d)?);
-            }
-
-            t.join_line_spacing()
-        });
-
-        t.push("}");
-
-        Ok(t)
+    quote_in! { *out =>
+        #(Comments(&body.comment))
+        tuple #(body.ident.as_str()) {
+            #(for i in interior join (#<line>) => #i)
+        }
     }
+}
 
-    fn format_enum<'el>(body: &'el RpEnumBody) -> Result<Tokens<'el, Reproto>> {
-        let mut t = Tokens::new();
-
-        t.push_unless_empty(Comments(&body.comment));
-
-        t.push(toks![
-            "enum ",
-            body.ident.as_str(),
-            " as ",
-            body.enum_type.to_string(),
-            " {"
-        ]);
-
-        t.nested({
-            let mut t = Tokens::new();
-
-            for v in &body.variants {
-                t.push(format_variant(v)?);
-            }
-
-            t.join_line_spacing()
-        });
-
-        t.push("}");
-
-        Ok(t)
+fn format_enum(out: &mut Tokens<Reproto>, body: &RpEnumBody) {
+    quote_in! { *out =>
+        #(Comments(&body.comment))
+        enum #(&body.ident) as #(body.enum_type.to_string()) {
+            #(for v in &body.variants join (#<line>) =>
+                #(ref out => format_variant(out, v))
+            )
+        }
     }
+}
 
-    fn format_service<'el>(body: &'el RpServiceBody) -> Result<Tokens<'el, Reproto>> {
-        let mut t = Tokens::new();
-        t.push_unless_empty(Comments(&body.comment));
-        t.push(toks!["service ", body.ident.as_str(), " {"]);
-
-        t.nested({
-            let mut t = Tokens::new();
-
-            for e in &body.endpoints {
-                t.push_unless_empty(Comments(&e.comment));
-                t.push(format_endpoint(e)?);
-            }
-
-            t.join_line_spacing()
-        });
-
-        t.push("}");
-
-        return Ok(t);
-
-        fn format_endpoint<'el>(e: &'el RpEndpoint) -> Result<Tokens<'el, Reproto>> {
-            let mut t = Tokens::new();
-
-            t.append(e.ident.as_str());
-            t.append("(");
-            t.append({
-                let mut t = Tokens::new();
-
-                for a in &e.arguments {
-                    t.append({
-                        let mut t = Tokens::new();
-
-                        t.append(a.ident.as_str());
-                        t.append(": ");
-                        t.append(a.channel.to_string());
-
-                        t
-                    });
-                }
-
-                t.join(", ")
-            });
-            t.append(")");
-
-            Ok(t)
+fn format_service(out: &mut Tokens<Reproto>, body: &RpServiceBody) {
+    quote_in! { *out =>
+        #(Comments(&body.comment))
+        service #(body.ident.as_str()) {
+            #(for e in &body.endpoints join (#<line>) =>
+                #(Comments(&e.comment))
+                #(ref out => format_endpoint(out, e))
+            )
         }
     }
 
-    fn format_field<'el>(field: &'el RpField) -> Result<Tokens<'el, Reproto>> {
-        let mut t = Tokens::new();
+    return;
 
-        t.push_unless_empty(Comments(&field.comment));
+    fn format_endpoint(out: &mut Tokens<Reproto>, e: &RpEndpoint) {
+        quote_in! { *out =>
+            #(e.ident.as_str())(#(for a in &e.arguments join (, ) =>
+                #(a.ident.as_str()): #(a.channel.to_string())
+            ))
+        }
+    }
+}
 
-        let field_name = field.safe_ident();
+fn format_field(out: &mut Tokens<Reproto>, field: &RpField) {
+    let field_name = field.safe_ident();
 
-        let field_name = match lexer::match_keyword(field_name) {
-            Some(token) => token
-                .keyword_safe()
-                .ok_or_else(|| format!("keyword does not have a safe variant: {}", field_name))?,
-            None => field_name,
-        };
+    let field_name = match lexer::match_keyword(field_name) {
+        Some(token) => token.keyword_safe(),
+        None => field_name,
+    };
 
-        if field.is_optional() {
-            t.push(toks![field_name, "?: ", field.ty.to_string()]);
+    quote_in! { *out =>
+        #(Comments(&field.comment))
+        #(if field.is_optional() {
+            #(field_name)?: #(&field.ty.to_string())
         } else {
-            t.push(toks![field_name, ": ", field.ty.to_string()]);
-        }
-
-        if let Some(ref field_as) = field.field_as {
-            t.extend(toks![" as ", field_as.as_str().quoted()]);
-        }
-
-        t.append(";");
-
-        Ok(t)
+            #(field_name): #(field.ty.to_string())
+        })#(if let Some(ref field_as) = field.field_as {
+            #<space>as #(quoted(field_as.as_str()))
+        })
     }
+}
 
-    fn format_variant<'el>(variant: RpVariantRef<'el>) -> Result<Tokens<'el, Reproto>> {
-        let mut t = Tokens::new();
-
-        t.push_unless_empty(Comments(&variant.comment));
-
-        t.push_into(|t| {
-            t.append(variant.ident());
-
-            match variant.value {
-                core::RpVariantValue::String(string) => {
-                    t.append(" as ");
-                    t.append(string.quoted());
-                }
-                core::RpVariantValue::Number(number) => {
-                    t.append(" as ");
-                    t.append(number.to_string());
-                }
+fn format_variant(out: &mut Tokens<Reproto>, variant: RpVariantRef<'_>) {
+    quote_in! { *out =>
+        #(Comments(variant.comment))
+        #(variant.ident()) as #(match variant.value {
+            core::RpVariantValue::String(string) => {
+                #(quoted(string))
             }
-
-            t.append(";");
+            core::RpVariantValue::Number(number) => {
+                #(number.to_string())
+            }
         });
-
-        Ok(t)
     }
 }

@@ -21,3 +21,30 @@ macro_rules! code {
         t
     }};
 }
+
+#[macro_export]
+macro_rules! code_in {
+    ($receiver:expr, $codes:expr, $context:path) => {{
+        for c in $codes {
+            if let $context { .. } = c.context {
+                for line in &c.lines {
+                    $receiver.push();
+                    $receiver.append(line.as_str());
+                }
+            }
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! code_contains {
+    ($codes:expr, $context:path) => {{
+        $codes.iter().any(|c| {
+            if let $context { .. } = c.context {
+                true
+            } else {
+                false
+            }
+        })
+    }};
+}
