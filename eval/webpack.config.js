@@ -1,8 +1,10 @@
+const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin");
 const UglifyJsPlugin = require("uglifyjs-webpack-plugin");
+const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
 
 module.exports = {
   entry: [
@@ -12,7 +14,7 @@ module.exports = {
 
   output: {
     filename: "bundle.js",
-    path: __dirname + "/dist"
+    path: path.resolve(__dirname, "/dist")
   },
 
   resolve: {
@@ -24,22 +26,8 @@ module.exports = {
     rules: [
       {
         test: /\.tsx?$/,
-        use: [
-          {
-            loader: "babel-loader",
-            options: { presets: ['@babel/preset-env'] }
-          },
-          "awesome-typescript-loader",
-        ],
-      },
-      {
-        test: /\.js?$/,
-        loader: "babel-loader",
-        exclude: /(node_modules|bower_components)/,
-        options: {
-          presets: ['@babel/preset-env'],
-          plugins: ['@babel/plugin-syntax-dynamic-import']
-        }
+        use: ["ts-loader"],
+        exclude: /node_modules/,
       },
       {
         test: /\.scss$/,
@@ -67,9 +55,15 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: 'index.html'
     }),
-    new CopyWebpackPlugin([
-      'src/static/favicon.ico',
-    ]),
+    new WasmPackPlugin({
+      crateDirectory: path.resolve(__dirname, "."),
+      withTypeScript: true
+    }),
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: 'src/static/favicon.ico' },
+      ],
+    }),
     new MiniCssExtractPlugin({
       filename: "[name].css",
       chunkFilename: "[id].css"

@@ -1,19 +1,21 @@
 {
   "compilerOptions": {
-    "outDir": "./dist/",
-    "sourceMap": true,
-    "noImplicitAny": true,
-    "module": "commonjs",
-    "target": "es6",
-    "jsx": "react",
+    // "outDir": "./dist/",
+    // "sourceMap": true,
+    // "noImplicitAny": true,
+    // "module": "commonjs",
     "baseUrl": ".",
+    "module": "esNext",
+    "moduleResolution": "node",
+    "jsx": "react",
+    "lib": [
+      "dom",
+      "es2015"
+    ],
     "paths": {
       "*": [
         "./local_modules/*"
       ]
     }
   },
-  "include": [
-      "src/**/*"
-  ]
 }

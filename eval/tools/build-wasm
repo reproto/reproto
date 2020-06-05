@@ -3,5 +3,5 @@
 
 set -e
 
-cargo +nightly build --target wasm32-unknown-unknown --release
+cargo build --target wasm32-unknown-unknown --release
 wasm-bindgen target/wasm32-unknown-unknown/release/reproto_wasm.wasm --out-dir=target

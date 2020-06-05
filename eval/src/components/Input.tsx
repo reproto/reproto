@@ -1,12 +1,12 @@
 import * as React from 'react';
 import AceEditor from 'react-ace';
-import {Annotation, Marker} from 'react-ace';
+import {IAnnotation, IMarker} from 'react-ace';
 
 export interface InputProps {
   mode: string;
   value: string;
-  annotations: Annotation[];
-  markers: Marker[];
+  annotations: IAnnotation[];
+  markers: IMarker[];
   onChange: (value: string) => void;
 }
 

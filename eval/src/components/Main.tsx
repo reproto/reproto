@@ -9,11 +9,8 @@ import {RustSettings, RustSettingsForm} from "./RustSettings";
 import {OpenApiSettings, OpenApiSettingsForm} from "./OpenApiSettings";
 import {SwiftSettings, SwiftSettingsForm} from "./SwiftSettings";
 import {DartSettings, DartSettingsForm} from "./DartSettings";
-import * as WebAssembly from "webassembly";
-import {Annotation, Marker as AceMarker} from 'react-ace';
+import {IAnnotation, IMarker} from 'react-ace';
 import AceEditor from 'react-ace';
-
-import * as wasm from '../wasm';
 
 const deepEqual = require("deep-equal");
 
@@ -53,7 +50,7 @@ const FORMAT_LANGUAGE_MAP: {[key: string]: string} = {
 // modes in local_modules.
 require("brace/mode/reproto.js")
 // support searching ace editor.
-require('brace/ext/searchbox');
+// require('brace/ext/searchbox');
 
 ace_languages.forEach((lang) => {
   require(`brace/mode/${lang}`)
@@ -176,9 +173,9 @@ export interface MainState {
   package_prefix: string;
   settings_enabled: boolean,
   // Error annotations (gutter markers) on input.
-  input_annotations: Annotation[];
+  input_annotations: IAnnotation[];
   // Error markers on input.
-  input_markers: AceMarker[];
+  input_markers: IMarker[];
   // Result of last compilation.
   compiled?: Compiled;
   error?: string;
@@ -314,7 +311,7 @@ export class Main extends React.Component<MainProps, MainState> {
     this.setFormat(input);
     this.setOutput(output);
 
-    wasm.load.then(mod => {
+    import('../../pkg').then(mod => {
       this.setState({derive: mod.derive}, () => this.recompile());
     });
   }
@@ -377,8 +374,8 @@ export class Main extends React.Component<MainProps, MainState> {
 
       const result = derive(request) as DeriveResult;
 
-      const input_annotations: Annotation[] = [];
-      const input_markers: AceMarker[] = [];
+      const input_annotations: IAnnotation[] = [];
+      const input_markers: IMarker[] = [];
 
       result.error_markers.forEach(m => {
         input_annotations.push({
@@ -394,7 +391,7 @@ export class Main extends React.Component<MainProps, MainState> {
           endRow: m.row_end,
           endCol: m.col_end,
           className: "error-marker",
-          type: "background",
+          type: "text",
         });
       });
 
@@ -412,7 +409,7 @@ export class Main extends React.Component<MainProps, MainState> {
           endRow: m.row_end,
           endCol: m.col_end,
           className: "info-marker",
-          type: "background",
+          type: "text",
         });
       });
 
@@ -460,7 +457,7 @@ export class Main extends React.Component<MainProps, MainState> {
 
   setFile(file_index: number, cb: (file: File) => void) {
     this.setState((state: MainState, props: MainProps) => {
-      let {files} = this.state;
+      let {files} = state;
 
       let new_files = files.map((file, index) => {
         if (index == file_index) {
@@ -505,15 +502,15 @@ export class Main extends React.Component<MainProps, MainState> {
   }
 
   setPackage(pkg: string) {
-    this.setState((state: MainState, props: MainProps) => {
+    this.setState((state) => {
       const { files } = state;
       const index = files.findIndex((f: File) => f["package"] == pkg);
 
       if (index < 0) {
-        return {} as MainState;
+        return {};
       }
 
-      return {file_index: index};
+      return {file_index: index} as MainState;
     }, () => this.recompile());
   }
 

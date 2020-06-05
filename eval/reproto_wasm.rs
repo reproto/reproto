@@ -64,7 +64,7 @@ pub enum Output {
 
 impl Output {
     /// Convert into a manifest language and accumulate modules.
-    fn into_lang(self, settings: Settings, modules: &mut Vec<Box<Any>>) -> Box<manifest::Lang> {
+    fn into_lang(self, settings: Settings, modules: &mut Vec<Box<dyn Any>>) -> Box<dyn manifest::Lang> {
         match self {
             Output::Reproto => Box::new(reproto::ReprotoLang),
             Output::Java => {
@@ -419,7 +419,7 @@ pub fn derive(derive: &JsValue) -> JsValue {
         compile::simple_compile(
             |path, content| {
                 files.push(DeriveFile {
-                    path: path.display().to_string(),
+                    path: path.to_string(),
                     content: content.to_string(),
                 });
 
@@ -468,7 +468,7 @@ pub fn derive(derive: &JsValue) -> JsValue {
         derive: &Derive,
         package_prefix: &core::RpPackage,
         source: &'input core::Source,
-        format: Box<derive::Format>,
+        format: Box<dyn derive::Format>,
     ) -> core::errors::Result<compile::Input<'input>> {
         let decl = derive::derive(
             derive::Derive::new(
