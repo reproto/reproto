@@ -12,7 +12,7 @@ fn main() -> Result<(), rust::gen::reproto::Error> {
     println!("{:?}", rate_limit);
 
     let gists = github.get_user_gists("udoprog".to_string())?;
-    
+
     for g in gists {
         println!("{:?}", g);
     }
