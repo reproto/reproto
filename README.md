@@ -1,8 +1,12 @@
 # [![reproto](/gfx/logo.128.png?raw=true "reproto")](https://github.com/reproto)
 
-[![Build Status](https://travis-ci.org/reproto/reproto.svg?branch=master)](https://travis-ci.org/reproto/reproto)
-[![Build status](https://ci.appveyor.com/api/projects/status/9vgjwv3kfhwwt155/branch/master?svg=true)](https://ci.appveyor.com/project/udoprog/reproto/branch/master)
-[![Chat on Gitter](https://badges.gitter.im/reproto/reproto.svg)](https://gitter.im/reproto/reproto)
+[![Build Status][github-badge]][github-action]
+[![Chat on Discord][discord-badge]][discord-url]
+
+[github-badge]: https://github.com/reproto/reproto/workflows/Rust/badge.svg
+[github-action]: https://github.com/reproto/reproto/actions
+[discord-badge]: https://img.shields.io/discord/558644981137670144.svg?logo=discord&style=flat-square
+[discord-url]: https://discord.gg/v5AeNkT
 
 A better way to define schemas for your JSON.
 
