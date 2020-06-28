@@ -120,17 +120,13 @@ pub fn objects_from_url(config: ObjectsConfig, url: &Url) -> Result<Box<dyn Obje
         client,
     };
 
-    if let Some(cache_home) = config.cache_home {
-        let missing_cache_time = config
-            .missing_cache_time
-            .unwrap_or_else(|| Duration::new(60, 0));
+    let missing_cache_time = config
+        .missing_cache_time
+        .unwrap_or_else(|| Duration::new(60, 0));
 
-        return Ok(Box::new(CachedObjects::new(
-            cache_home,
-            missing_cache_time,
-            http_objects,
-        )));
-    }
-
-    Ok(Box::new(http_objects))
+    return Ok(Box::new(CachedObjects::new(
+        config.cache_home,
+        missing_cache_time,
+        http_objects,
+    )));
 }

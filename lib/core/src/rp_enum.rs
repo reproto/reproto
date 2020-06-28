@@ -235,6 +235,19 @@ where
     },
 }
 
+impl<F: 'static> RpVariants<F>
+where
+    F: Flavor,
+{
+    /// Check if the collection of variants are empty.
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::String { variants } => variants.is_empty(),
+            Self::Number { variants } => variants.is_empty(),
+        }
+    }
+}
+
 pub struct RpVariantsIter<'a, F: 'static>
 where
     F: Flavor,

@@ -107,19 +107,19 @@ pub fn repository(manifest: &Manifest) -> Result<Repository> {
                 .ok_or_else(|| format!("no parent path to manifest: {}", p.display()))
         })?;
 
-    let mut repo_dir = None;
-    let mut cache_home = None;
+    let repo_dir;
+    let cache_home;
     let mut index = repository.index.clone();
     let mut objects = repository.objects.clone();
 
     if let Some(config_env) = ConfigEnvironment::new()? {
-        repo_dir = Some(config_env.repo_dir);
-        cache_home = Some(config_env.cache_home);
+        repo_dir = config_env.repo_dir;
+        cache_home = config_env.cache_home;
         index = index.or(config_env.index.clone());
         objects = objects.or(config_env.objects.clone());
+    } else {
+        return Ok(Repository::new(Box::new(NoIndex), Box::new(NoObjects)));
     }
-
-    let repo_dir = repo_dir.ok_or_else(|| "repo_dir: must be specified")?;
 
     // NB: do not permit publishing to default index.
     let (index_url, index_publishing) = index

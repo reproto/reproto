@@ -146,7 +146,7 @@ pub trait Processor<'session> {
         Ok(())
     }
 
-    fn field(&self, field: &RpField) -> Result<()> {
+    fn field_overview(&self, field: &RpField) -> Result<()> {
         let mut classes = vec!["field"];
 
         if field.is_optional() {
@@ -156,6 +156,51 @@ pub trait Processor<'session> {
         }
 
         html!(self, h2 {class => "field-title"} => {
+            html!(self, span {class => "field-key"} => {
+                html!(self, a {href => format!("#field.{}", field.ident)} => {
+                    html!(self, span {class => "field-id"} ~ Escape(&field.ident));
+                });
+
+                if field.is_optional() {
+                    html!(self, span {class => "field-modifier"} ~ "?");
+                }
+
+                html!(self, span {} ~ ":");
+            });
+
+            self.write_type(&field.ty)?;
+
+            if field.ident != field.name() {
+                html!(self, span {class => "keyword"} ~ "as");
+                html!(self, span {class => "field-name"} ~ Escape(field.name()));
+            }
+        });
+
+        self.doc(field.comment.iter().take(1))?;
+        Ok(())
+    }
+
+    fn fields_overview<'b, I>(&self, fields: I) -> Result<()>
+    where
+        I: IntoIterator<Item = &'b Loc<RpField>>,
+    {
+        for field in fields {
+            self.field_overview(field)?;
+        }
+
+        Ok(())
+    }
+
+    fn field(&self, field: &RpField) -> Result<()> {
+        let mut classes = vec!["field"];
+
+        if field.is_optional() {
+            classes.push("optional");
+        } else {
+            classes.push("required");
+        }
+
+        html!(self, h2 {class => "field-title", id => format!("field.{}", field.ident)} => {
             html!(self, span {class => "kind"} ~ "field");
 
             html!(self, span {class => "field-key"} => {
@@ -183,10 +228,33 @@ pub trait Processor<'session> {
 
     fn fields<'b, I>(&self, fields: I) -> Result<()>
     where
-        I: Iterator<Item = &'b Loc<RpField>>,
+        I: IntoIterator<Item = &'b Loc<RpField>>,
     {
         for field in fields {
             self.field(field)?;
+        }
+
+        Ok(())
+    }
+
+    /// Render a nested declaration
+    fn nested_decl_overview(&self, decl: &RpDecl) -> Result<()> {
+        html!(self, h2 {class => "decl-title"} => {
+            html!(self, span {class => "kind"} ~ decl.kind());
+            self.full_name_without_package(&decl.name())?;
+        });
+
+        self.doc(decl.comment().iter().take(1))?;
+        Ok(())
+    }
+
+    /// Render overview of nested declarations
+    fn nested_decls_overview<'b, I>(&self, decls: I) -> Result<()>
+    where
+        I: IntoIterator<Item = &'b RpDecl>,
+    {
+        for decl in decls {
+            self.nested_decl_overview(decl)?;
         }
 
         Ok(())
@@ -206,7 +274,7 @@ pub trait Processor<'session> {
     /// Render a set of nested declarations
     fn nested_decls<'b, I>(&self, decls: I) -> Result<()>
     where
-        I: Iterator<Item = &'b RpDecl>,
+        I: IntoIterator<Item = &'b RpDecl>,
     {
         for decl in decls {
             self.nested_decl(decl)?;

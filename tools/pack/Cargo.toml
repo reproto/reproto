@@ -15,6 +15,7 @@ Utility application to pack subleme themes and syntaxes for reproto.
 [dependencies]
 syntect = "4.2.0"
 clap = "2.33.1"
+anyhow = "1.0.31"
 
 [[bin]]
 name = "reproto-pack"

@@ -227,12 +227,12 @@ pub fn compile(
         &themes,
         |syntax_theme, syntax_set, theme_css| {
             let compiler = DocCompiler {
-                session: session,
+                session,
                 out_path: out.clone(),
-                skip_static: skip_static,
-                theme_css: theme_css,
-                syntax_theme: syntax_theme,
-                syntax_set: syntax_set,
+                skip_static,
+                theme_css,
+                syntax_theme,
+                syntax_set,
             };
 
             compiler.compile()

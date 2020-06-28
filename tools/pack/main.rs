@@ -1,6 +1,4 @@
-extern crate clap;
-extern crate syntect;
-
+use anyhow::{format_err, Context as _, Result};
 use clap::{App, Arg};
 use std::env;
 use std::path::Path;
@@ -8,7 +6,7 @@ use syntect::dumps::dump_to_file;
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSetBuilder;
 
-fn main() {
+fn main() -> Result<()> {
     let app = App::new("reproto-pack")
         .version("0.0.1")
         .author("John-John Tedro <udoprog@tedro.se>")
@@ -26,21 +24,9 @@ fn main() {
                 .takes_value(true),
         );
 
-    let mut args = env::args();
-
-    let root = args
-        .next()
-        .and_then(|arg| Path::new(arg.as_str()).canonicalize().ok())
-        .and_then(|p| {
-            p.parent()
-                .and_then(Path::parent)
-                .and_then(Path::parent)
-                .map(Path::to_owned)
-        })
-        .expect("locating root directory");
-
     let matches = app.get_matches();
 
+    let root = std::env::current_dir()?;
     let themes = root.join("themes");
     let syntaxes = root.join("syntaxes");
 
@@ -56,16 +42,22 @@ fn main() {
         let mut ss = SyntaxSetBuilder::new();
         ss.add_plain_text_syntax();
         ss.add_from_folder(syntaxes, true)
-            .expect("syntaxes to load");
+            .map_err(|e| format_err!("{}", e))
+            .with_context(|| format_err!("syntaxes to load"))?;
 
         let ss = ss.build();
         println!("building: {}", path.display());
-        dump_to_file(&ss, path).expect("syntaxes to pack");
+        dump_to_file(&ss, path).with_context(|| format_err!("syntaxes to pack"))?;
     }
 
     if let Some(path) = matches.value_of("build-themes").map(Path::new) {
-        let ts = ThemeSet::load_from_folder(themes).expect("themes to load");
+        println!("loading themes from: {}", themes.display());
+        let ts = ThemeSet::load_from_folder(themes)
+            .map_err(|e| format_err!("{}", e))
+            .with_context(|| format_err!("themes to load"))?;
         println!("building: {}", path.display());
-        dump_to_file(&ts, path).expect("themes to pack");
+        dump_to_file(&ts, path).with_context(|| format_err!("themes to pack"))?;
     }
+
+    Ok(())
 }

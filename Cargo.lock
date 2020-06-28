@@ -1990,6 +1990,7 @@ version = "0.4.0"
 name = "reproto-pack"
 version = "0.4.0"
 dependencies = [
+ "anyhow",
  "clap",
  "syntect",
 ]

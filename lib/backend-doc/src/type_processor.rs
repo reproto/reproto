@@ -13,11 +13,19 @@ define_processor!(TypeProcessor, RpTypeBody, self,
 
             html!(self, section {id => &id, class => "section-content section-type"} => {
                 self.section_title("type", &self.body.name)?;
+                self.doc(&self.body.comment)?;
 
                 html!(self, div {class => "section-body"} => {
-                    self.doc(&self.body.comment)?;
-                    self.fields(self.body.fields.iter())?;
-                    self.nested_decls(self.body.decls.iter())?;
+                    self.fields_overview(&self.body.fields)?;
+                    self.nested_decls_overview(&self.body.decls)?;
+
+                    html!(self, h2 {} ~ "Fields");
+                    self.fields(&self.body.fields)?;
+
+                    if !self.body.decls.is_empty() {
+                        html!(self, h2 {} ~ "Nested");
+                        self.nested_decls(&self.body.decls)?;
+                    }
                 });
             });
 
