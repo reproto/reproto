@@ -18,5 +18,5 @@ jobs:
         toolchain: nightly
         override: true
     - run: cargo test
-    - run: cargo it --structures
-    - run: cargo it --ui
+    - run: cargo it --no-progress --structures
+    - run: cargo it --no-progress --ui

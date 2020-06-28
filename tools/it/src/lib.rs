@@ -14,6 +14,8 @@ mod build_yaml;
 pub mod docker;
 mod lang_yaml;
 pub mod languages;
+pub mod line;
+pub mod progress;
 pub mod project;
 pub mod reproto;
 mod run;

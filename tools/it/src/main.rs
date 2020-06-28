@@ -72,96 +72,6 @@ where
     Ok(())
 }
 
-const WIDTH: usize = 10;
-
-struct AnimalVisual {
-    pub step: usize,
-    total: usize,
-    buf: String,
-    last: Option<Instant>,
-    runner: char,
-    food: char,
-    food_width: usize,
-}
-
-impl AnimalVisual {
-    pub fn new(total: usize) -> Self {
-        use unicode_width::UnicodeWidthChar as _;
-
-        let runner = Self::pick_runner();
-        let food = Self::pick_food();
-
-        Self {
-            step: 0,
-            total,
-            buf: String::new(),
-            last: None,
-            runner,
-            food,
-            food_width: food.width().unwrap_or(1),
-        }
-    }
-
-    fn pick_runner() -> char {
-        let choices = vec![
-            '🐎', '🐤', '🦖', '🦆', '🐛', '🐟', '🐿', '🐪', '🐖', '🦙', '🦒', '🐘', '🐌',
-        ];
-        Self::pick(&choices)
-    }
-
-    fn pick_food() -> char {
-        let choices = vec![
-            '🧆', '🍩', '🧁', '🍍', '🍎', '🥔', '🌶', '🍕', '🌮', '🍄', '🥦', '🥑', '🍑', '🍒',
-        ];
-        Self::pick(&choices)
-    }
-
-    fn pick(choices: &[char]) -> char {
-        choices[rand::random::<usize>() % choices.len()]
-    }
-
-    /// Get the next dot.
-    pub fn dots(&mut self) -> &str {
-        let pos = if self.total == 0 {
-            0
-        } else {
-            (self.step * WIDTH) / self.total
-        };
-
-        let now = Instant::now();
-
-        if let Some(last) = self.last {
-            if now.duration_since(last) < Duration::from_millis(50) {
-                return &self.buf;
-            }
-        }
-
-        self.buf.clear();
-
-        for _ in pos..WIDTH {
-            self.buf.push(self.food);
-        }
-
-        self.buf.push(self.runner);
-
-        for _ in 0..(pos * self.food_width) {
-            self.buf.push('.');
-        }
-
-        self.buf.push(' ');
-
-        self.buf.push(match self.step % 4 {
-            0 => '◐',
-            1 => '◓',
-            2 => '◑',
-            _ => '◒',
-        });
-
-        self.last = Some(now);
-        &self.buf
-    }
-}
-
 struct SimpleVisual {
     pub step: usize,
     buf: String,
@@ -454,18 +364,18 @@ async fn try_main() -> Result<()> {
         }
 
         let stdout = std::io::stdout();
-        let mut stdout = stdout.lock();
+        let mut line = it::line::Line::new(stdout.lock());
 
         let count = prebuilds.len();
 
         let mut visual = SimpleVisual::new();
         write!(
-            stdout,
+            line,
             "Building containers... {} (0/{})",
             visual.render(),
             count
         )?;
-        stdout.flush()?;
+        line.flush()?;
 
         let mut futures = futures::stream::FuturesUnordered::new();
         let mut prebuilds_it = prebuilds.into_iter();
@@ -479,14 +389,14 @@ async fn try_main() -> Result<()> {
         while let Some(result) = futures.next().await.transpose()? {
             let step = visual.step;
             write!(
-                stdout,
-                "\x1B[1K\rBuilding containers... {} ({}/{}) {}",
+                line,
+                "Building containers... {} ({}/{}) {}",
                 visual.render(),
                 step,
                 count,
                 result?
             )?;
-            stdout.flush()?;
+            line.flush()?;
 
             if let Some(prebuild) = prebuilds_it.next() {
                 futures.push(tokio::spawn(
@@ -495,9 +405,9 @@ async fn try_main() -> Result<()> {
             }
         }
 
-        write!(stdout, "\x1B[1K\rBuilding containers... done!")?;
-        stdout.flush()?;
-        writeln!(stdout)?;
+        write!(line, "Building containers... done!")?;
+        line.flush()?;
+        writeln!(line)?;
     }
 
     let before = Instant::now();
@@ -511,46 +421,31 @@ async fn try_main() -> Result<()> {
         futures.push(tokio::spawn(async move { task.run().await }));
     }
 
-    let mut visual = None;
-
     let mut res = Vec::new();
 
-    let mut c = 0usize;
     let stdout = std::io::stdout();
 
-    if progress {
-        let visual = visual.get_or_insert_with(|| AnimalVisual::new(count));
+    let mut progress = if progress {
+        it::progress::Progress::with_visual(stdout.lock(), AnimalVisual::new(count))
+    } else {
+        it::progress::Progress::without_visual(stdout.lock())
+    };
 
-        let mut stdout = stdout.lock();
-        write!(stdout, "\x1B[1K\r")?;
-        write!(stdout, "{} ({}/{})", visual.dots(), c, count,)?;
-        stdout.flush()?;
-    }
+    progress.print()?;
 
     while !futures.is_empty() {
         if let Some((timed_run, r)) = futures.next().await.transpose()? {
-            if progress {
-                let visual = visual.get_or_insert_with(|| AnimalVisual::new(count));
-                visual.step += 1;
+            write!(
+                progress,
+                "{} ({})",
+                timed_run.id,
+                timed_run.format_duration()
+            )?;
 
-                let mut stdout = stdout.lock();
-                write!(stdout, "\x1B[1K\r")?;
-                write!(
-                    stdout,
-                    "{} ({}/{}): {} ({})",
-                    visual.dots(),
-                    c,
-                    count,
-                    timed_run.id,
-                    timed_run.format_duration(),
-                )?;
-                stdout.flush()?;
+            if r.is_err() {
+                progress.fail()?;
             } else {
-                if r.is_err() {
-                    println!("FAIL: {} ({})", timed_run.id, timed_run.format_duration());
-                } else {
-                    println!("  OK: {} ({})", timed_run.id, timed_run.format_duration());
-                }
+                progress.ok()?;
             }
 
             if let Err(e) = r {
@@ -560,8 +455,6 @@ async fn try_main() -> Result<()> {
             if let Some(task) = runners_it.next() {
                 futures.push(tokio::spawn(async move { task.run().await }))
             }
-
-            c += 1;
         }
     }
 
@@ -617,4 +510,105 @@ async fn main() {
     }
 
     std::process::exit(0);
+}
+
+const WIDTH: usize = 10;
+
+struct AnimalVisual {
+    step: usize,
+    total: usize,
+    buf: String,
+    last: Option<Instant>,
+    runner: char,
+    food: char,
+    food_width: usize,
+}
+
+impl AnimalVisual {
+    pub fn new(total: usize) -> Self {
+        use unicode_width::UnicodeWidthChar as _;
+
+        let runner = Self::pick_runner();
+        let food = Self::pick_food();
+
+        Self {
+            step: 0,
+            total,
+            buf: String::new(),
+            last: None,
+            runner,
+            food,
+            food_width: food.width().unwrap_or(1),
+        }
+    }
+
+    fn pick_runner() -> char {
+        let choices = vec![
+            '🐎', '🐤', '🦖', '🦆', '🐛', '🐟', '🐿', '🐪', '🐖', '🦙', '🦒', '🐘', '🐌',
+        ];
+        Self::pick(&choices)
+    }
+
+    fn pick_food() -> char {
+        let choices = vec![
+            '🧆', '🍩', '🧁', '🍍', '🍎', '🥔', '🌶', '🍕', '🌮', '🍄', '🥦', '🥑', '🍑', '🍒',
+        ];
+        Self::pick(&choices)
+    }
+
+    fn pick(choices: &[char]) -> char {
+        choices[rand::random::<usize>() % choices.len()]
+    }
+}
+
+impl it::progress::Visual for AnimalVisual {
+    fn step(&self) -> usize {
+        self.step
+    }
+
+    fn total(&self) -> usize {
+        self.total
+    }
+
+    fn dots(&mut self) -> &str {
+        let pos = if self.total == 0 {
+            0
+        } else {
+            (self.step * WIDTH) / self.total
+        };
+
+        let now = Instant::now();
+
+        if let Some(last) = self.last {
+            if now.duration_since(last) < Duration::from_millis(50) {
+                self.step += 1;
+                return &self.buf;
+            }
+        }
+
+        self.buf.clear();
+
+        for _ in pos..WIDTH {
+            self.buf.push(self.food);
+        }
+
+        self.buf.push(self.runner);
+
+        for _ in 0..(pos * self.food_width) {
+            self.buf.push('.');
+        }
+
+        self.buf.push(' ');
+
+        self.buf.push(match self.step % 4 {
+            0 => '◐',
+            1 => '◓',
+            2 => '◑',
+            _ => '◒',
+        });
+
+        self.last = Some(now);
+        self.step += 1;
+        &self.buf
+    }
 }
