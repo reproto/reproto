@@ -13,9 +13,9 @@ use std::rc::Rc;
 use trans::Packages;
 
 #[derive(Debug, Clone)]
-pub struct RustEndpoint {
-    pub endpoint: RpEndpoint,
-    pub http1: Option<RpEndpointHttp1>,
+pub(crate) struct RustEndpoint {
+    pub(crate) endpoint: RpEndpoint,
+    pub(crate) http1: Option<RpEndpointHttp1>,
 }
 
 impl Deref for RustEndpoint {
@@ -27,7 +27,7 @@ impl Deref for RustEndpoint {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Primitive {
+pub(crate) enum Primitive {
     Bool,
     F32,
     F64,
@@ -38,7 +38,7 @@ pub enum Primitive {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Type {
+pub(crate) enum Type {
     Local(tokens::ItemStr),
     Primitive(Primitive),
     String,
@@ -47,7 +47,6 @@ pub enum Type {
     Option(Box<Type>),
     Custom(Rc<rust::Import>),
     Generic(Rc<rust::Import>, Box<Type>),
-    Generic2(Rc<rust::Import>, Box<Type>, Box<Type>),
     /// `&'static str`.
     StaticStr,
 }
@@ -59,20 +58,16 @@ impl From<rust::Import> for Type {
 }
 
 impl Type {
-    pub fn local(local: impl Into<tokens::ItemStr>) -> Self {
+    pub(crate) fn local(local: impl Into<tokens::ItemStr>) -> Self {
         Self::Local(local.into())
     }
 
-    pub fn option(a: impl Into<Type>) -> Self {
+    pub(crate) fn option(a: impl Into<Type>) -> Self {
         Self::Option(Box::new(a.into()))
     }
 
-    pub fn generic(base: impl Into<rust::Import>, a: impl Into<Type>) -> Self {
+    pub(crate) fn generic(base: impl Into<rust::Import>, a: impl Into<Type>) -> Self {
         Self::Generic(Rc::new(base.into()), Box::new(a.into()))
-    }
-
-    pub fn generic2(base: impl Into<rust::Import>, a: impl Into<Type>, b: impl Into<Type>) -> Self {
-        Self::Generic2(Rc::new(base.into()), Box::new(a.into()), Box::new(b.into()))
     }
 }
 
@@ -116,15 +111,12 @@ impl<'a> tokens::FormatInto<Rust> for &'a Type {
             Type::Generic(base, a) => {
                 quote_in!(*t => #(&**base)<#(&**a)>);
             }
-            Type::Generic2(base, a, b) => {
-                quote_in!(*t => #(&**base)<#(&**a), #(&**b)>);
-            }
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct RustFlavor;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) enum RustFlavor {}
 
 impl Flavor for RustFlavor {
     type Type = Type;
@@ -136,7 +128,7 @@ impl Flavor for RustFlavor {
 }
 
 /// Responsible for translating RpType -> Rust type.
-pub struct RustFlavorTranslator {
+pub(crate) struct RustFlavorTranslator {
     packages: Rc<Packages>,
     map: Rc<rust::Import>,
     json_value: Rc<rust::Import>,
@@ -144,7 +136,7 @@ pub struct RustFlavorTranslator {
 }
 
 impl RustFlavorTranslator {
-    pub fn new(packages: Rc<Packages>, datetime: Option<Type>) -> Self {
+    pub(crate) fn new(packages: Rc<Packages>, datetime: Option<Type>) -> Self {
         Self {
             packages,
             map: Rc::new(rust::import("std::collections", "HashMap")),
@@ -260,4 +252,4 @@ impl FlavorTranslator for RustFlavorTranslator {
     }
 }
 
-core::decl_flavor!(pub(crate) RustFlavor, core);
+core::decl_flavor!(pub(crate) RustFlavor);

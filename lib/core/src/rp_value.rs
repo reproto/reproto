@@ -12,7 +12,7 @@ use std::fmt;
     rename_all = "snake_case",
     bound = "F::Package: Serialize"
 )]
-pub enum RpValue<F: 'static>
+pub enum RpValue<F>
 where
     F: Flavor,
 {
@@ -23,7 +23,7 @@ where
     Name(Spanned<RpName<F>>),
 }
 
-impl<F: 'static> RpValue<F>
+impl<F> RpValue<F>
 where
     F: Flavor,
 {
@@ -106,7 +106,7 @@ where
     }
 }
 
-impl<F: 'static> fmt::Display for RpValue<F>
+impl<F> fmt::Display for RpValue<F>
 where
     F: Flavor,
 {
@@ -136,10 +136,9 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for RpValue<F>
+impl<T> Translate<T> for RpValue<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpValue<T::Target>;
 

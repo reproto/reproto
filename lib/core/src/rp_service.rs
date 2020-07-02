@@ -1,7 +1,7 @@
 //! Model for services.
 
 use crate::errors::Result;
-use crate::{Diagnostics, Flavor, RpReg, Spanned, Translate, Translator};
+use crate::{Diagnostics, RpReg, Spanned, Translate, Translator};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -18,10 +18,9 @@ decl_body!(
     }
 );
 
-impl<F: 'static, T> Translate<T> for RpServiceBody<F>
+impl<T> Translate<T> for RpServiceBody<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpServiceBody<T::Target>;
 

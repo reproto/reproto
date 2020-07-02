@@ -13,7 +13,7 @@ use std::rc::Rc;
 use trans::Packages;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Type {
+pub(crate) enum Type {
     Integer,
     Float,
     String,
@@ -26,12 +26,12 @@ pub enum Type {
 }
 
 impl Type {
-    pub fn decode(&self, t: &mut js::Tokens, var: js::Tokens) {
+    pub(crate) fn decode(&self, t: &mut js::Tokens, var: js::Tokens) {
         self.decode_depth(t, &var, 0);
     }
 
     /// Build decode method which also performs type checking.
-    pub fn decode_depth<T>(&self, t: &mut js::Tokens, var: T, d: usize)
+    pub(crate) fn decode_depth<T>(&self, t: &mut js::Tokens, var: T, d: usize)
     where
         T: FormatInto<JavaScript> + Copy,
     {
@@ -121,7 +121,7 @@ impl Type {
     }
 
     /// Build encode method.
-    pub fn encode(&self, var: js::Tokens) -> js::Tokens {
+    pub(crate) fn encode(&self, var: js::Tokens) -> js::Tokens {
         match self {
             Self::String => quote!(#var),
             Self::Float => quote!(#var),
@@ -155,7 +155,7 @@ impl Type {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Name {
+pub(crate) struct Name {
     ident: ItemStr,
     package: RpPackage,
 }
@@ -172,8 +172,8 @@ impl package_processor::Name<JavaScriptFlavor> for Name {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct JavaScriptFlavor;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) enum JavaScriptFlavor {}
 
 impl Flavor for JavaScriptFlavor {
     type Type = Type;
@@ -185,12 +185,12 @@ impl Flavor for JavaScriptFlavor {
 }
 
 /// Responsible for translating RpType -> JavaScript type.
-pub struct JavaScriptFlavorTranslator {
+pub(crate) struct JavaScriptFlavorTranslator {
     packages: Rc<Packages>,
 }
 
 impl JavaScriptFlavorTranslator {
-    pub fn new(packages: Rc<Packages>) -> Self {
+    pub(crate) fn new(packages: Rc<Packages>) -> Self {
         Self { packages }
     }
 }
@@ -303,4 +303,4 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
     }
 }
 
-core::decl_flavor!(pub(crate) JavaScriptFlavor, core);
+core::decl_flavor!(pub(crate) JavaScriptFlavor);

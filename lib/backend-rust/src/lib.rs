@@ -7,7 +7,6 @@ mod utils;
 
 use crate::compiler::Compiler;
 use crate::flavored::{RpPackage, Type};
-use backend::Initializer;
 use core::errors::*;
 use core::{CoreFlavor, Handle};
 use genco::prelude::*;
@@ -28,7 +27,7 @@ const SCOPE_SEP: &'static str = "::";
 pub struct RustLang;
 
 impl Lang for RustLang {
-    manifest::lang_base!(RustModule, compile);
+    manifest::lang_base!(Module, compile);
 
     fn comment(&self, input: &str) -> Option<String> {
         Some(format!("// {}", input))
@@ -94,20 +93,16 @@ impl Lang for RustLang {
 }
 
 #[derive(Debug)]
-pub enum RustModule {
+pub(crate) enum Module {
     Chrono,
-    Grpc,
     Reqwest,
 }
 
-impl TryFromToml for RustModule {
+impl TryFromToml for Module {
     fn try_from_string(path: &Path, id: &str, value: String) -> Result<Self> {
-        use self::RustModule::*;
-
         let result = match id {
-            "chrono" => Chrono,
-            "grpc" => Grpc,
-            "reqwest" => Reqwest,
+            "chrono" => Module::Chrono,
+            "reqwest" => Module::Reqwest,
             _ => return NoModule::illegal(path, id, value),
         };
 
@@ -115,12 +110,9 @@ impl TryFromToml for RustModule {
     }
 
     fn try_from_value(path: &Path, id: &str, value: toml::Value) -> Result<Self> {
-        use self::RustModule::*;
-
         let result = match id {
-            "chrono" => Chrono,
-            "grpc" => Grpc,
-            "reqwest" => Reqwest,
+            "chrono" => Module::Chrono,
+            "reqwest" => Module::Reqwest,
             _ => return NoModule::illegal(path, id, value),
         };
 
@@ -128,54 +120,49 @@ impl TryFromToml for RustModule {
     }
 }
 
-pub struct Options {
-    pub datetime: Option<Type>,
-    pub root: Vec<Box<dyn RootCodegen>>,
-    pub service: Vec<Box<dyn ServiceCodegen>>,
-    pub packages: Rc<Packages>,
+pub(crate) struct Options {
+    pub(crate) datetime: Option<Type>,
+    pub(crate) root: Vec<Box<dyn RootCodegen>>,
+    pub(crate) service: Vec<Box<dyn ServiceCodegen>>,
+    pub(crate) packages: Rc<Packages>,
 }
 
-pub struct Root<'a> {
+pub(crate) struct Root<'a> {
     files: &'a mut BTreeMap<RpPackage, rust::Tokens>,
 }
 
-pub trait RootCodegen {
+pub(crate) trait RootCodegen {
     /// Generate root code.
     fn generate(&self, root: Root) -> Result<()>;
 }
 
-pub struct Service<'a, 'el: 'a> {
+pub(crate) struct Service<'a, 'el: 'a> {
     body: &'el flavored::RpServiceBody,
     container: &'a mut Tokens<Rust>,
     name: ItemStr,
     attributes: &'a Tokens<Rust>,
 }
 
-pub trait ServiceCodegen {
+pub(crate) trait ServiceCodegen {
     /// Generate service code.
     fn generate(&self, service: Service) -> Result<()>;
 }
 
-fn options(modules: Vec<RustModule>, packages: Rc<Packages>) -> Result<Options> {
-    use self::RustModule::*;
-
+fn options(modules: Vec<Module>, packages: Rc<Packages>) -> Result<Options> {
     let mut options = Options {
         datetime: None,
         root: Vec::new(),
         service: Vec::new(),
-        packages: packages,
+        packages,
     };
 
     for m in modules {
         log::debug!("+module: {:?}", m);
 
-        let initializer: Box<dyn Initializer<Options = Options>> = match m {
-            Chrono => Box::new(module::Chrono::new()),
-            Grpc => Box::new(module::Grpc::new()),
-            Reqwest => Box::new(module::Reqwest::new()),
-        };
-
-        initializer.initialize(&mut options)?;
+        match m {
+            Module::Chrono => module::chrono::initialize(&mut options)?,
+            Module::Reqwest => module::reqwest::initialize(&mut options)?,
+        }
     }
 
     Ok(options)

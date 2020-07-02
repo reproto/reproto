@@ -6,7 +6,7 @@ use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(bound = "F::Type: serde::Serialize")]
-pub struct RpField<F: 'static>
+pub struct RpField<F>
 where
     F: Flavor,
 {
@@ -26,7 +26,7 @@ where
     pub field_as: Option<String>,
 }
 
-impl<F: 'static> FlavorField for RpField<F>
+impl<F> FlavorField for RpField<F>
 where
     F: Flavor,
 {
@@ -35,7 +35,7 @@ where
     }
 }
 
-impl<F: 'static> RpField<F>
+impl<F> RpField<F>
 where
     F: Flavor,
 {
@@ -86,10 +86,9 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for RpField<F>
+impl<T> Translate<T> for RpField<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpField<T::Target>;
 

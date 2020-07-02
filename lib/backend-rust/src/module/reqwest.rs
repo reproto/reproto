@@ -3,40 +3,27 @@
 use crate::flavored::{RpEndpointHttp1, RpPackage, RpPathSpec, RpServiceBody, RustEndpoint, Type};
 use crate::utils::Comments;
 use crate::{Options, Root, RootCodegen, Service, ServiceCodegen, SCOPE_SEP};
-use backend::Initializer;
 use core::errors::Result;
 use genco::prelude::*;
 use genco::tokens::{FormatInto, ItemStr, Tokens};
 use std::rc::Rc;
 
-pub struct Module {}
+pub(crate) fn initialize(options: &mut Options) -> Result<()> {
+    let utils_package = options.packages.new("reproto")?;
 
-impl Module {
-    pub fn new() -> Module {
-        Module {}
-    }
-}
+    let imported_utils_package = Rc::new(format!("crate::{}", utils_package.join(SCOPE_SEP)));
+    let result = Type::from(rust::import(imported_utils_package.clone(), "Result"));
+    let path_encode = Type::from(rust::import(imported_utils_package.clone(), "PathEncode"));
 
-impl Initializer for Module {
-    type Options = Options;
+    options
+        .service
+        .push(Box::new(ReqwestService::new(result, path_encode)));
 
-    fn initialize(&self, options: &mut Options) -> Result<()> {
-        let utils_package = options.packages.new("reproto")?;
+    options
+        .root
+        .push(Box::new(ReqwestUtils::new(utils_package)));
 
-        let imported_utils_package = Rc::new(format!("crate::{}", utils_package.join(SCOPE_SEP)));
-        let result = Type::from(rust::import(imported_utils_package.clone(), "Result"));
-        let path_encode = Type::from(rust::import(imported_utils_package.clone(), "PathEncode"));
-
-        options
-            .service
-            .push(Box::new(ReqwestService::new(result, path_encode)));
-
-        options
-            .root
-            .push(Box::new(ReqwestUtils::new(utils_package)));
-
-        Ok(())
-    }
+    Ok(())
 }
 
 struct ReqwestUtils {

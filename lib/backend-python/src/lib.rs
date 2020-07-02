@@ -73,7 +73,7 @@ impl Lang for PythonLang {
 }
 
 #[derive(Debug)]
-pub enum PythonModule {
+pub(crate) enum PythonModule {
     Requests(module::RequestsConfig),
     Python2(module::Python2Config),
 }
@@ -104,11 +104,9 @@ impl TryFromToml for PythonModule {
     }
 }
 
-pub struct Options {
-    pub build_getters: bool,
-    pub build_constructor: bool,
-    pub service_generators: Vec<Box<dyn ServiceCodegen>>,
-    pub version_helper: Rc<dyn VersionHelper>,
+pub(crate) struct Options {
+    pub(crate) service_generators: Vec<Box<dyn ServiceCodegen>>,
+    pub(crate) version_helper: Rc<dyn VersionHelper>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -121,25 +119,15 @@ impl VersionHelper for Python3VersionHelper {
 }
 
 impl Options {
-    pub fn new() -> Options {
+    fn new() -> Options {
         Options {
-            build_getters: true,
-            build_constructor: true,
             service_generators: Vec::new(),
             version_helper: Rc::new(Python3VersionHelper {}),
         }
     }
 }
 
-pub struct FileSpec(pub Tokens<Python>);
-
-impl Default for FileSpec {
-    fn default() -> Self {
-        FileSpec(Tokens::new())
-    }
-}
-
-pub fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
+pub(crate) fn setup_options(modules: Vec<PythonModule>) -> Result<Options> {
     use self::PythonModule::*;
 
     let mut options = Options::new();

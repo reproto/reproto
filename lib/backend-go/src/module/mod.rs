@@ -1,3 +1,3 @@
 mod encoding_json;
 
-pub use self::encoding_json::Module as EncodingJson;
+pub(crate) use self::encoding_json::Module as EncodingJson;

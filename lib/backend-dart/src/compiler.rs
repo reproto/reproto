@@ -284,7 +284,7 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> PackageProcessor<'el, DartFlavor, Spanned<RpName>> for Compiler<'el> {
+impl<'el> PackageProcessor<'el, DartFlavor> for Compiler<'el> {
     type Out = dart::Tokens;
     type DeclIter = trans::translated::DeclIter<'el, DartFlavor>;
 

@@ -3,11 +3,11 @@ macro_rules! decl_body {
     (pub struct $name:ident<$f:ident> { $($rest:tt)* }) => {
         #[derive(Debug, Clone, serde::Serialize)]
         #[serde(bound = "F: serde::Serialize, F::Field: serde::Serialize, F::Endpoint: serde::Serialize, F::Package: serde::Serialize, F::Name: serde::Serialize, F::EnumType: serde::Serialize")]
-        pub struct $name<$f: 'static> where $f: $crate::flavor::Flavor {
+        pub struct $name<$f> where $f: $crate::Flavor {
             pub name: $f::Name,
             pub ident: String,
             pub comment: Vec<String>,
-            pub decls: Vec<$crate::rp_decl::RpDecl<$f>>,
+            pub decls: Vec<$crate::RpDecl<$f>>,
             pub decl_idents: ::linked_hash_map::LinkedHashMap<String, usize>,
             $($rest)*
         }
@@ -16,46 +16,46 @@ macro_rules! decl_body {
 
 #[macro_export]
 macro_rules! decl_flavor {
-    ($vis:vis $flavor:ident, $source:ident) => {
-        $vis type RpAccept = $source::RpAccept;
-        $vis type RpCode = $source::RpCode;
-        $vis type RpContext = $source::RpContext;
-        $vis type RpDecl = $source::RpDecl<$flavor>;
-        $vis type RpEndpoint = $source::RpEndpoint<$flavor>;
-        $vis type RpEndpointArgument = $source::RpEndpointArgument<$flavor>;
-        $vis type RpEndpointHttp = $source::RpEndpointHttp<$flavor>;
-        $vis type RpEndpointHttp1 = $source::RpEndpointHttp1<$flavor>;
-        $vis type RpEnumBody = $source::RpEnumBody<$flavor>;
-        $vis type RpField = $source::RpField<$flavor>;
-        $vis type RpFile = $source::RpFile<$flavor>;
-        $vis type RpHttpMethod = $source::RpHttpMethod;
-        $vis type RpInterfaceBody = $source::RpInterfaceBody<$flavor>;
-        $vis type RpPathPart = $source::RpPathPart<$flavor>;
-        $vis type RpPathSpec = $source::RpPathSpec<$flavor>;
-        $vis type RpPathStep = $source::RpPathStep<$flavor>;
-        $vis type RpReg = $source::RpReg;
-        $vis type RpNamed<'a> = $source::RpNamed<'a, $flavor>;
-        $vis type RpSubType = $source::RpSubType<$flavor>;
-        $vis type RpTupleBody = $source::RpTupleBody<$flavor>;
-        $vis type RpTypeBody = $source::RpTypeBody<$flavor>;
-        $vis type RpChannel = $source::RpChannel<$flavor>;
-        $vis type RpEnumType = $source::RpEnumType;
-        $vis type RpName = $source::RpName<$flavor>;
-        $vis type RpNumber = $source::RpNumber;
-        $vis type RpPackage = $source::RpPackage;
-        $vis type RpRequiredPackage = $source::RpRequiredPackage;
-        $vis type RpServiceBody = $source::RpServiceBody<$flavor>;
-        $vis type RpServiceBodyHttp = $source::RpServiceBodyHttp;
-        $vis type RpSubTypeStrategy = $source::RpSubTypeStrategy;
-        $vis type RpType = $source::RpType<$flavor>;
-        $vis type RpValue = $source::RpValue<$flavor>;
-        $vis type RpVariants = $source::RpVariants<$flavor>;
-        $vis type RpVariant<V> = $source::RpVariant<$flavor, V>;
-        $vis type RpVariantRef<'a> = $source::RpVariantRef<'a, $flavor>;
-        $vis type RpVariantValue<'a> = $source::RpVariantValue<'a>;
-        $vis type RpVersionedPackage = $source::RpVersionedPackage;
-        $vis type Attributes = $source::Attributes<$flavor>;
-        $vis type Selection = $source::Selection<$flavor>;
+    ($vis:vis $flavor:ident) => {
+        $vis type RpAccept = $crate::RpAccept;
+        $vis type RpCode = $crate::RpCode;
+        $vis type RpContext = $crate::RpContext;
+        $vis type RpDecl = $crate::RpDecl<$flavor>;
+        $vis type RpEndpoint = $crate::RpEndpoint<$flavor>;
+        $vis type RpEndpointArgument = $crate::RpEndpointArgument<$flavor>;
+        $vis type RpEndpointHttp = $crate::RpEndpointHttp<$flavor>;
+        $vis type RpEndpointHttp1 = $crate::RpEndpointHttp1<$flavor>;
+        $vis type RpEnumBody = $crate::RpEnumBody<$flavor>;
+        $vis type RpField = $crate::RpField<$flavor>;
+        $vis type RpFile = $crate::RpFile<$flavor>;
+        $vis type RpHttpMethod = $crate::RpHttpMethod;
+        $vis type RpInterfaceBody = $crate::RpInterfaceBody<$flavor>;
+        $vis type RpPathPart = $crate::RpPathPart<$flavor>;
+        $vis type RpPathSpec = $crate::RpPathSpec<$flavor>;
+        $vis type RpPathStep = $crate::RpPathStep<$flavor>;
+        $vis type RpReg = $crate::RpReg;
+        $vis type RpNamed<'a> = $crate::RpNamed<'a, $flavor>;
+        $vis type RpSubType = $crate::RpSubType<$flavor>;
+        $vis type RpTupleBody = $crate::RpTupleBody<$flavor>;
+        $vis type RpTypeBody = $crate::RpTypeBody<$flavor>;
+        $vis type RpChannel = $crate::RpChannel<$flavor>;
+        $vis type RpEnumType = $crate::RpEnumType;
+        $vis type RpName = $crate::RpName<$flavor>;
+        $vis type RpNumber = $crate::RpNumber;
+        $vis type RpPackage = $crate::RpPackage;
+        $vis type RpRequiredPackage = $crate::RpRequiredPackage;
+        $vis type RpServiceBody = $crate::RpServiceBody<$flavor>;
+        $vis type RpServiceBodyHttp = $crate::RpServiceBodyHttp;
+        $vis type RpSubTypeStrategy = $crate::RpSubTypeStrategy;
+        $vis type RpType = $crate::RpType<$flavor>;
+        $vis type RpValue = $crate::RpValue<$flavor>;
+        $vis type RpVariants = $crate::RpVariants<$flavor>;
+        $vis type RpVariant<V> = $crate::RpVariant<$flavor, V>;
+        $vis type RpVariantRef<'a> = $crate::RpVariantRef<'a, $flavor>;
+        $vis type RpVariantValue<'a> = $crate::RpVariantValue<'a>;
+        $vis type RpVersionedPackage = $crate::RpVersionedPackage;
+        $vis type Attributes = $crate::Attributes<$flavor>;
+        $vis type Selection = $crate::Selection<$flavor>;
     };
 }
 

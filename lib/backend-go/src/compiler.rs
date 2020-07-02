@@ -29,14 +29,14 @@ where
     }
 }
 
-pub struct Compiler<'el> {
-    pub env: &'el Translated<GoFlavor>,
+pub(crate) struct Compiler<'el> {
+    pub(crate) env: &'el Translated<GoFlavor>,
     options: Options,
     handle: &'el dyn Handle,
 }
 
 impl<'el> Compiler<'el> {
-    pub fn new(
+    pub(crate) fn new(
         env: &'el Translated<GoFlavor>,
         options: Options,
         handle: &'el dyn Handle,
@@ -114,7 +114,7 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> PackageProcessor<'el, GoFlavor, GoName> for Compiler<'el> {
+impl<'el> PackageProcessor<'el, GoFlavor> for Compiler<'el> {
     type Out = FileSpec;
     type DeclIter = trans::translated::DeclIter<'el, GoFlavor>;
 

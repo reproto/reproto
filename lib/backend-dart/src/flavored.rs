@@ -177,8 +177,8 @@ impl Deref for DartEndpoint {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct DartFlavor;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum DartFlavor {}
 
 impl Flavor for DartFlavor {
     type Type = Type;
@@ -305,7 +305,7 @@ impl FlavorTranslator for DartFlavorTranslator {
     }
 }
 
-core::decl_flavor!(pub(crate) DartFlavor, core);
+core::decl_flavor!(pub(crate) DartFlavor);
 
 /// Takes two iterators as a path, strips common prefix, and makes the two paths relative to each
 /// other.

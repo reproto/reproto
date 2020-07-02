@@ -15,10 +15,10 @@ static NUMERICS: [&str; 6] = ["Int", "UInt", "Int32", "Int64", "UInt32", "UInt64
 static FLOATS: [&str; 2] = ["Float", "Double"];
 static SIMPLE: [&str; 2] = ["String", "Bool"];
 
-pub struct Module {}
+pub(crate) struct Module {}
 
 impl Module {
-    pub fn new() -> Module {
+    pub(crate) fn new() -> Module {
         Module {}
     }
 }
@@ -40,12 +40,12 @@ impl Initializer for Module {
 struct Codegen {}
 
 impl Codegen {
-    pub fn new() -> Codegen {
+    pub(crate) fn new() -> Codegen {
         Self {}
     }
 
     // Setup a field initializer.
-    pub fn encode_field<'f, A: 'f>(
+    pub(crate) fn encode_field<'f, A: 'f>(
         &'f self,
         field: &'f Field,
         append: A,

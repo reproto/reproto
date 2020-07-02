@@ -21,7 +21,7 @@ use std::rc::Rc;
 use trans::Packages;
 
 #[derive(Debug, Clone)]
-pub enum Type {
+pub(crate) enum Type {
     Native,
     Integer,
     Float,
@@ -34,7 +34,7 @@ pub enum Type {
 }
 
 impl Type {
-    pub fn name<T>(import: T) -> Self
+    pub(crate) fn name<T>(import: T) -> Self
     where
         T: Into<python::Import>,
     {
@@ -61,7 +61,7 @@ impl Type {
     /// `var` is the name of the variable we finally want to assign.
     /// `l` helps us generate unique local variables, and should be incremented one level for every
     /// nested call of `decode`.
-    pub fn decode<V>(&self, var: V, l: usize) -> Option<Tokens<Python>>
+    pub(crate) fn decode<V>(&self, var: V, l: usize) -> Option<Tokens<Python>>
     where
         V: Into<ItemStr>,
     {
@@ -136,7 +136,7 @@ impl Type {
     }
 
     /// Build encode method.
-    pub fn encode(&self, var: Tokens<Python>) -> Tokens<Python> {
+    pub(crate) fn encode(&self, var: Tokens<Python>) -> Tokens<Python> {
         match self {
             Self::Integer | Self::Float | Self::Boolean | Self::Native | Self::String { .. } => {
                 quote!(#var)
@@ -157,9 +157,9 @@ impl Type {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Name {
-    pub ident: ItemStr,
-    pub package: RpPackage,
+pub(crate) struct Name {
+    pub(crate) ident: ItemStr,
+    pub(crate) package: RpPackage,
 }
 
 impl<'a> FormatInto<Python> for &'a Name {
@@ -174,8 +174,8 @@ impl package_processor::Name<PythonFlavor> for Name {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PythonFlavor;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) enum PythonFlavor {}
 
 impl Flavor for PythonFlavor {
     type Type = Type;
@@ -187,13 +187,13 @@ impl Flavor for PythonFlavor {
 }
 
 /// Responsible for translating RpType -> Python type.
-pub struct PythonFlavorTranslator {
+pub(crate) struct PythonFlavorTranslator {
     packages: Rc<Packages>,
     helper: Rc<dyn VersionHelper>,
 }
 
 impl PythonFlavorTranslator {
-    pub fn new(packages: Rc<Packages>, helper: Rc<dyn VersionHelper>) -> Self {
+    pub(crate) fn new(packages: Rc<Packages>, helper: Rc<dyn VersionHelper>) -> Self {
         Self { packages, helper }
     }
 }
@@ -299,4 +299,4 @@ impl FlavorTranslator for PythonFlavorTranslator {
     }
 }
 
-core::decl_flavor!(pub(crate) PythonFlavor, core);
+core::decl_flavor!(pub(crate) PythonFlavor);

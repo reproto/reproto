@@ -3,10 +3,10 @@
 use crate::Options;
 use backend::Initializer;
 
-pub struct Module {}
+pub(crate) struct Module {}
 
 impl Module {
-    pub fn new() -> Module {
+    pub(crate) fn new() -> Module {
         Module {}
     }
 }

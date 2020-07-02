@@ -37,34 +37,34 @@ impl<'a> FormatInto<Rust> for &'a Derives {
     }
 }
 
-pub struct EnumDerives;
+pub(crate) struct EnumDerives;
 
-impl<'el> FormatInto<Rust> for EnumDerives {
+impl FormatInto<Rust> for EnumDerives {
     fn format_into(self, tokens: &mut Tokens<Rust>) {
         quote_in! { *tokens => #[derive(Clone, Copy, Debug, PartialEq, Eq)] }
     }
 }
 
 /// A serde rename annotation.
-pub struct Rename<'a>(&'a str);
+pub(crate) struct Rename<'a>(&'a str);
 
-impl<'el> FormatInto<Rust> for Rename<'el> {
+impl<'a> FormatInto<Rust> for Rename<'a> {
     fn format_into(self, tokens: &mut Tokens<Rust>) {
         quote_in!(*tokens => #[serde(rename = #(quoted(self.0)))])
     }
 }
 
 /// Tag attribute.
-pub struct Tag<'a>(&'a str);
+pub(crate) struct Tag<'a>(&'a str);
 
-impl<'el> FormatInto<Rust> for Tag<'el> {
+impl<'a> FormatInto<Rust> for Tag<'a> {
     fn format_into(self, tokens: &mut Tokens<Rust>) {
         quote_in!(*tokens => #[serde(tag = #(quoted(self.0)))])
     }
 }
 
 /// Untagged attribute.
-pub struct Untagged;
+pub(crate) struct Untagged;
 
 impl<'el> FormatInto<Rust> for Untagged {
     fn format_into(self, tokens: &mut Tokens<Rust>) {
@@ -72,15 +72,15 @@ impl<'el> FormatInto<Rust> for Untagged {
     }
 }
 
-pub struct Compiler<'el> {
-    pub env: &'el Translated<RustFlavor>,
+pub(crate) struct Compiler<'el> {
+    pub(crate) env: &'el Translated<RustFlavor>,
     options: Options,
     handle: &'el dyn Handle,
     derives: Derives,
 }
 
 impl<'el> Compiler<'el> {
-    pub fn new(
+    pub(crate) fn new(
         env: &'el Translated<RustFlavor>,
         options: Options,
         handle: &'el dyn Handle,
@@ -242,7 +242,7 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> PackageProcessor<'el, RustFlavor, Spanned<RpName>> for Compiler<'el> {
+impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
     type Out = rust::Tokens;
     type DeclIter = trans::translated::DeclIter<'el, RustFlavor>;
 

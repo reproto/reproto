@@ -17,7 +17,7 @@ pub struct EnabledFeature {
     bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: Serialize, \
              F::Name: Serialize, F::EnumType: Serialize"
 )]
-pub struct RpFile<F: 'static>
+pub struct RpFile<F>
 where
     F: Flavor,
 {
@@ -34,14 +34,14 @@ where
 }
 
 /// Iterator over all declarations in a file.
-pub struct ForEachDecl<'a, F: 'static>
+pub struct ForEachDecl<'a, F>
 where
     F: Flavor,
 {
     queue: VecDeque<&'a RpDecl<F>>,
 }
 
-impl<'a, F: 'static> Iterator for ForEachDecl<'a, F>
+impl<'a, F> Iterator for ForEachDecl<'a, F>
 where
     F: Flavor,
 {
@@ -57,7 +57,7 @@ where
     }
 }
 
-impl<F: 'static> RpFile<F>
+impl<F> RpFile<F>
 where
     F: Flavor,
 {
@@ -96,10 +96,9 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for RpFile<F>
+impl<T> Translate<T> for RpFile<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpFile<T::Target>;
 

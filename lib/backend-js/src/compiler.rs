@@ -13,8 +13,8 @@ use relative_path::RelativePathBuf;
 use std::rc::Rc;
 use trans::Translated;
 
-pub struct Compiler<'a> {
-    pub env: &'a Translated<JavaScriptFlavor>,
+pub(crate) struct Compiler<'a> {
+    pub(crate) env: &'a Translated<JavaScriptFlavor>,
     handle: &'a dyn Handle,
     to_lower_snake: naming::ToLowerSnake,
     values: Tokens<JavaScript>,
@@ -22,7 +22,7 @@ pub struct Compiler<'a> {
 }
 
 impl<'a> Compiler<'a> {
-    pub fn new(
+    pub(crate) fn new(
         env: &'a Translated<JavaScriptFlavor>,
         _: Options,
         handle: &'a dyn Handle,
@@ -36,7 +36,7 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    pub fn compile(&self) -> Result<()> {
+    pub(crate) fn compile(&self) -> Result<()> {
         use genco::fmt;
 
         let files = self.do_populate_files(|_, new, out| {
@@ -279,7 +279,7 @@ impl<'a> Compiler<'a> {
     }
 }
 
-impl<'a> PackageProcessor<'a, JavaScriptFlavor, Name> for Compiler<'a> {
+impl<'a> PackageProcessor<'a, JavaScriptFlavor> for Compiler<'a> {
     type Out = FileSpec;
     type DeclIter = trans::translated::DeclIter<'a, JavaScriptFlavor>;
 

@@ -18,17 +18,17 @@ use std::rc::Rc;
 use trans::Packages;
 
 #[derive(Debug, Clone)]
-pub struct JavaHttp {
-    pub request: java::Import,
-    pub response: java::Import,
-    pub path: RpPathSpec,
-    pub method: RpHttpMethod,
+pub(crate) struct JavaHttp {
+    pub(crate) request: java::Import,
+    pub(crate) response: java::Import,
+    pub(crate) path: RpPathSpec,
+    pub(crate) method: RpHttpMethod,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Name {
-    pub name: Rc<String>,
-    pub package: RpPackage,
+pub(crate) struct Name {
+    pub(crate) name: Rc<String>,
+    pub(crate) package: RpPackage,
 }
 
 impl package_processor::Name<JavaFlavor> for Name {
@@ -38,7 +38,7 @@ impl package_processor::Name<JavaFlavor> for Name {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum Primitive {
+pub(crate) enum Primitive {
     Boolean,
     Integer,
     Long,
@@ -75,7 +75,7 @@ impl Primitive {
 }
 
 #[derive(Debug, Clone)]
-pub enum Type {
+pub(crate) enum Type {
     Object,
     Primitive {
         primitive: Primitive,
@@ -188,7 +188,7 @@ impl FormatInto<Java> for Type {
 }
 
 #[derive(Debug, Clone)]
-pub struct Field {
+pub(crate) struct Field {
     optional: Rc<java::Import>,
     inner: RpField,
 }
@@ -278,8 +278,8 @@ impl Deref for Field {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct JavaFlavor;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) enum JavaFlavor {}
 
 impl Flavor for JavaFlavor {
     type Type = Type;
@@ -291,7 +291,7 @@ impl Flavor for JavaFlavor {
 }
 
 /// Responsible for translating RpType -> Java type.
-pub struct JavaFlavorTranslator {
+pub(crate) struct JavaFlavorTranslator {
     packages: Rc<Packages>,
     list: Rc<java::Import>,
     map: Rc<java::Import>,
@@ -453,4 +453,4 @@ impl FlavorTranslator for JavaFlavorTranslator {
     }
 }
 
-core::decl_flavor!(pub(crate) JavaFlavor, core);
+core::decl_flavor!(pub(crate) JavaFlavor);

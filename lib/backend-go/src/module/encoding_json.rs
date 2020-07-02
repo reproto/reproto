@@ -10,7 +10,7 @@ use core::errors::Result;
 use genco::prelude::*;
 use std::rc::Rc;
 
-pub struct Module {}
+pub(crate) struct Module {}
 
 impl Module {
     pub fn new() -> Module {

@@ -14,10 +14,10 @@ static PRIMITIVES: [&str; 10] = [
     "Bool", "Int", "UInt", "Int32", "Int64", "UInt32", "UInt64", "Float", "Double", "String",
 ];
 
-pub struct Module {}
+pub(crate) struct Module {}
 
 impl Module {
-    pub fn new() -> Module {
+    pub(crate) fn new() -> Module {
         Module {}
     }
 }

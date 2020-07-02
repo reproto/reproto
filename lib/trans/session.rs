@@ -38,7 +38,7 @@ macro_rules! try_with_diag {
 }
 
 #[derive(Clone, Debug)]
-pub struct File<F: 'static>
+pub struct File<F>
 where
     F: Flavor,
 {
@@ -47,7 +47,7 @@ where
 }
 
 /// Scoped session for evaluating reproto IDLs.
-pub struct Session<'a, F: 'static>
+pub struct Session<'a, F>
 where
     F: Flavor,
 {
@@ -84,7 +84,7 @@ where
 }
 
 /// Environment containing all loaded declarations.
-impl<'a, F: 'static> Session<'a, F>
+impl<'a, F> Session<'a, F>
 where
     F: Flavor,
 {

@@ -4,13 +4,13 @@ use genco::lang::Python;
 use genco::Tokens;
 use std::rc::Rc;
 
-pub struct ServiceAdded<'a> {
-    pub body: &'a RpServiceBody,
-    pub type_body: &'a mut Tokens<Python>,
+pub(crate) struct ServiceAdded<'a> {
+    pub(crate) body: &'a RpServiceBody,
+    pub(crate) type_body: &'a mut Tokens<Python>,
 }
 
 /// Generate service-based code.
-pub trait ServiceCodegen {
+pub(crate) trait ServiceCodegen {
     fn generate(&self, e: ServiceAdded<'_>) -> Result<()>;
 }
 

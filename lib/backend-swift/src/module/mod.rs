@@ -1,7 +1,7 @@
 mod codable;
 mod grpc;
-pub mod simple;
+pub(crate) mod simple;
 
-pub use self::codable::Module as Codable;
-pub use self::grpc::Module as Grpc;
-pub use self::simple::Module as Simple;
+pub(crate) use self::codable::Module as Codable;
+pub(crate) use self::grpc::Module as Grpc;
+pub(crate) use self::simple::Module as Simple;

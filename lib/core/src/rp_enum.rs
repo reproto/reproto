@@ -20,10 +20,9 @@ decl_body!(
     }
 );
 
-impl<F: 'static, T> Translate<T> for RpEnumBody<F>
+impl<T> Translate<T> for RpEnumBody<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpEnumBody<T::Target>;
 
@@ -82,7 +81,7 @@ impl<'a> fmt::Display for RpVariantValue<'a> {
 ///
 /// This is typically created using `RpVariants::iter()`.
 #[derive(Debug)]
-pub struct RpVariantRef<'a, F: 'static>
+pub struct RpVariantRef<'a, F>
 where
     F: Flavor,
 {
@@ -93,7 +92,7 @@ where
     pub value: RpVariantValue<'a>,
 }
 
-impl<'a, F: 'static> RpVariantRef<'a, F>
+impl<'a, F> RpVariantRef<'a, F>
 where
     F: Flavor,
 {
@@ -120,7 +119,7 @@ where
 
 impl<'a, F> Copy for RpVariantRef<'a, F> where F: Flavor {}
 
-impl<'a, F: 'static> fmt::Display for RpVariantRef<'a, F>
+impl<'a, F> fmt::Display for RpVariantRef<'a, F>
 where
     F: Flavor,
     F::Name: fmt::Display,
@@ -133,7 +132,7 @@ where
 /// Variant in an enum.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(bound = "F::Package: Serialize, F::Name: Serialize, V: Serialize")]
-pub struct RpVariant<F: 'static, V>
+pub struct RpVariant<F, V>
 where
     F: Flavor,
 {
@@ -143,7 +142,7 @@ where
     pub value: V,
 }
 
-impl<'a, F: 'static, V> RpVariant<F, V>
+impl<'a, F, V> RpVariant<F, V>
 where
     F: Flavor,
 {
@@ -153,7 +152,7 @@ where
     }
 }
 
-impl<'a, F: 'static, V: 'a> RpVariant<F, V>
+impl<'a, F, V: 'a> RpVariant<F, V>
 where
     F: Flavor,
     RpVariantValue<'a>: From<&'a V>,
@@ -164,10 +163,9 @@ where
     }
 }
 
-impl<F: 'static, T, V> Translate<T> for RpVariant<F, V>
+impl<T, V> Translate<T> for RpVariant<T::Source, V>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpVariant<T::Target, V>;
 
@@ -195,7 +193,7 @@ pub enum RpEnumType {
 }
 
 impl RpEnumType {
-    pub fn is_assignable_from<F: 'static>(&self, value: &RpValue<F>) -> bool
+    pub fn is_assignable_from<F>(&self, value: &RpValue<F>) -> bool
     where
         F: Flavor,
     {
@@ -223,7 +221,7 @@ impl fmt::Display for RpEnumType {
 #[derive(Debug, Clone, Serialize)]
 #[serde(bound = "F: Serialize, F::Package: Serialize, F::Name: Serialize")]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum RpVariants<F: 'static>
+pub enum RpVariants<F>
 where
     F: Flavor,
 {
@@ -235,7 +233,7 @@ where
     },
 }
 
-impl<F: 'static> RpVariants<F>
+impl<F> RpVariants<F>
 where
     F: Flavor,
 {
@@ -248,14 +246,14 @@ where
     }
 }
 
-pub struct RpVariantsIter<'a, F: 'static>
+pub struct RpVariantsIter<'a, F>
 where
     F: Flavor,
 {
     iter: vec::IntoIter<RpVariantRef<'a, F>>,
 }
 
-impl<'a, F: 'static> Iterator for RpVariantsIter<'a, F>
+impl<'a, F> Iterator for RpVariantsIter<'a, F>
 where
     F: Flavor,
 {
@@ -266,7 +264,7 @@ where
     }
 }
 
-impl<F: 'static> RpVariants<F>
+impl<F> RpVariants<F>
 where
     F: Flavor,
 {
@@ -310,10 +308,9 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for RpVariants<F>
+impl<T> Translate<T> for RpVariants<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpVariants<T::Target>;
 
@@ -334,7 +331,7 @@ where
     }
 }
 
-impl<'a, F: 'static> IntoIterator for &'a RpVariants<F>
+impl<'a, F> IntoIterator for &'a RpVariants<F>
 where
     F: Flavor,
 {

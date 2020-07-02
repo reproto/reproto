@@ -72,15 +72,15 @@ impl TryFromToml for GoModule {
     }
 }
 
-pub struct Options {
-    pub field_gens: Vec<Box<dyn FieldCodegen>>,
-    pub enum_gens: Vec<Box<dyn EnumCodegen>>,
-    pub tuple_gens: Vec<Box<dyn TupleCodegen>>,
-    pub interface_gens: Vec<Box<dyn InterfaceCodegen>>,
+pub(crate) struct Options {
+    pub(crate) field_gens: Vec<Box<dyn FieldCodegen>>,
+    pub(crate) enum_gens: Vec<Box<dyn EnumCodegen>>,
+    pub(crate) tuple_gens: Vec<Box<dyn TupleCodegen>>,
+    pub(crate) interface_gens: Vec<Box<dyn InterfaceCodegen>>,
 }
 
 impl Options {
-    pub fn new() -> Options {
+    pub(crate) fn new() -> Options {
         Options {
             field_gens: Vec::new(),
             enum_gens: Vec::new(),
@@ -90,7 +90,7 @@ impl Options {
     }
 }
 
-pub fn options(modules: Vec<GoModule>) -> Result<Options> {
+fn options(modules: Vec<GoModule>) -> Result<Options> {
     use self::GoModule::*;
 
     let mut options = Options::new();
@@ -119,7 +119,7 @@ impl Default for FileSpec {
 /// Build codegen hooks.
 macro_rules! codegen {
     ($c:tt, $e:ty) => {
-        pub trait $c {
+        pub(crate) trait $c {
             fn generate(&self, e: $e) -> Result<()>;
         }
 
@@ -135,7 +135,7 @@ macro_rules! codegen {
 }
 
 /// Event emitted when a field has been added.
-pub struct FieldAdded<'a> {
+pub(crate) struct FieldAdded<'a> {
     pub tags: &'a mut Tags,
     pub field: &'a RpField,
 }
@@ -143,7 +143,7 @@ pub struct FieldAdded<'a> {
 codegen!(FieldCodegen, FieldAdded);
 
 /// Event emitted when an enum has been added
-pub struct EnumAdded<'a> {
+pub(crate) struct EnumAdded<'a> {
     pub container: &'a mut Tokens<Go>,
     pub name: &'a GoName,
     pub body: &'a RpEnumBody,
@@ -152,7 +152,7 @@ pub struct EnumAdded<'a> {
 codegen!(EnumCodegen, EnumAdded);
 
 /// Event emitted when a tuple has been added.
-pub struct TupleAdded<'a> {
+pub(crate) struct TupleAdded<'a> {
     pub container: &'a mut Tokens<Go>,
     pub name: &'a GoName,
     pub body: &'a RpTupleBody,
@@ -161,7 +161,7 @@ pub struct TupleAdded<'a> {
 codegen!(TupleCodegen, TupleAdded);
 
 /// Event emitted when an interface has been added.
-pub struct InterfaceAdded<'a> {
+pub(crate) struct InterfaceAdded<'a> {
     pub container: &'a mut Tokens<Go>,
     pub name: &'a GoName,
     pub body: &'a RpInterfaceBody,
@@ -170,7 +170,7 @@ pub struct InterfaceAdded<'a> {
 codegen!(InterfaceCodegen, InterfaceAdded);
 
 /// Structure for Tags - a type of Go metadata
-pub struct Tags {
+pub(crate) struct Tags {
     values: BTreeMap<ItemStr, Vec<ItemStr>>,
 }
 

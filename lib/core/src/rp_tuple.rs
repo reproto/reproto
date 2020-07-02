@@ -11,7 +11,7 @@ decl_body!(
     }
 );
 
-impl<F: 'static> RpTupleBody<F>
+impl<F> RpTupleBody<F>
 where
     F: Flavor,
 {
@@ -20,10 +20,9 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for RpTupleBody<F>
+impl<T> Translate<T> for RpTupleBody<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpTupleBody<T::Target>;
 

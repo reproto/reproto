@@ -14,7 +14,7 @@ use naming::Naming;
 use trans::Translated;
 
 #[allow(unused)]
-pub struct Compiler<'a> {
+pub(crate) struct Compiler<'a> {
     env: &'a Translated<JavaFlavor>,
     options: Options,
     to_upper: naming::ToUpperCamel,
@@ -27,7 +27,7 @@ pub struct Compiler<'a> {
 }
 
 impl<'a> Compiler<'a> {
-    pub fn new(env: &'a Translated<JavaFlavor>, options: Options) -> Self {
+    pub(crate) fn new(env: &'a Translated<JavaFlavor>, options: Options) -> Self {
         Self {
             env,
             options,
@@ -41,7 +41,7 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    pub fn compile(&self, handle: &dyn Handle) -> Result<()> {
+    pub(crate) fn compile(&self, handle: &dyn Handle) -> Result<()> {
         for decl in self.env.toplevel_decl_iter() {
             let package = decl.name().package.join(".");
 

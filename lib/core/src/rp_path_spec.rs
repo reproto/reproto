@@ -7,9 +7,9 @@ use std::fmt;
 
 /// A part of a step.
 #[derive(Debug, Clone, Serialize)]
-#[serde(bound = "F::Type: ::serde::Serialize")]
+#[serde(bound = "F::Type: serde::Serialize")]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum RpPathPart<F: 'static>
+pub enum RpPathPart<F>
 where
     F: Flavor,
 {
@@ -17,7 +17,7 @@ where
     Segment(String),
 }
 
-impl<F: 'static> fmt::Display for RpPathPart<F>
+impl<F> fmt::Display for RpPathPart<F>
 where
     F: Flavor,
 {
@@ -37,10 +37,9 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for RpPathPart<F>
+impl<T> Translate<T> for RpPathPart<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpPathPart<T::Target>;
 
@@ -59,15 +58,15 @@ where
 
 /// A step in a path specification.
 #[derive(Debug, Clone, Serialize)]
-#[serde(bound = "F::Type: ::serde::Serialize")]
-pub struct RpPathStep<F: 'static>
+#[serde(bound = "F::Type: serde::Serialize")]
+pub struct RpPathStep<F>
 where
     F: Flavor,
 {
     pub parts: Vec<RpPathPart<F>>,
 }
 
-impl<F: 'static> fmt::Display for RpPathStep<F>
+impl<F> fmt::Display for RpPathStep<F>
 where
     F: Flavor,
 {
@@ -82,10 +81,9 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for RpPathStep<F>
+impl<T> Translate<T> for RpPathStep<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpPathStep<T::Target>;
 
@@ -99,15 +97,15 @@ where
 
 /// A path specification.
 #[derive(Debug, Clone, Serialize)]
-#[serde(bound = "F::Type: ::serde::Serialize")]
-pub struct RpPathSpec<F: 'static>
+#[serde(bound = "F::Type: serde::Serialize")]
+pub struct RpPathSpec<F>
 where
     F: Flavor,
 {
     pub steps: Vec<RpPathStep<F>>,
 }
 
-impl<F: 'static> RpPathSpec<F>
+impl<F> RpPathSpec<F>
 where
     F: Flavor,
 {
@@ -127,7 +125,7 @@ where
     }
 }
 
-impl<F: 'static> fmt::Display for RpPathSpec<F>
+impl<F> fmt::Display for RpPathSpec<F>
 where
     F: Flavor,
 {
@@ -140,10 +138,9 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for RpPathSpec<F>
+impl<T> Translate<T> for RpPathSpec<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpPathSpec<T::Target>;
 

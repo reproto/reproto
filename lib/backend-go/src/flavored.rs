@@ -101,8 +101,8 @@ impl<'a> FormatInto<Go> for &'a Type {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct GoFlavor;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) enum GoFlavor {}
 
 impl Flavor for GoFlavor {
     type Type = Type;
@@ -114,7 +114,7 @@ impl Flavor for GoFlavor {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GoName {
+pub(crate) struct GoName {
     pub name: Rc<String>,
     pub package: RpPackage,
 }
@@ -132,7 +132,7 @@ impl package_processor::Name<GoFlavor> for GoName {
 }
 
 /// Responsible for translating RpType -> Go type.
-pub struct GoFlavorTranslator {
+pub(crate) struct GoFlavorTranslator {
     package_translator: Rc<Packages>,
 }
 
@@ -269,4 +269,4 @@ impl FlavorTranslator for GoFlavorTranslator {
     }
 }
 
-core::decl_flavor!(pub(crate) GoFlavor, core);
+core::decl_flavor!(pub(crate) GoFlavor);

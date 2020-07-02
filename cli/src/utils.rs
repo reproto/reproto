@@ -447,11 +447,11 @@ pub fn semck_check(
         return Ok(());
 
         /// Helper struct to display information on channels.
-        struct FmtChannel<'a, F: 'static>(Option<&'a RpChannel<F>>)
+        struct FmtChannel<'a, F>(Option<&'a RpChannel<F>>)
         where
             F: Flavor;
 
-        impl<'a, F: 'static> fmt::Display for FmtChannel<'a, F>
+        impl<'a, F> fmt::Display for FmtChannel<'a, F>
         where
             F: Flavor,
         {

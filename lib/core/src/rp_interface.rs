@@ -39,7 +39,7 @@ decl_body!(
     }
 );
 
-impl<F: 'static> RpInterfaceBody<F>
+impl<F> RpInterfaceBody<F>
 where
     F: Flavor,
 {
@@ -48,10 +48,9 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for RpInterfaceBody<F>
+impl<T> Translate<T> for RpInterfaceBody<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpInterfaceBody<T::Target>;
 
@@ -87,7 +86,7 @@ where
     bound = "F: Serialize, F::Field: Serialize, F::Endpoint: Serialize, F::Package: Serialize, \
              F::Name: Serialize, F::EnumType: Serialize"
 )]
-pub struct RpSubType<F: 'static>
+pub struct RpSubType<F>
 where
     F: Flavor,
 {
@@ -103,7 +102,7 @@ where
     pub sub_type_name: Option<Spanned<String>>,
 }
 
-impl<F: 'static> RpSubType<F>
+impl<F> RpSubType<F>
 where
     F: Flavor,
 {
@@ -131,10 +130,9 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for RpSubType<F>
+impl<T> Translate<T> for RpSubType<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpSubType<T::Target>;
 

@@ -16,7 +16,7 @@ pub enum RpReg {
 }
 
 impl RpReg {
-    pub fn ident<PackageFn, InnerFn, F: 'static>(
+    pub fn ident<PackageFn, InnerFn, F>(
         &self,
         name: &RpName<F>,
         package_fn: PackageFn,

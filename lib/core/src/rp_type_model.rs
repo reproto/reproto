@@ -20,7 +20,7 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for RpTypeBody<F>
+impl<F, T> Translate<T> for RpTypeBody<F>
 where
     F: Flavor,
     T: Translator<Source = F>,

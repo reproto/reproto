@@ -10,7 +10,10 @@ use std::cmp;
 use std::fmt;
 use std::hash;
 
-pub trait FlavorField: fmt::Debug + Clone {
+pub trait FlavorField
+where
+    Self: 'static + fmt::Debug + Clone,
+{
     /// Indicates if the field is discriminating in an untagged context.
     fn is_discriminating(&self) -> bool;
 }
@@ -27,7 +30,10 @@ where
 }
 
 /// The flavor of intermediate representation being used.
-pub trait Flavor: fmt::Debug + Clone + cmp::Eq + hash::Hash {
+pub trait Flavor
+where
+    Self: 'static + fmt::Debug + Clone + Copy + cmp::Eq + hash::Hash,
+{
     /// The type that this flavor serializes to.
     type Type: fmt::Debug + Clone;
     /// The local field name.
@@ -43,8 +49,8 @@ pub trait Flavor: fmt::Debug + Clone + cmp::Eq + hash::Hash {
 }
 
 /// The first flavor where packages are fully qualified.
-#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Hash)]
-pub struct CoreFlavor;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Hash)]
+pub enum CoreFlavor {}
 
 impl Flavor for CoreFlavor {
     type Type = RpType<CoreFlavor>;

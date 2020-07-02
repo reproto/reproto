@@ -25,11 +25,11 @@ where
     }
 }
 
-pub trait PackageProcessor<'el, F: 'static, N: 'static>
+pub trait PackageProcessor<'el, F>
 where
     Self: 'el + Sized,
-    F: Flavor<Name = N, Package = RpPackage>,
-    N: Name<F>,
+    F: Flavor<Package = RpPackage>,
+    F::Name: Name<F>,
 {
     type Out: Default;
     type DeclIter: Iterator<Item = &'el RpDecl<F>>;

@@ -113,7 +113,7 @@ pub struct RpStringType {
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(bound = "F::Package: Serialize")]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum RpType<F: 'static>
+pub enum RpType<F>
 where
     F: Flavor,
 {
@@ -138,7 +138,7 @@ where
     },
 }
 
-impl<F: 'static> RpType<F>
+impl<F> RpType<F>
 where
     F: Flavor,
 {
@@ -190,7 +190,7 @@ impl RpType<CoreFlavor> {
     }
 }
 
-impl<F: 'static> fmt::Display for RpType<F>
+impl<F> fmt::Display for RpType<F>
 where
     F: Flavor,
 {

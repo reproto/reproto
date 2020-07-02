@@ -115,7 +115,7 @@ impl Lang for SwiftLang {
 }
 
 #[derive(Debug)]
-pub enum SwiftModule {
+pub(crate) enum SwiftModule {
     Grpc,
     Simple,
     Codable,
@@ -149,16 +149,16 @@ impl TryFromToml for SwiftModule {
     }
 }
 
-pub struct Options {
+pub(crate) struct Options {
     /// All types that the struct model should extend.
-    pub struct_model_extends: Vec<swift::Tokens>,
+    pub(crate) struct_model_extends: Vec<swift::Tokens>,
     /// The provided Any type that should be used in structs.
-    pub any_type: Vec<(&'static str, Type)>,
-    pub gen: codegen::Generators,
+    pub(crate) any_type: Vec<(&'static str, Type)>,
+    pub(crate) gen: codegen::Generators,
 }
 
 impl Options {
-    pub fn new() -> Options {
+    pub(crate) fn new() -> Options {
         Options {
             struct_model_extends: Vec::new(),
             any_type: Vec::new(),
@@ -167,7 +167,7 @@ impl Options {
     }
 }
 
-pub fn options(modules: Vec<SwiftModule>) -> Result<Options> {
+pub(crate) fn options(modules: Vec<SwiftModule>) -> Result<Options> {
     use self::SwiftModule::*;
 
     let mut options = Options::new();

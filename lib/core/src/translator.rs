@@ -20,8 +20,8 @@ pub trait PackageTranslator<K, V> {
 }
 
 pub trait FlavorTranslator {
-    type Source: 'static + Clone + Flavor;
-    type Target: 'static + Clone + Flavor;
+    type Source: Flavor;
+    type Target: Flavor;
 
     fn translate_number(&self, number: RpNumberType) -> Result<<Self::Target as Flavor>::Type>;
 
@@ -126,7 +126,7 @@ impl<P, F> CoreFlavorTranslator<P, F> {
     }
 }
 
-impl<P: 'static, F: 'static> FlavorTranslator for CoreFlavorTranslator<P, F>
+impl<P: 'static, F> FlavorTranslator for CoreFlavorTranslator<P, F>
 where
     P: PackageTranslator<RpVersionedPackage, F::Package>,
     F: Flavor<
@@ -152,8 +152,8 @@ where
 
 /// Translator trait from one flavor to another.
 pub trait Translator {
-    type Source: 'static + Flavor;
-    type Target: 'static + Flavor;
+    type Source: Flavor;
+    type Target: Flavor;
 
     /// Indicate that the given name has been visited.
     fn visit(&self, _: &mut Diagnostics, _: &<Self::Source as Flavor>::Name) -> Result<()> {
@@ -314,10 +314,9 @@ where
 
 pub struct Fields<T>(pub Vec<Spanned<T>>);
 
-impl<T, F: 'static> Translate<T> for Fields<F::Field>
+impl<T> Translate<T> for Fields<<T::Source as Flavor>::Field>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = Vec<Spanned<<T::Target as Flavor>::Field>>;
 

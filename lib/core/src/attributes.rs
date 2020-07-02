@@ -12,7 +12,7 @@ use std::mem;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(bound = "F::Package: Serialize")]
-pub struct Selection<F: 'static>
+pub struct Selection<F>
 where
     F: Flavor,
 {
@@ -22,7 +22,7 @@ where
     values: HashMap<String, (Spanned<String>, Spanned<RpValue<F>>)>,
 }
 
-impl<F: 'static> Selection<F>
+impl<F> Selection<F>
 where
     F: Flavor,
 {
@@ -61,7 +61,7 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for Selection<F>
+impl<F, T> Translate<T> for Selection<F>
 where
     F: Flavor,
     T: Translator<Source = F>,
@@ -78,7 +78,7 @@ where
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(bound = "F::Package: Serialize")]
-pub struct Attributes<F: 'static>
+pub struct Attributes<F>
 where
     F: Flavor,
 {
@@ -86,7 +86,7 @@ where
     selections: HashMap<String, Spanned<Selection<F>>>,
 }
 
-impl<F: 'static> Attributes<F>
+impl<F> Attributes<F>
 where
     F: Flavor,
 {
@@ -124,7 +124,7 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for Attributes<F>
+impl<F, T> Translate<T> for Attributes<F>
 where
     F: Flavor,
     T: Translator<Source = F>,

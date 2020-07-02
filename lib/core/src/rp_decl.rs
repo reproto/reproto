@@ -9,7 +9,7 @@ use serde::Serialize;
 use std::fmt;
 
 #[derive(Debug, Clone)]
-pub enum RpNamed<'a, F: 'static>
+pub enum RpNamed<'a, F>
 where
     F: Flavor,
 {
@@ -22,7 +22,7 @@ where
     Service(&'a Spanned<RpServiceBody<F>>),
 }
 
-impl<'a, F: 'static> RpNamed<'a, F>
+impl<'a, F> RpNamed<'a, F>
 where
     F: Flavor,
 {
@@ -63,7 +63,7 @@ where
              F::Name: Serialize, F::EnumType: Serialize"
 )]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum RpDecl<F: 'static>
+pub enum RpDecl<F>
 where
     F: Flavor,
 {
@@ -74,7 +74,7 @@ where
     Service(Spanned<RpServiceBody<F>>),
 }
 
-impl<F: 'static> RpDecl<F>
+impl<F> RpDecl<F>
 where
     F: Flavor,
 {
@@ -253,10 +253,9 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for RpDecl<F>
+impl<T> Translate<T> for RpDecl<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpDecl<T::Target>;
 
@@ -276,7 +275,7 @@ where
     }
 }
 
-impl<F: 'static> fmt::Display for RpDecl<F>
+impl<F> fmt::Display for RpDecl<F>
 where
     F: Flavor,
     F::Name: fmt::Display,
@@ -294,7 +293,7 @@ where
     }
 }
 
-impl<'a, F: 'static> From<&'a RpDecl<F>> for Span
+impl<'a, F> From<&'a RpDecl<F>> for Span
 where
     F: Flavor,
 {

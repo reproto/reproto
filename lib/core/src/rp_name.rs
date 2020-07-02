@@ -7,7 +7,7 @@ use std::fmt;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(bound = "F::Package: Serialize")]
-pub struct RpName<F: 'static>
+pub struct RpName<F>
 where
     F: Flavor,
 {
@@ -20,7 +20,7 @@ where
     pub path: Vec<String>,
 }
 
-impl<F: 'static> RpName<F>
+impl<F> RpName<F>
 where
     F: Flavor,
 {
@@ -108,7 +108,7 @@ impl RpName<CoreFlavor> {
     }
 }
 
-impl<F: 'static> fmt::Display for RpName<F>
+impl<F> fmt::Display for RpName<F>
 where
     F: Flavor,
 {
@@ -121,10 +121,9 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for RpName<F>
+impl<T> Translate<T> for RpName<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpName<T::Target>;
 

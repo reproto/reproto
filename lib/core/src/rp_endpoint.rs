@@ -50,9 +50,9 @@ impl default::Default for RpAccept {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Default)]
-#[serde(bound = "F: Serialize, F::Type: Serialize")]
-pub struct RpEndpointHttp<F: 'static>
+#[derive(Debug, Clone, Serialize)]
+#[serde(bound = "F::Type: Serialize")]
+pub struct RpEndpointHttp<F>
 where
     F: Flavor,
 {
@@ -69,10 +69,23 @@ where
     pub accept: RpAccept,
 }
 
-impl<F: 'static, T> Translate<T> for RpEndpointHttp<F>
+impl<F> default::Default for RpEndpointHttp<F>
 where
     F: Flavor,
-    T: Translator<Source = F>,
+{
+    fn default() -> Self {
+        Self {
+            path: Default::default(),
+            body: Default::default(),
+            method: Default::default(),
+            accept: Default::default(),
+        }
+    }
+}
+
+impl<T> Translate<T> for RpEndpointHttp<T::Source>
+where
+    T: Translator,
 {
     type Out = RpEndpointHttp<T::Target>;
 
@@ -94,7 +107,7 @@ where
 /// An argument to an endpont.
 #[derive(Debug, Clone, Serialize)]
 #[serde(bound = "F::Type: Serialize")]
-pub struct RpEndpointArgument<F: 'static>
+pub struct RpEndpointArgument<F>
 where
     F: Flavor,
 {
@@ -106,10 +119,9 @@ where
     pub channel: Spanned<RpChannel<F>>,
 }
 
-impl<F: 'static, T> Translate<T> for RpEndpointArgument<F>
+impl<T> Translate<T> for RpEndpointArgument<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpEndpointArgument<T::Target>;
 
@@ -127,7 +139,7 @@ where
     }
 }
 
-impl<F: 'static> RpEndpointArgument<F>
+impl<F> RpEndpointArgument<F>
 where
     F: Flavor,
 {
@@ -146,7 +158,7 @@ where
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(bound = "F: Serialize, F::Type: Serialize, F::Package: Serialize")]
-pub struct RpEndpoint<F: 'static>
+pub struct RpEndpoint<F>
 where
     F: Flavor,
 {
@@ -174,7 +186,7 @@ where
     pub http: RpEndpointHttp<F>,
 }
 
-impl<F: 'static> RpEndpoint<F>
+impl<F> RpEndpoint<F>
 where
     F: Flavor,
 {
@@ -212,10 +224,9 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for RpEndpoint<F>
+impl<T> Translate<T> for RpEndpoint<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpEndpoint<T::Target>;
 
@@ -237,7 +248,7 @@ where
 
 /// A model that describes the endpoint as an HTTP/1.1 endpoint.
 #[derive(Debug, Clone)]
-pub struct RpEndpointHttp1<F: 'static>
+pub struct RpEndpointHttp1<F>
 where
     F: Flavor,
 {
@@ -247,9 +258,9 @@ where
     pub method: RpHttpMethod,
 }
 
-impl<F: 'static> RpEndpointHttp1<F>
+impl<F> RpEndpointHttp1<F>
 where
-    F: Clone + Flavor,
+    F: Flavor,
 {
     /// Convert the general HTTP information into HTTP/1.1 if applicable.
     pub fn from_endpoint(endpoint: &RpEndpoint<F>) -> Option<RpEndpointHttp1<F>> {

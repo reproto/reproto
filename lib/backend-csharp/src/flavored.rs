@@ -172,8 +172,8 @@ impl FlavorField for Field {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct CsharpFlavor;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) enum CsharpFlavor {}
 
 impl Flavor for CsharpFlavor {
     type Type = Type;
@@ -325,4 +325,4 @@ impl FlavorTranslator for CsharpFlavorTranslator {
     }
 }
 
-core::decl_flavor!(pub(crate) CsharpFlavor, core);
+core::decl_flavor!(pub(crate) CsharpFlavor);

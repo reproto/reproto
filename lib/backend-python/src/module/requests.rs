@@ -11,13 +11,13 @@ use serde::Deserialize;
 #[derive(Debug, Default, Deserialize)]
 pub struct Config {}
 
-pub struct Module {
+pub(crate) struct Module {
     #[allow(dead_code)]
     config: Config,
 }
 
 impl Module {
-    pub fn new(config: Config) -> Module {
+    pub(crate) fn new(config: Config) -> Module {
         Module { config }
     }
 }

@@ -19,7 +19,7 @@ use std::rc::Rc;
 use trans::Packages;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Primitive {
+pub(crate) enum Primitive {
     Bool,
     UInt32,
     UInt64,
@@ -44,7 +44,7 @@ impl FormatInto<Swift> for Primitive {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Type {
+pub(crate) enum Type {
     Primitive { primitive: Primitive },
     Any,
     String,
@@ -173,9 +173,9 @@ impl<'a> FormatInto<Swift> for &'a Type {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Name {
-    pub name: Rc<String>,
-    pub package: RpPackage,
+pub(crate) struct Name {
+    pub(crate) name: Rc<String>,
+    pub(crate) package: RpPackage,
 }
 
 impl fmt::Display for Name {
@@ -197,7 +197,7 @@ impl package_processor::Name<SwiftFlavor> for Name {
 }
 
 #[derive(Debug, Clone)]
-pub struct Field {
+pub(crate) struct Field {
     inner: RpField,
 }
 
@@ -227,8 +227,8 @@ impl Deref for Field {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SwiftFlavor;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) enum SwiftFlavor {}
 
 impl Flavor for SwiftFlavor {
     type Type = Type;
@@ -240,7 +240,7 @@ impl Flavor for SwiftFlavor {
 }
 
 /// Responsible for translating RpType -> Swift type.
-pub struct SwiftFlavorTranslator {
+pub(crate) struct SwiftFlavorTranslator {
     packages: Rc<Packages>,
     formatter: Rc<swift::Import>,
     data: Rc<swift::Import>,
@@ -250,7 +250,7 @@ pub struct SwiftFlavorTranslator {
 }
 
 impl SwiftFlavorTranslator {
-    pub fn new(packages: Rc<Packages>, options: &Options) -> Result<Self> {
+    pub(crate) fn new(packages: Rc<Packages>, options: &Options) -> Result<Self> {
         let any = {
             let mut any_types = options.any_type.iter().cloned();
 
@@ -413,4 +413,4 @@ impl FlavorTranslator for SwiftFlavorTranslator {
     }
 }
 
-core::decl_flavor!(pub(crate) SwiftFlavor, core);
+core::decl_flavor!(pub(crate) SwiftFlavor);

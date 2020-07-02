@@ -12,7 +12,7 @@ use genco::tokens::{FormatInto, ItemStr};
 use trans::{self, Packages, Translated};
 
 /// Documentation comments.
-pub struct Comments<I>(pub I);
+pub(crate) struct Comments<I>(pub(crate) I);
 
 impl<I> FormatInto<Swift> for Comments<I>
 where
@@ -29,14 +29,14 @@ where
     }
 }
 
-pub struct Compiler<'a> {
-    pub env: &'a Translated<SwiftFlavor>,
+pub(crate) struct Compiler<'a> {
+    pub(crate) env: &'a Translated<SwiftFlavor>,
     opt: Options,
     handle: &'a dyn Handle,
 }
 
 impl<'a> Compiler<'a> {
-    pub fn new(
+    pub(crate) fn new(
         env: &'a Translated<SwiftFlavor>,
         opt: Options,
         handle: &'a dyn Handle,
@@ -100,7 +100,7 @@ impl<'a> Compiler<'a> {
         Ok(())
     }
 
-    pub fn compile(&self, packages: &Packages) -> Result<()> {
+    pub(crate) fn compile(&self, packages: &Packages) -> Result<()> {
         use genco::fmt;
 
         let mut files = self.do_populate_files(|_, new, out| {
@@ -139,7 +139,7 @@ impl<'a> Compiler<'a> {
     }
 }
 
-impl<'a> PackageProcessor<'a, SwiftFlavor, Name> for Compiler<'a> {
+impl<'a> PackageProcessor<'a, SwiftFlavor> for Compiler<'a> {
     type Out = swift::Tokens;
     type DeclIter = trans::translated::DeclIter<'a, SwiftFlavor>;
 

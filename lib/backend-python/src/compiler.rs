@@ -6,7 +6,7 @@ use crate::flavored::{
     RpTupleBody, RpTypeBody,
 };
 use crate::utils::BlockComment;
-use crate::{FileSpec, Options, EXT, INIT_PY};
+use crate::{Options, EXT, INIT_PY};
 use backend::PackageProcessor;
 use core::errors::*;
 use core::{self, Handle, RelativePathBuf, Spanned};
@@ -16,8 +16,8 @@ use std::collections::BTreeMap;
 use std::slice;
 use trans::{self, Translated};
 
-pub struct Compiler<'el> {
-    pub env: &'el Translated<PythonFlavor>,
+pub(crate) struct Compiler<'el> {
+    pub(crate) env: &'el Translated<PythonFlavor>,
     variant_field: Spanned<RpField>,
     to_lower_snake: naming::ToLowerSnake,
     enum_enum: python::Import,
@@ -26,7 +26,7 @@ pub struct Compiler<'el> {
 }
 
 impl<'el> Compiler<'el> {
-    pub fn new(
+    pub(crate) fn new(
         env: &'el Translated<PythonFlavor>,
         variant_field: Spanned<RpField>,
         options: Options,
@@ -43,7 +43,7 @@ impl<'el> Compiler<'el> {
     }
 
     /// Compile the given backend.
-    pub fn compile(&self) -> Result<()> {
+    pub(crate) fn compile(&self) -> Result<()> {
         use genco::fmt;
 
         let files = self.populate_files()?;
@@ -60,7 +60,7 @@ impl<'el> Compiler<'el> {
             let fmt =
                 fmt::Config::from_lang::<Python>().with_indentation(fmt::Indentation::Space(2));
 
-            out.0.format_file(&mut w.as_formatter(&fmt), &config)?;
+            out.format_file(&mut w.as_formatter(&fmt), &config)?;
         }
 
         Ok(())
@@ -249,7 +249,7 @@ impl<'el> Compiler<'el> {
         }
     }
 
-    pub fn enum_variants(&self, t: &mut python::Tokens, body: &RpEnumBody) {
+    fn enum_variants(&self, t: &mut python::Tokens, body: &RpEnumBody) {
         let mut args = Tokens::new();
 
         let mut it = body.variants.iter().peekable();
@@ -277,8 +277,8 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> PackageProcessor<'el, PythonFlavor, Name> for Compiler<'el> {
-    type Out = FileSpec;
+impl<'el> PackageProcessor<'el, PythonFlavor> for Compiler<'el> {
+    type Out = python::Tokens;
     type DeclIter = trans::translated::DeclIter<'el, PythonFlavor>;
 
     fn ext(&self) -> &str {
@@ -294,7 +294,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor, Name> for Compiler<'el> {
     }
 
     fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
-        quote_in! { out.0 =>
+        quote_in! { *out =>
             class #(&body.name):
                 #(ref t => self.build_constructor(t, &body.fields))
 
@@ -315,7 +315,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor, Name> for Compiler<'el> {
     }
 
     fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
-        quote_in! { out.0 =>
+        quote_in! { *out =>
             class #(&body.name):
                 #(ref t => self.build_constructor(t, slice::from_ref(&self.variant_field)))
 
@@ -355,7 +355,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor, Name> for Compiler<'el> {
     }
 
     fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
-        quote_in! { out.0 =>
+        quote_in! { *out =>
             class #(&body.name):
                 #(ref t => self.build_constructor(t, &body.fields))
 
@@ -378,7 +378,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor, Name> for Compiler<'el> {
     }
 
     fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
-        quote_in! { out.0 =>
+        quote_in! { *out =>
             class #(&body.name):
                 #(match &body.sub_type_strategy {
                     core::RpSubTypeStrategy::Tagged { tag, .. } => {
@@ -506,19 +506,19 @@ impl<'el> PackageProcessor<'el, PythonFlavor, Name> for Compiler<'el> {
         for g in &self.service_generators {
             g.generate(ServiceAdded {
                 body,
-                type_body: &mut out.0,
+                type_body: out,
             })?;
         }
 
         Ok(())
     }
 
-    fn populate_files(&self) -> Result<BTreeMap<RpPackage, FileSpec>> {
+    fn populate_files(&self) -> Result<BTreeMap<RpPackage, python::Tokens>> {
         let mut enums = Vec::new();
 
         let mut files = self.do_populate_files(|decl, new, out| {
             if !new {
-                out.0.line();
+                out.line();
             }
 
             if let core::RpDecl::Enum(ref body) = *decl {
@@ -532,9 +532,9 @@ impl<'el> PackageProcessor<'el, PythonFlavor, Name> for Compiler<'el> {
         // These are added to the end of the file to declare enums:
         // https://docs.python.org/3/library/enum.html
         for body in enums {
-            if let Some(file_spec) = files.get_mut(&body.name.package) {
-                file_spec.0.line();
-                self.enum_variants(&mut file_spec.0, &body);
+            if let Some(tokens) = files.get_mut(&body.name.package) {
+                tokens.line();
+                self.enum_variants(tokens, &body);
             } else {
                 return Err(format!("missing file for package: {}", &body.name.package).into());
             }

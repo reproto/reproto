@@ -6,8 +6,8 @@ use serde::Serialize;
 use std::fmt;
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(bound = "F::Type: ::serde::Serialize")]
-pub enum RpChannel<F: 'static>
+#[serde(bound = "F::Type: serde::Serialize")]
+pub enum RpChannel<F>
 where
     F: Flavor,
 {
@@ -17,7 +17,7 @@ where
     Streaming { ty: F::Type },
 }
 
-impl<F: 'static> RpChannel<F>
+impl<F> RpChannel<F>
 where
     F: Flavor,
 {
@@ -41,7 +41,7 @@ where
     }
 }
 
-impl<F: 'static> fmt::Display for RpChannel<F>
+impl<F> fmt::Display for RpChannel<F>
 where
     F: Flavor,
 {
@@ -54,10 +54,9 @@ where
     }
 }
 
-impl<F: 'static, T> Translate<T> for RpChannel<F>
+impl<T> Translate<T> for RpChannel<T::Source>
 where
-    F: Flavor,
-    T: Translator<Source = F>,
+    T: Translator,
 {
     type Out = RpChannel<T::Target>;
 
