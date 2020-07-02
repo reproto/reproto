@@ -1,5 +1,5 @@
 use crate::flavored::{Field, RpSubType, RpSubTypeStrategy, RpVariantRef, RpVariants};
-use core::Loc;
+use core::Spanned;
 use genco::prelude::*;
 use std::rc::Rc;
 
@@ -59,7 +59,7 @@ decl_codegen! {
 
     /// A class field was added.
     class_field<'a> {
-        pub(crate) field: &'a Loc<Field>,
+        pub(crate) field: &'a Spanned<Field>,
         /// Annotations to add to the field.
         pub(crate) annotations: &'a mut Vec<csharp::Tokens>,
     }
@@ -73,7 +73,7 @@ decl_codegen! {
     /// A class constructor argument was added.
     class_constructor_arg<'a> {
         /// The fielda dded.
-        pub(crate) field: &'a Loc<Field>,
+        pub(crate) field: &'a Spanned<Field>,
         /// Annotations to add to the constructor argument.
         pub(crate) annotations: &'a mut Vec<csharp::Tokens>,
     }
@@ -100,7 +100,7 @@ decl_codegen! {
         /// The identifier of the tuple.
         pub(crate) ident: &'a str,
         /// Fields in the tuple.
-        pub(crate) fields: &'a [Loc<Field>],
+        pub(crate) fields: &'a [Spanned<Field>],
         /// Annotations generated.
         pub(crate) annotations: &'a mut Vec<csharp::Tokens>,
         /// Inner code generated.
@@ -114,7 +114,7 @@ decl_codegen! {
         /// The current sub type strategy.
         pub(crate) sub_type_strategy: &'a RpSubTypeStrategy,
         /// All known sub types.
-        pub(crate) sub_types: &'a [Loc<RpSubType>],
+        pub(crate) sub_types: &'a [Spanned<RpSubType>],
         /// Annotations generated.
         pub(crate) annotations: &'a mut Vec<csharp::Tokens>,
         /// Annotations to use for the tag.

@@ -3,7 +3,7 @@
 use crate::features::{Feature, Features};
 use core::errors::Error;
 use core::{
-    CoreFlavor, Diagnostics, Import, Loc, RpName, RpRequiredPackage, RpVersionedPackage, Span,
+    CoreFlavor, Diagnostics, Import, RpName, RpRequiredPackage, RpVersionedPackage, Span, Spanned,
     Version,
 };
 use naming::Naming;
@@ -89,8 +89,8 @@ impl<I> Scope<I> {
     }
 
     /// Get the current path as a name.
-    pub fn as_name(&self, span: Span) -> Loc<RpName<CoreFlavor>> {
-        Loc::new(
+    pub fn as_name(&self, span: Span) -> Spanned<RpName<CoreFlavor>> {
+        Spanned::new(
             RpName {
                 prefix: None,
                 package: self.package(),

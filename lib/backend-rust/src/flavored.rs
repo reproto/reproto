@@ -3,8 +3,8 @@
 use crate::{SCOPE_SEP, TYPE_SEP};
 use core::errors::Result;
 use core::{
-    CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberKind,
-    RpNumberType, RpStringType, Translate, Translator,
+    CoreFlavor, Diagnostics, Flavor, FlavorTranslator, PackageTranslator, RpNumberKind,
+    RpNumberType, RpStringType, Spanned, Translate, Translator,
 };
 use genco::prelude::*;
 use genco::tokens;
@@ -128,7 +128,7 @@ pub struct RustFlavor;
 
 impl Flavor for RustFlavor {
     type Type = Type;
-    type Name = Loc<RpName>;
+    type Name = Spanned<RpName>;
     type Field = core::RpField<RustFlavor>;
     type Endpoint = RustEndpoint;
     type Package = core::RpPackage;
@@ -211,7 +211,7 @@ impl FlavorTranslator for RustFlavorTranslator {
         Ok(Type::String)
     }
 
-    fn translate_name(&self, _from: &RpPackage, reg: RpReg, name: Loc<RpName>) -> Result<Type> {
+    fn translate_name(&self, _from: &RpPackage, reg: RpReg, name: Spanned<RpName>) -> Result<Type> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(SCOPE_SEP));
 
         if let Some(ref prefix) = name.prefix {

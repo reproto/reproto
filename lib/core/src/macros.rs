@@ -71,8 +71,8 @@ macro_rules! translator_defaults {
             translator: &T,
             diag: &mut $crate::Diagnostics,
             _reg: $crate::RpReg,
-            name: $crate::Loc<$crate::RpName<$slf::Source>>,
-        ) -> Result<$crate::Loc<$crate::RpName<$slf::Target>>>
+            name: $crate::Spanned<$crate::RpName<$slf::Source>>,
+        ) -> Result<$crate::Spanned<$crate::RpName<$slf::Target>>>
         where
             T: Translator<Source = $slf::Source, Target = $slf::Target>,
         {
@@ -168,7 +168,7 @@ macro_rules! translator_defaults {
             &self,
             _from: &<$slf::Target as Flavor>::Package,
             _reg: RpReg,
-            name: Loc<RpName<$slf::Target>>,
+            name: Spanned<RpName<$slf::Target>>,
         ) -> Result<<$slf::Target as Flavor>::Type> {
             Ok(RpType::Name { name })
         }

@@ -20,7 +20,7 @@ use crate::ast::{
     TypeBody, TypeMember, Value,
 };
 use crate::core::errors::Result;
-use crate::core::{Loc, RpPackage, Source, Span, DEFAULT_TAG};
+use crate::core::{RpPackage, Source, Span, Spanned, DEFAULT_TAG};
 use crate::sir::{FieldSir, Sir, SubTypeSir};
 use inflector::cases::pascalcase::to_pascal_case;
 use inflector::cases::snakecase::to_snake_case;
@@ -75,7 +75,7 @@ impl Context {
                 .path
                 .clone()
                 .into_iter()
-                .map(|p| Loc::new(Cow::from(p), Span::empty()))
+                .map(|p| Spanned::new(Cow::from(p), Span::empty()))
                 .collect(),
         }
     }
@@ -220,7 +220,7 @@ impl<'a, 'input: 'a> FieldInit<'a, 'input> {
                 };
 
                 Type::Name {
-                    name: Loc::new(name, Span::empty()),
+                    name: Spanned::new(name, Span::empty()),
                 }
             }
         };
@@ -234,7 +234,7 @@ impl<'a, 'input: 'a> FieldInit<'a, 'input> {
         let field = Field {
             required: !sir.optional,
             name: name.clone().into(),
-            ty: Loc::new(ty.into(), self.span.clone()),
+            ty: Spanned::new(ty.into(), self.span.clone()),
             field_as: field_as,
             endl: true,
         };
@@ -243,7 +243,7 @@ impl<'a, 'input: 'a> FieldInit<'a, 'input> {
         return Ok(Item {
             comment: comment,
             attributes: Vec::new(),
-            item: Loc::new(field, self.span.clone()),
+            item: Spanned::new(field, self.span.clone()),
         });
 
         /// Format comments and attach examples.
@@ -337,7 +337,7 @@ impl<'a, 'input: 'a> TypeRefiner<'a, 'input> {
         object: &LinkedHashMap<String, FieldSir>,
     ) -> Result<Item<'input, TypeBody<'input>>> {
         let mut body = TypeBody {
-            name: Loc::new(self.ctx.ident()?.to_string().into(), Span::empty()),
+            name: Spanned::new(self.ctx.ident()?.to_string().into(), Span::empty()),
             members: Vec::new(),
         };
 
@@ -346,7 +346,7 @@ impl<'a, 'input: 'a> TypeRefiner<'a, 'input> {
         Ok(Item {
             comment: Vec::new(),
             attributes: Vec::new(),
-            item: Loc::new(body, self.span.clone()),
+            item: Spanned::new(body, self.span.clone()),
         })
     }
 
@@ -379,7 +379,7 @@ impl<'a, 'input: 'a> SubTypeRefiner<'a, 'input> {
     /// Derive an struct body from the given input array.
     fn derive(&mut self, sub_type: &SubTypeSir) -> Result<Item<'input, SubType<'input>>> {
         let mut body = SubType {
-            name: Loc::new(self.ctx.ident()?.to_string().into(), self.span.clone()),
+            name: Spanned::new(self.ctx.ident()?.to_string().into(), self.span.clone()),
             members: vec![],
             alias: None,
         };
@@ -389,13 +389,13 @@ impl<'a, 'input: 'a> SubTypeRefiner<'a, 'input> {
         Ok(Item {
             comment: Vec::new(),
             attributes: Vec::new(),
-            item: Loc::new(body, self.span.clone()),
+            item: Spanned::new(body, self.span.clone()),
         })
     }
 
     fn init(&mut self, base: &mut SubType<'input>, sub_type: &SubTypeSir) -> Result<()> {
         if sub_type.name.as_str() != base.name.as_ref() {
-            base.alias = Some(Loc::new(
+            base.alias = Some(Spanned::new(
                 Value::String(sub_type.name.to_string()),
                 self.span.clone(),
             ));
@@ -431,21 +431,21 @@ impl<'a, 'input: 'a> InterfaceRefiner<'a, 'input> {
         let mut attributes = Vec::new();
 
         if tag != DEFAULT_TAG {
-            let name = Loc::new("type_info".into(), self.span.clone());
+            let name = Spanned::new("type_info".into(), self.span.clone());
             let mut values = Vec::new();
 
             values.push(AttributeItem::NameValue {
-                name: Loc::new("type".into(), self.span.clone()),
-                value: Loc::new(Value::String("type".to_string()), self.span.clone()),
+                name: Spanned::new("type".into(), self.span.clone()),
+                value: Spanned::new(Value::String("type".to_string()), self.span.clone()),
             });
 
             let a = Attribute::List(name, values);
 
-            attributes.push(Loc::new(a, self.span.clone()));
+            attributes.push(Spanned::new(a, self.span.clone()));
         };
 
         let mut body = InterfaceBody {
-            name: Loc::new(self.ctx.ident()?.to_string().into(), Span::empty()),
+            name: Spanned::new(self.ctx.ident()?.to_string().into(), Span::empty()),
             members: Vec::new(),
             sub_types: Vec::new(),
         };
@@ -455,7 +455,7 @@ impl<'a, 'input: 'a> InterfaceRefiner<'a, 'input> {
         Ok(Item {
             comment: Vec::new(),
             attributes: attributes,
-            item: Loc::new(body, self.span.clone()),
+            item: Spanned::new(body, self.span.clone()),
         })
     }
 
@@ -488,7 +488,7 @@ impl<'a, 'input: 'a> TupleRefiner<'a, 'input> {
     /// Derive an tuple body from the given input array.
     fn derive(&mut self, array: &[FieldSir]) -> Result<Item<'input, TupleBody<'input>>> {
         let mut body = TupleBody {
-            name: Loc::new(self.ctx.ident()?.to_string().into(), Span::empty()),
+            name: Spanned::new(self.ctx.ident()?.to_string().into(), Span::empty()),
             members: Vec::new(),
         };
 
@@ -497,7 +497,7 @@ impl<'a, 'input: 'a> TupleRefiner<'a, 'input> {
         Ok(Item {
             comment: Vec::new(),
             attributes: Vec::new(),
-            item: Loc::new(body, self.span.clone()),
+            item: Spanned::new(body, self.span.clone()),
         })
     }
 

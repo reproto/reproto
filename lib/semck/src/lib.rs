@@ -4,7 +4,7 @@ use core::errors::Result;
 use core::flavored::{
     RpChannel, RpDecl, RpEndpoint, RpField, RpFile, RpName, RpNamed, RpType, RpVariantRef,
 };
-use core::{Loc, Span, Version};
+use core::{Span, Spanned, Version};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -59,7 +59,7 @@ pub enum Violation {
     EndpointResponseChange(Component, Option<RpChannel>, Span, Option<RpChannel>, Span),
 }
 
-fn fields<'a>(named: &RpNamed<'a>) -> Vec<&'a Loc<RpField>> {
+fn fields<'a>(named: &RpNamed<'a>) -> Vec<&'a Spanned<RpField>> {
     use core::RpNamed::*;
 
     match *named {
@@ -80,7 +80,7 @@ fn enum_variants<'a>(named: &'a RpNamed) -> Vec<RpVariantRef<'a>> {
     }
 }
 
-fn endpoints_to_map<'a>(named: &RpNamed<'a>) -> HashMap<&'a str, &'a Loc<RpEndpoint>> {
+fn endpoints_to_map<'a>(named: &RpNamed<'a>) -> HashMap<&'a str, &'a Spanned<RpEndpoint>> {
     use core::RpNamed::*;
 
     match *named {
@@ -102,7 +102,7 @@ where
                 continue;
             }
 
-            storage.insert(Loc::borrow(named.name()).clone().localize(), named);
+            storage.insert(Spanned::borrow(named.name()).clone().localize(), named);
         }
     }
 
@@ -116,15 +116,15 @@ where
     let mut storage = HashMap::new();
 
     for variant in variants {
-        storage.insert(Loc::borrow(&variant.name).clone().localize(), variant);
+        storage.insert(Spanned::borrow(&variant.name).clone().localize(), variant);
     }
 
     storage
 }
 
-fn fields_to_map<'a, I: 'a>(fields: I) -> HashMap<String, &'a Loc<RpField>>
+fn fields_to_map<'a, I: 'a>(fields: I) -> HashMap<String, &'a Spanned<RpField>>
 where
-    I: IntoIterator<Item = &'a Loc<RpField>>,
+    I: IntoIterator<Item = &'a Spanned<RpField>>,
 {
     let mut storage = HashMap::new();
 
@@ -139,13 +139,13 @@ where
 fn check_endpoint_channel<F, E>(
     component: Component,
     violations: &mut Vec<Violation>,
-    from_endpoint: &Loc<RpEndpoint>,
-    to_endpoint: &Loc<RpEndpoint>,
+    from_endpoint: &Spanned<RpEndpoint>,
+    to_endpoint: &Spanned<RpEndpoint>,
     accessor: F,
     error: E,
 ) -> Result<()>
 where
-    F: Fn(&RpEndpoint) -> &Option<Loc<RpChannel>>,
+    F: Fn(&RpEndpoint) -> &Option<Spanned<RpChannel>>,
     E: Fn(Component, Option<RpChannel>, Span, Option<RpChannel>, Span) -> Violation,
 {
     let from_ty = accessor(from_endpoint)
@@ -159,24 +159,24 @@ where
     if from_ty != to_ty {
         let from_pos = accessor(from_endpoint)
             .as_ref()
-            .map(|r| Loc::span(r))
-            .unwrap_or(Loc::span(from_endpoint));
+            .map(|r| r.span())
+            .unwrap_or(from_endpoint.span());
 
         let to_pos = accessor(to_endpoint)
             .as_ref()
-            .map(|r| Loc::span(r))
-            .unwrap_or(Loc::span(to_endpoint));
+            .map(|r| r.span())
+            .unwrap_or(to_endpoint.span());
 
         violations.push(error(
             component,
             accessor(from_endpoint)
                 .as_ref()
-                .map(Loc::borrow)
+                .map(Spanned::borrow)
                 .map(Clone::clone),
             from_pos.into(),
             accessor(to_endpoint)
                 .as_ref()
-                .map(Loc::borrow)
+                .map(Spanned::borrow)
                 .map(Clone::clone),
             to_pos.into(),
         ));
@@ -188,8 +188,8 @@ where
 fn check_endpoint_type(
     component: Component,
     violations: &mut Vec<Violation>,
-    from_endpoint: &Loc<RpEndpoint>,
-    to_endpoint: &Loc<RpEndpoint>,
+    from_endpoint: &Spanned<RpEndpoint>,
+    to_endpoint: &Spanned<RpEndpoint>,
 ) -> Result<()> {
     // TODO: check arguments.
     /*check_endpoint_channel(
@@ -235,16 +235,16 @@ fn common_check_variant(
 fn common_check_field(
     component: Component,
     violations: &mut Vec<Violation>,
-    from_field: &Loc<RpField>,
-    to_field: &Loc<RpField>,
+    from_field: &Spanned<RpField>,
+    to_field: &Spanned<RpField>,
 ) -> Result<()> {
     if to_field.ty.clone().localize() != from_field.ty.clone().localize() {
         violations.push(FieldTypeChange(
             component.clone(),
             from_field.ty.clone(),
-            Loc::span(from_field).into(),
+            from_field.span().into(),
             to_field.ty.clone(),
-            Loc::span(to_field).into(),
+            to_field.span().into(),
         ));
     }
 
@@ -253,9 +253,9 @@ fn common_check_field(
         violations.push(FieldNameChange(
             component.clone(),
             from_field.name().to_string(),
-            Loc::span(from_field).into(),
+            from_field.span().into(),
             to_field.name().to_string(),
-            Loc::span(to_field).into(),
+            to_field.span().into(),
         ));
     }
 
@@ -278,14 +278,14 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_field) = to_fields.remove(&name) {
                     check_field(&mut violations, from_field, to_field)?;
                 } else {
-                    violations.push(RemoveField(Minor, Loc::span(from_field).into()));
+                    violations.push(RemoveField(Minor, from_field.span().into()));
                 }
             }
 
             // check that added fields are not required.
             for (_, to_field) in to_fields.into_iter() {
                 if to_field.is_required() {
-                    violations.push(AddRequiredField(Minor, Loc::span(to_field).into()));
+                    violations.push(AddRequiredField(Minor, to_field.span().into()));
                 }
             }
 
@@ -307,7 +307,7 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_endpoint) = to_endpoints.remove(&name) {
                     check_endpoint(&mut violations, from_endpoint, to_endpoint)?;
                 } else {
-                    violations.push(RemoveEndpoint(Minor, Loc::span(from_endpoint).into()));
+                    violations.push(RemoveEndpoint(Minor, from_endpoint.span().into()));
                 }
             }
         } else {
@@ -319,8 +319,8 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
 
     fn check_field(
         violations: &mut Vec<Violation>,
-        from_field: &Loc<RpField>,
-        to_field: &Loc<RpField>,
+        from_field: &Spanned<RpField>,
+        to_field: &Spanned<RpField>,
     ) -> Result<()> {
         common_check_field(Minor, violations, from_field, to_field)?;
 
@@ -328,8 +328,8 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
         if from_field.is_optional() && to_field.is_required() {
             violations.push(FieldRequiredChange(
                 Minor,
-                Loc::span(from_field).into(),
-                Loc::span(to_field).into(),
+                from_field.span().into(),
+                to_field.span().into(),
             ));
         }
 
@@ -347,8 +347,8 @@ fn check_minor(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
 
     fn check_endpoint(
         violations: &mut Vec<Violation>,
-        from_endpoint: &Loc<RpEndpoint>,
-        to_endpoint: &Loc<RpEndpoint>,
+        from_endpoint: &Spanned<RpEndpoint>,
+        to_endpoint: &Spanned<RpEndpoint>,
     ) -> Result<()> {
         check_endpoint_type(Minor, violations, from_endpoint, to_endpoint)?;
         Ok(())
@@ -370,13 +370,13 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_field) = to_fields.remove(&name) {
                     check_field(&mut violations, from_field, to_field)?;
                 } else {
-                    violations.push(RemoveField(Patch, Loc::span(from_field).into()));
+                    violations.push(RemoveField(Patch, from_field.span().into()));
                 }
             }
 
             // added fields are not permitted
             for (_, to_field) in to_fields.into_iter() {
-                violations.push(AddField(Patch, Loc::span(to_field).into()));
+                violations.push(AddField(Patch, to_field.span().into()));
             }
 
             let from_variants = variants_to_map(enum_variants(&from_named));
@@ -402,13 +402,13 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
                 if let Some(to_endpoint) = to_endpoints.remove(&name) {
                     check_endpoint(&mut violations, from_endpoint, to_endpoint)?;
                 } else {
-                    violations.push(RemoveEndpoint(Patch, Loc::span(from_endpoint).into()));
+                    violations.push(RemoveEndpoint(Patch, from_endpoint.span().into()));
                 }
             }
 
             // added endpoints are not permitted
             for (_, to_endpoint) in to_endpoints.into_iter() {
-                violations.push(AddEndpoint(Patch, Loc::span(to_endpoint).into()));
+                violations.push(AddEndpoint(Patch, to_endpoint.span().into()));
             }
         } else {
             violations.push(DeclRemoved(Patch, from_named.span().into()));
@@ -423,16 +423,16 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
 
     fn check_field(
         violations: &mut Vec<Violation>,
-        from_field: &Loc<RpField>,
-        to_field: &Loc<RpField>,
+        from_field: &Spanned<RpField>,
+        to_field: &Spanned<RpField>,
     ) -> Result<()> {
         common_check_field(Patch, violations, from_field, to_field)?;
 
         if to_field.required != from_field.required {
             violations.push(FieldModifierChange(
                 Patch,
-                Loc::span(from_field).into(),
-                Loc::span(to_field).into(),
+                from_field.span().into(),
+                to_field.span().into(),
             ));
         }
 
@@ -450,8 +450,8 @@ fn check_patch(from: &RpFile, to: &RpFile) -> Result<Vec<Violation>> {
 
     fn check_endpoint(
         violations: &mut Vec<Violation>,
-        from_endpoint: &Loc<RpEndpoint>,
-        to_endpoint: &Loc<RpEndpoint>,
+        from_endpoint: &Spanned<RpEndpoint>,
+        to_endpoint: &Spanned<RpEndpoint>,
     ) -> Result<()> {
         check_endpoint_type(Patch, violations, from_endpoint, to_endpoint)?;
         Ok(())

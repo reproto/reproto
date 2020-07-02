@@ -5,7 +5,7 @@ use crate::flavored::{Field, Name, RpEnumBody, RpInterfaceBody, RpPackage, Type}
 use crate::Options;
 use backend::Initializer;
 use core::errors::Result;
-use core::Loc;
+use core::Spanned;
 use genco::prelude::*;
 use std::collections::BTreeSet;
 use std::rc::Rc;
@@ -393,7 +393,10 @@ impl codegen::tuple_added::Codegen for Codegen {
             #(encodable(name, fields))
         });
 
-        fn decodable<'f>(name: &'f Name, fields: &'f [Loc<Field>]) -> impl FormatInto<Swift> + 'f {
+        fn decodable<'f>(
+            name: &'f Name,
+            fields: &'f [Spanned<Field>],
+        ) -> impl FormatInto<Swift> + 'f {
             quote_fn! {
                 extension #name: Decodable {
                     public init(from decoder: Decoder) throws {
@@ -411,7 +414,10 @@ impl codegen::tuple_added::Codegen for Codegen {
             }
         }
 
-        fn encodable<'f>(name: &'f Name, fields: &'f [Loc<Field>]) -> impl FormatInto<Swift> + 'f {
+        fn encodable<'f>(
+            name: &'f Name,
+            fields: &'f [Spanned<Field>],
+        ) -> impl FormatInto<Swift> + 'f {
             quote_fn! {
                 extension #name: Encodable {
                     public func encode(to encoder: Encoder) throws {

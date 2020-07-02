@@ -1,7 +1,7 @@
 use crate::codegen;
 use crate::flavored::{Field, RpSubType, RpSubTypeStrategy, RpVariantValue, RpVariants};
 use crate::Options;
-use core::Loc;
+use core::Spanned;
 use genco::prelude::*;
 use std::rc::Rc;
 
@@ -72,7 +72,7 @@ impl Codegen {
         }
     }
 
-    pub(crate) fn read_field<'a>(&'a self, f: &'a Loc<Field>) -> impl FormatInto<Csharp> + 'a {
+    pub(crate) fn read_field<'a>(&'a self, f: &'a Spanned<Field>) -> impl FormatInto<Csharp> + 'a {
         quote_fn! {
             if (!enumerator.MoveNext()) {
                 throw new #(&self.invalid_operation_exception)("expected more items in array");

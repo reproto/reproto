@@ -7,7 +7,7 @@ use crate::macros::FormatAttribute;
 use crate::rendering::markdown_to_html;
 use core::errors::*;
 use core::flavored::{RpDecl, RpField, RpName, RpType, RpVersionedPackage};
-use core::{self, AsPackage, CoreFlavor, Loc};
+use core::{self, AsPackage, CoreFlavor, Spanned};
 use std::ops::DerefMut;
 use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
@@ -182,7 +182,7 @@ pub trait Processor<'session> {
 
     fn fields_overview<'b, I>(&self, fields: I) -> Result<()>
     where
-        I: IntoIterator<Item = &'b Loc<RpField>>,
+        I: IntoIterator<Item = &'b Spanned<RpField>>,
     {
         for field in fields {
             self.field_overview(field)?;
@@ -228,7 +228,7 @@ pub trait Processor<'session> {
 
     fn fields<'b, I>(&self, fields: I) -> Result<()>
     where
-        I: IntoIterator<Item = &'b Loc<RpField>>,
+        I: IntoIterator<Item = &'b Spanned<RpField>>,
     {
         for field in fields {
             self.field(field)?;

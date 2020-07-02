@@ -1,5 +1,5 @@
 // vim: ft=rust
-use core::{RpNumber, Loc, RpPackage, Source, Span};
+use core::{RpNumber, Spanned, RpPackage, Source, Span};
 use std::sync::Arc;
 use ast::*;
 use lexer::{self, Token, Keyword};
@@ -10,8 +10,8 @@ grammar<'input>;
 
 pub File: File<'input> =
     <comment:"//!"?>
-    <attributes:Loc<FileAttribute>*>
-    <uses:Loc<Use>*>
+    <attributes:Spanned<FileAttribute>*>
+    <uses:Spanned<Use>*>
     <decls:Decl*> => {
         File {
             comment: comment.unwrap_or_else(Vec::new),
@@ -22,8 +22,8 @@ pub File: File<'input> =
 };
 
 Use: UseDecl<'input> = {
-    "use" <package:Loc<Package>>
-        <range:Loc<"string">?>
+    "use" <package:Spanned<Package>>
+        <range:Spanned<"string">?>
         <alias:UseAlias?>
     <endl:(@L ";" @R)?> => UseDecl {
         package: package,
@@ -33,10 +33,10 @@ Use: UseDecl<'input> = {
     },
 };
 
-UseAlias: Loc<Cow<'input, str>> = "as" <value:Loc<ident>> => value;
+UseAlias: Spanned<Cow<'input, str>> = "as" <value:Spanned<ident>> => value;
 
 Package: Package<'input> = {
-    <parts:OneOrMore<".", Loc<Ident>>> => Package::Package { parts },
+    <parts:OneOrMore<".", Spanned<Ident>>> => Package::Package { parts },
     ! => Package::Error,
 };
 
@@ -49,7 +49,7 @@ Decl: Decl<'input> = {
 };
 
 EnumBody: EnumBody<'input> =
-    "enum" <name:Loc<TypeIdent>> "as" <ty:Loc<Type>> "{"
+    "enum" <name:Spanned<TypeIdent>> "as" <ty:Spanned<Type>> "{"
         <variants:Item<EnumVariant>*>
         <members:EnumMember*>
     "}" =>
@@ -61,11 +61,11 @@ EnumBody: EnumBody<'input> =
     };
 
 EnumMember: EnumMember<'input> = {
-    <code:Loc<Code>> => EnumMember::Code(code),
+    <code:Spanned<Code>> => EnumMember::Code(code),
 };
 
 InterfaceBody: InterfaceBody<'input> =
-    "interface" <name:Loc<TypeIdent>> "{"
+    "interface" <name:Spanned<TypeIdent>> "{"
       <members:TypeMember*>
       <sub_types:Item<SubType>*>
     "}" =>
@@ -76,7 +76,7 @@ InterfaceBody: InterfaceBody<'input> =
     };
 
 TypeBody: TypeBody<'input> =
-    "type" <name:Loc<TypeIdent>> "{"
+    "type" <name:Spanned<TypeIdent>> "{"
         <members:TypeMember*>
     "}" =>
     TypeBody {
@@ -85,7 +85,7 @@ TypeBody: TypeBody<'input> =
     };
 
 TupleBody: TupleBody<'input> =
-    "tuple" <name:Loc<TypeIdent>> "{"
+    "tuple" <name:Spanned<TypeIdent>> "{"
         <members:TypeMember*>
     "}" =>
     TupleBody {
@@ -94,7 +94,7 @@ TupleBody: TupleBody<'input> =
     };
 
 ServiceBody: ServiceBody<'input> =
-    "service" <name:Loc<TypeIdent>> "{"
+    "service" <name:Spanned<TypeIdent>> "{"
         <members:ServiceMember*>
     "}" =>
     ServiceBody {
@@ -113,9 +113,9 @@ pub ServiceMember: ServiceMember<'input> = {
 };
 
 Endpoint: Endpoint<'input> = {
-    <id:Loc<Ident>> "("
+    <id:Spanned<Ident>> "("
         <arguments:ZeroOrMore<",", EndpointArgument>>
-    ")" <response:("->" Loc<Channel>)?>
+    ")" <response:("->" Spanned<Channel>)?>
     <alias:FieldAlias?>
     ";" => {
         Endpoint {
@@ -128,13 +128,13 @@ Endpoint: Endpoint<'input> = {
 };
 
 EndpointArgument: EndpointArgument<'input> =
-    <ident:Loc<Ident>> ":" <channel:Loc<Channel>> => EndpointArgument {
+    <ident:Spanned<Ident>> ":" <channel:Spanned<Channel>> => EndpointArgument {
         ident: ident,
         channel: channel,
     };
 
 Channel: Channel<'input> = {
-    <stream:stream?> <ty:Loc<Type>> => {
+    <stream:stream?> <ty:Spanned<Type>> => {
         if stream.is_some() {
             Channel::Streaming {
                 ty: ty
@@ -157,7 +157,7 @@ FieldAlias: String = {
 };
 
 EnumVariant: EnumVariant<'input> =
-    <name:Loc<TypeIdent>> <argument:("as" Loc<Value>)?> ";" =>
+    <name:Spanned<TypeIdent>> <argument:("as" Spanned<Value>)?> ";" =>
     EnumVariant {
         name: name,
         argument: argument.map(|a| a.1),
@@ -167,13 +167,13 @@ Optional: bool = <modifier:"?"?> => modifier.map(|_| true).unwrap_or(false);
 
 pub TypeMember: TypeMember<'input> = {
     <field:Item<Field>> => TypeMember::Field(field),
-    <code:Loc<Code>> => TypeMember::Code(code),
+    <code:Spanned<Code>> => TypeMember::Code(code),
     <decl:Decl> => TypeMember::InnerDecl(decl),
 };
 
 Code: Code<'input> =
-    <attributes:Loc<Attribute>*>
-    <context:Loc<Ident>> "{{" <content:code> "}}" =>
+    <attributes:Spanned<Attribute>*>
+    <context:Spanned<Ident>> "{{" <content:code> "}}" =>
     Code {
         attributes: attributes,
         context: context,
@@ -181,7 +181,7 @@ Code: Code<'input> =
     };
 
 Field: Field<'input> = {
-    <name:Ident> <optional:Optional> ":" <ty:Loc<Type>> <alias:FieldAlias?> <endl:";"?> =>
+    <name:Ident> <optional:Optional> ":" <ty:Spanned<Type>> <alias:FieldAlias?> <endl:";"?> =>
     Field {
         required: !optional,
         name: name,
@@ -192,7 +192,7 @@ Field: Field<'input> = {
 };
 
 SubType: SubType<'input> = {
-    <name:Loc<TypeIdent>> <alias:("as" Loc<Value>)?> "{"
+    <name:Spanned<TypeIdent>> <alias:("as" Spanned<Value>)?> "{"
         <members:TypeMember*>
     "}" =>
     SubType {
@@ -201,7 +201,7 @@ SubType: SubType<'input> = {
         alias: alias.map(|alias| alias.1),
     },
 
-    <name:Loc<TypeIdent>> <alias:("as" Loc<Value>)?> ";" =>
+    <name:Spanned<TypeIdent>> <alias:("as" Spanned<Value>)?> ";" =>
     SubType {
         name: name,
         members: Vec::new(),
@@ -210,11 +210,11 @@ SubType: SubType<'input> = {
 };
 
 pub Value: Value<'input> = {
-    "(" <values:ZeroOrMore<",", Loc<Value>>> ")" => Value::Array(values),
+    "(" <values:ZeroOrMore<",", Spanned<Value>>> ")" => Value::Array(values),
     <string:"string"> => Value::String(string),
     <number:number> => Value::Number(number),
     <id:Ident> => Value::Identifier(id),
-    <name:Loc<Name>> => Value::Name(name),
+    <name:Spanned<Name>> => Value::Name(name),
 };
 
 pub Type: Type<'input> = {
@@ -229,13 +229,13 @@ pub Type: Type<'input> = {
     string => Type::String,
     datetime => Type::DateTime,
     bytes => Type::Bytes,
-    <name:Loc<Name>> => Type::Name {
+    <name:Spanned<Name>> => Type::Name {
         name
     },
-    "[" <inner:Loc<Type>> "]" => Type::Array {
+    "[" <inner:Spanned<Type>> "]" => Type::Array {
         inner: Box::new(inner)
     },
-    "{" <key:Loc<Type>> ":" <value:Loc<Type>> "}" => Type::Map {
+    "{" <key:Spanned<Type>> ":" <value:Spanned<Type>> "}" => Type::Map {
         key: Box::new(key),
         value: Box::new(value)
     },
@@ -243,43 +243,43 @@ pub Type: Type<'input> = {
 };
 
 Name: Name<'input> = {
-    <prefix:(Loc<ident> "::")?> <path:OneOrMore<"::", Loc<TypeIdent>>> => Name::Absolute {
+    <prefix:(Spanned<ident> "::")?> <path:OneOrMore<"::", Spanned<TypeIdent>>> => Name::Absolute {
         prefix: prefix.map(|p| p.0),
         path,
     },
 
-    "::" <path:OneOrMore<"::", Loc<TypeIdent>>> => Name::Relative {
+    "::" <path:OneOrMore<"::", Spanned<TypeIdent>>> => Name::Relative {
         path,
     },
 };
 
 FileAttribute: Attribute<'input> = {
-    "#" "!" "[" <id:Loc<Ident>>  "]" => {
+    "#" "!" "[" <id:Spanned<Ident>>  "]" => {
         Attribute::Word(id)
     },
 
-    "#" "!" "[" <id:Loc<Ident>> "(" <name_value:ZeroOrMoreTrailing<",", AttributeItem>> ")" "]" => {
+    "#" "!" "[" <id:Spanned<Ident>> "(" <name_value:ZeroOrMoreTrailing<",", AttributeItem>> ")" "]" => {
         Attribute::List(id, name_value)
     },
 };
 
 Attribute: Attribute<'input> = {
-    "#" "[" <id:Loc<Ident>>  "]" => {
+    "#" "[" <id:Spanned<Ident>>  "]" => {
         Attribute::Word(id)
     },
 
-    "#" "[" <id:Loc<Ident>> "(" <name_value:ZeroOrMoreTrailing<",", AttributeItem>> ")" "]" => {
+    "#" "[" <id:Spanned<Ident>> "(" <name_value:ZeroOrMoreTrailing<",", AttributeItem>> ")" "]" => {
         Attribute::List(id, name_value)
     },
 };
 
 AttributeItem: AttributeItem<'input> = {
-    <id:Loc<Ident>> "=" <value:Loc<Value>> => AttributeItem::NameValue {
+    <id:Spanned<Ident>> "=" <value:Spanned<Value>> => AttributeItem::NameValue {
         name: id,
         value: value,
     },
 
-    <value:Loc<Value>> => {
+    <value:Spanned<Value>> => {
         AttributeItem::Word(value)
     },
 };
@@ -306,17 +306,17 @@ ZeroOrMoreTrailing<Sep, T>: Vec<T> = {
     () => vec![],
 };
 
-Loc<Inner>: Loc<Inner> = <s:@L> <inner:Inner> <e:@R> =>
-    Loc::new(inner, (s, e));
+Spanned<Inner>: Spanned<Inner> = <s:@L> <inner:Inner> <e:@R> =>
+    Spanned::new(inner, (s, e));
 
 Item<T>: Item<'input, T> =
     <comment:"///"?>
-    <attributes:Loc<Attribute>*>
+    <attributes:Spanned<Attribute>*>
     <s:@L> <item:T> <e:@R> =>
     Item {
         comment: comment.unwrap_or_else(Vec::new),
         attributes: attributes,
-        item: Loc::new(item, (s, e))
+        item: Spanned::new(item, (s, e))
     };
 
 extern {

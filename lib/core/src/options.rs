@@ -1,43 +1,51 @@
 //! # Helper data structure do handle option lookups
 
-use crate::{Diagnostics, Loc, OptionEntry, RpNumber, WithSpan};
+use crate::{Diagnostics, OptionEntry, RpNumber, Spanned, WithSpan};
 
 /// Helper for looking up and dealing with options.
 pub trait Options {
     type Item: OptionEntry;
 
-    fn items(&self) -> &Vec<Loc<Self::Item>>;
+    fn items(&self) -> &Vec<Spanned<Self::Item>>;
 
-    fn lookup(&self, name: &str) -> Vec<Loc<&Self::Item>> {
+    fn lookup(&self, name: &str) -> Vec<Spanned<&Self::Item>> {
         self.items()
             .iter()
             .filter(move |o| o.name() == name)
-            .map(|option| Loc::as_ref(&option))
+            .map(|option| Spanned::as_ref(&option))
             .collect()
     }
 
     /// Find all strings matching the given name.
     ///
     /// This enforces that all found values are strings, otherwise the lookup will cause an error.
-    fn find_all_strings(&self, diag: &mut Diagnostics, name: &str) -> Result<Vec<Loc<String>>, ()> {
+    fn find_all_strings(
+        &self,
+        diag: &mut Diagnostics,
+        name: &str,
+    ) -> Result<Vec<Spanned<String>>, ()> {
         let mut out = Vec::new();
 
         for s in self.lookup(name) {
-            let (value, span) = Loc::take_pair(s);
+            let (value, span) = Spanned::take_pair(s);
             let string = value.as_string().with_span(diag, &span)?;
-            out.push(Loc::new(string, span));
+            out.push(Spanned::new(string, span));
         }
 
         Ok(out)
     }
 
-    fn find_all_u32(&self, diag: &mut Diagnostics, name: &str) -> Result<Vec<Loc<RpNumber>>, ()> {
+    fn find_all_u32(
+        &self,
+        diag: &mut Diagnostics,
+        name: &str,
+    ) -> Result<Vec<Spanned<RpNumber>>, ()> {
         let mut out = Vec::new();
 
         for s in self.lookup(name) {
-            let (value, span) = Loc::take_pair(s);
+            let (value, span) = Spanned::take_pair(s);
             let number = value.as_number().with_span(diag, &span)?;
-            out.push(Loc::new(number, span));
+            out.push(Spanned::new(number, span));
         }
 
         Ok(out)
@@ -51,13 +59,13 @@ pub trait Options {
         &self,
         diag: &mut Diagnostics,
         name: &str,
-    ) -> Result<Vec<Loc<String>>, ()> {
+    ) -> Result<Vec<Spanned<String>>, ()> {
         let mut out = Vec::new();
 
         for s in self.lookup(name) {
-            let (value, span) = Loc::take_pair(s);
+            let (value, span) = Spanned::take_pair(s);
             let identifier = value.as_identifier().with_span(diag, &span)?;
-            out.push(Loc::new(identifier, span));
+            out.push(Spanned::new(identifier, span));
         }
 
         Ok(out)
@@ -71,7 +79,7 @@ pub trait Options {
         &self,
         diag: &mut Diagnostics,
         name: &str,
-    ) -> Result<Option<Loc<String>>, ()> {
+    ) -> Result<Option<Spanned<String>>, ()> {
         Ok(self.find_all_identifiers(diag, name)?.into_iter().next())
     }
 
@@ -79,7 +87,7 @@ pub trait Options {
         &self,
         diag: &mut Diagnostics,
         name: &str,
-    ) -> Result<Option<Loc<String>>, ()> {
+    ) -> Result<Option<Spanned<String>>, ()> {
         Ok(self.find_all_strings(diag, name)?.into_iter().next())
     }
 
@@ -87,18 +95,18 @@ pub trait Options {
         &self,
         diag: &mut Diagnostics,
         name: &str,
-    ) -> Result<Option<Loc<RpNumber>>, ()> {
+    ) -> Result<Option<Spanned<RpNumber>>, ()> {
         Ok(self.find_all_u32(diag, name)?.into_iter().next())
     }
 }
 
-impl<T> Options for Vec<Loc<T>>
+impl<T> Options for Vec<Spanned<T>>
 where
     T: OptionEntry,
 {
     type Item = T;
 
-    fn items(&self) -> &Vec<Loc<Self::Item>> {
+    fn items(&self) -> &Vec<Spanned<Self::Item>> {
         self
     }
 }

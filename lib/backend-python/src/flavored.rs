@@ -7,8 +7,8 @@ use crate::{Options, TYPE_SEP};
 use backend::package_processor;
 use core::errors::Result;
 use core::{
-    CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberType,
-    RpStringType, Translate, Translator,
+    CoreFlavor, Diagnostics, Flavor, FlavorTranslator, PackageTranslator, RpNumberType,
+    RpStringType, Spanned, Translate, Translator,
 };
 use genco::prelude::*;
 use genco::tokens::{FormatInto, Item, ItemStr};
@@ -255,7 +255,7 @@ impl FlavorTranslator for PythonFlavorTranslator {
         })
     }
 
-    fn translate_name(&self, _from: &RpPackage, reg: RpReg, name: Loc<RpName>) -> Result<Type> {
+    fn translate_name(&self, _from: &RpPackage, reg: RpReg, name: Spanned<RpName>) -> Result<Type> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |v| v.join(TYPE_SEP));
 
         if let Some(used) = &name.prefix {
@@ -282,12 +282,12 @@ impl FlavorTranslator for PythonFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         reg: RpReg,
-        name: Loc<core::RpName<CoreFlavor>>,
+        name: Spanned<core::RpName<CoreFlavor>>,
     ) -> Result<Name>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
-        let (name, span) = Loc::take_pair(name);
+        let (name, span) = Spanned::take_pair(name);
 
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |v| v.join(TYPE_SEP));
         let package = self.translate_package(name.package)?;

@@ -8,7 +8,7 @@ use crate::utils::Comments;
 use crate::{EXT, TYPE_SEP};
 use backend::PackageProcessor;
 use core::errors::*;
-use core::{Handle, Loc};
+use core::{Handle, Spanned};
 use genco::prelude::*;
 use genco::tokens::ItemStr;
 use trans::Translated;
@@ -67,7 +67,7 @@ impl<'el> Compiler<'el> {
     }
 
     /// Build field declarations for the given fields.
-    fn type_fields(&self, t: &mut dart::Tokens, fields: &[Loc<RpField>]) {
+    fn type_fields(&self, t: &mut dart::Tokens, fields: &[Spanned<RpField>]) {
         quote_in! { *t =>
             #(for field in fields join (#<push>) {
                 #(Comments(&field.comment))
@@ -77,7 +77,7 @@ impl<'el> Compiler<'el> {
     }
 
     /// Build a decode function.
-    fn decode_fn(&self, t: &mut dart::Tokens, name: &ItemStr, fields: &[Loc<RpField>]) {
+    fn decode_fn(&self, t: &mut dart::Tokens, name: &ItemStr, fields: &[Spanned<RpField>]) {
         let mut vars = Vec::new();
 
         quote_in! { *t =>
@@ -124,7 +124,7 @@ impl<'el> Compiler<'el> {
     }
 
     /// Build a tuple decode function.
-    fn decode_tuple_fn(&self, t: &mut dart::Tokens, name: &ItemStr, fields: &[Loc<RpField>]) {
+    fn decode_tuple_fn(&self, t: &mut dart::Tokens, name: &ItemStr, fields: &[Spanned<RpField>]) {
         let mut vars = Vec::new();
 
         let len = fields.clone().into_iter().count();
@@ -226,7 +226,7 @@ impl<'el> Compiler<'el> {
         &self,
         t: &mut dart::Tokens,
         name: &str,
-        fields: &[Loc<RpField>],
+        fields: &[Spanned<RpField>],
         tag: Option<&str>,
     ) {
         quote_in! { *t =>
@@ -260,7 +260,7 @@ impl<'el> Compiler<'el> {
     }
 
     /// Build an encode function to encode tuples.
-    fn encode_tuple_fn(&self, t: &mut dart::Tokens, fields: &[Loc<RpField>]) {
+    fn encode_tuple_fn(&self, t: &mut dart::Tokens, fields: &[Spanned<RpField>]) {
         quote_in! { *t =>
             #(&self.list_of_dynamic) encode() {
                 #(&self.list_of_dynamic) _data = List();
@@ -275,7 +275,7 @@ impl<'el> Compiler<'el> {
     }
 
     /// Setup a constructor based on the number of fields.
-    fn constructor(&self, t: &mut dart::Tokens, name: &ItemStr, fields: &[Loc<RpField>]) {
+    fn constructor(&self, t: &mut dart::Tokens, name: &ItemStr, fields: &[Spanned<RpField>]) {
         quote_in! { *t =>
             #name(#(for field in fields join (, ) {
                 this.#(field.safe_ident())
@@ -284,7 +284,7 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
+impl<'el> PackageProcessor<'el, DartFlavor, Spanned<RpName>> for Compiler<'el> {
     type Out = dart::Tokens;
     type DeclIter = trans::translated::DeclIter<'el, DartFlavor>;
 
@@ -300,7 +300,7 @@ impl<'el> PackageProcessor<'el, DartFlavor, Loc<RpName>> for Compiler<'el> {
         self.handle
     }
 
-    fn default_process(&self, _out: &mut Self::Out, _: &Loc<RpName>) -> Result<()> {
+    fn default_process(&self, _out: &mut Self::Out, _: &Spanned<RpName>) -> Result<()> {
         Ok(())
     }
 

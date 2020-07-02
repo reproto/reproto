@@ -1,7 +1,9 @@
 //! Model for endpoints
 
 use crate::errors::Result;
-use crate::{Attributes, Diagnostics, Flavor, Loc, RpChannel, RpPathSpec, Translate, Translator};
+use crate::{
+    Attributes, Diagnostics, Flavor, RpChannel, RpPathSpec, Spanned, Translate, Translator,
+};
 use serde::Serialize;
 use std::default;
 use std::rc::Rc;
@@ -97,11 +99,11 @@ where
     F: Flavor,
 {
     /// Identifier of the argument.
-    pub ident: Rc<Loc<String>>,
+    pub ident: Rc<Spanned<String>>,
     /// Safe identifier for the argument.
     pub safe_ident: Rc<Option<String>>,
     /// Channel of the argument.
-    pub channel: Loc<RpChannel<F>>,
+    pub channel: Spanned<RpChannel<F>>,
 }
 
 impl<F: 'static, T> Translate<T> for RpEndpointArgument<F>
@@ -167,7 +169,7 @@ where
     pub request: Option<RpEndpointArgument<F>>,
     /// Response type that this endpoint responds with.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub response: Option<Loc<RpChannel<F>>>,
+    pub response: Option<Spanned<RpChannel<F>>>,
     /// HTTP configuration.
     pub http: RpEndpointHttp<F>,
 }
@@ -259,8 +261,11 @@ where
             None => return None,
         };
 
-        let request_ty = endpoint.request.as_ref().map(|r| Loc::borrow(&r.channel));
-        let response_ty = endpoint.response.as_ref().map(|r| Loc::borrow(r));
+        let request_ty = endpoint
+            .request
+            .as_ref()
+            .map(|r| Spanned::borrow(&r.channel));
+        let response_ty = endpoint.response.as_ref().map(|r| Spanned::borrow(r));
 
         let (request, response) = match (request_ty, response_ty) {
             (Some(&Unary { ty: ref request }), Some(&Unary { ty: ref response })) => {

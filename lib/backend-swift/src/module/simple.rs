@@ -6,7 +6,7 @@ use crate::flavored::{Field, Name, RpEnumBody, RpInterfaceBody, RpPackage, RpSub
 use crate::Options;
 use backend::Initializer;
 use core::errors::Result;
-use core::{self, Loc};
+use core::{self, Spanned};
 use genco::prelude::*;
 use genco::tokens::ItemStr;
 use std::rc::Rc;
@@ -289,7 +289,7 @@ impl codegen::type_added::Codegen for Codegen {
         fn decode<'f>(
             codegen: &'f Codegen,
             name: &'f Name,
-            fields: &'f [Loc<Field>],
+            fields: &'f [Spanned<Field>],
         ) -> impl FormatInto<Swift> + 'f {
             let mut args = Vec::new();
 
@@ -316,7 +316,7 @@ impl codegen::type_added::Codegen for Codegen {
 
         fn encode<'f>(
             codegen: &'f Codegen,
-            fields: &'f [Loc<Field>],
+            fields: &'f [Spanned<Field>],
         ) -> impl FormatInto<Swift> + 'f {
             quote_fn! {
                 func encode() throws -> [String: Any] {
@@ -358,7 +358,7 @@ impl codegen::tuple_added::Codegen for Codegen {
         fn decode<'f>(
             codegen: &'f Codegen,
             name: &'f Name,
-            fields: &'f [Loc<Field>],
+            fields: &'f [Spanned<Field>],
         ) -> impl FormatInto<Swift> + 'f {
             let mut args = Vec::new();
 
@@ -386,7 +386,7 @@ impl codegen::tuple_added::Codegen for Codegen {
 
         fn encode<'f>(
             codegen: &'f Codegen,
-            fields: &'f [Loc<Field>],
+            fields: &'f [Spanned<Field>],
         ) -> impl FormatInto<Swift> + 'f {
             quote_fn! {
                 func encode() throws -> [Any] {
@@ -506,7 +506,7 @@ impl codegen::interface_added::Codegen for Codegen {
             sub_types: S,
         ) -> impl FormatInto<Swift> + 'f
         where
-            S: IntoIterator<Item = &'el Loc<RpSubType>>,
+            S: IntoIterator<Item = &'el Spanned<RpSubType>>,
         {
             quote_fn! {
                 static func decode(json: Any) throws -> #name {
@@ -529,7 +529,7 @@ impl codegen::interface_added::Codegen for Codegen {
         /// Build a method to decode a tagged interface.
         fn encode_tag<'f, 'el: 'f, S: 'f>(tag: &'f str, sub_types: S) -> impl FormatInto<Swift> + 'f
         where
-            S: IntoIterator<Item = &'el Loc<RpSubType>>,
+            S: IntoIterator<Item = &'el Spanned<RpSubType>>,
         {
             quote_fn! {
                 func encode() throws -> [String: Any] {
@@ -580,7 +580,7 @@ impl codegen::interface_added::Codegen for Codegen {
 
             fn quoted_tags<'a, I>(fields: I) -> swift::Tokens
             where
-                I: IntoIterator<Item = &'a Loc<Field>>,
+                I: IntoIterator<Item = &'a Spanned<Field>>,
             {
                 let mut it = fields.into_iter().peekable();
 
@@ -604,7 +604,7 @@ impl codegen::interface_added::Codegen for Codegen {
         /// Build a method to decode a tagged interface.
         fn encode_untagged<'f, 'el: 'f, S: 'f>(sub_types: S) -> impl FormatInto<Swift> + 'f
         where
-            S: IntoIterator<Item = &'el Loc<RpSubType>>,
+            S: IntoIterator<Item = &'el Spanned<RpSubType>>,
         {
             quote_fn! {
                 func encode() throws -> [String: Any] {

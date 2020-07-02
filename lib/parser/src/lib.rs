@@ -156,7 +156,7 @@ mod tests {
         let ty = parse_type("[string]");
 
         if let Type::Array { inner } = ty {
-            if let Type::String = *Loc::borrow(inner.as_ref()) {
+            if let Type::String = *Spanned::borrow(inner.as_ref()) {
                 return;
             }
         }
@@ -172,8 +172,8 @@ mod tests {
         // if let Type::Map(box Type::String, box Type::Unsigned(size)) = ty {
         // }
         if let Type::Map { key, value } = ty {
-            if let Type::String = *Loc::borrow(key.as_ref()) {
-                if let Type::Unsigned { ref size } = *Loc::borrow(value.as_ref()) {
+            if let Type::String = *Spanned::borrow(key.as_ref()) {
+                if let Type::Unsigned { ref size } = *Spanned::borrow(value.as_ref()) {
                     assert_eq!(32, *size);
                     return;
                 }
@@ -252,15 +252,15 @@ mod tests {
         let c = Name::Absolute {
             prefix: None,
             path: vec![
-                Loc::new("Hello".into(), Span::empty()),
-                Loc::new("World".into(), Span::empty()),
+                Spanned::new("Hello".into(), Span::empty()),
+                Spanned::new("World".into(), Span::empty()),
             ],
         };
 
         assert_type!(Type::String, "string");
         assert_type!(
             Type::Name {
-                name: Loc::new(c, Span::empty())
+                name: Spanned::new(c, Span::empty())
             },
             "Hello::World"
         );

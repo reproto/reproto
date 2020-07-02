@@ -1,6 +1,6 @@
 //! Literal code segments
 
-use crate::Loc;
+use crate::Spanned;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
@@ -11,7 +11,7 @@ pub enum RpContext {
     Java {
         /// Imports to perform for the given code block.
         /// These will be de-duplicated by the java backend.
-        imports: Vec<Loc<String>>,
+        imports: Vec<Spanned<String>>,
     },
     Js {},
     Json {},

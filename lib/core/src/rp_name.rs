@@ -1,7 +1,7 @@
 //! Describes a fully qualified name as a model
 
 use crate::errors::Result;
-use crate::{CoreFlavor, Diagnostics, Flavor, Loc, Translate, Translator};
+use crate::{CoreFlavor, Diagnostics, Flavor, Spanned, Translate, Translator};
 use serde::Serialize;
 use std::fmt;
 
@@ -13,7 +13,7 @@ where
 {
     /// Alias used if the name was imported from another package.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub prefix: Option<Loc<String>>,
+    pub prefix: Option<Spanned<String>>,
     /// Package that name belongs to.
     pub package: F::Package,
     /// Absolute path of the name, from the root of the package.
@@ -24,7 +24,7 @@ impl<F: 'static> RpName<F>
 where
     F: Flavor,
 {
-    pub fn new(prefix: Option<Loc<String>>, package: F::Package, path: Vec<String>) -> Self {
+    pub fn new(prefix: Option<Spanned<String>>, package: F::Package, path: Vec<String>) -> Self {
         Self {
             prefix,
             package,

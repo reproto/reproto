@@ -3,7 +3,7 @@
 //! These structures are all map-like.
 
 use crate::errors::Result;
-use crate::{Diagnostics, Flavor, Loc, RpValue, Span, Translate, Translator};
+use crate::{Diagnostics, Flavor, RpValue, Span, Spanned, Translate, Translator};
 use serde::Serialize;
 use std::borrow::Borrow;
 use std::collections::HashMap;
@@ -17,9 +17,9 @@ where
     F: Flavor,
 {
     /// Storing words and their locations.
-    words: Vec<Loc<RpValue<F>>>,
+    words: Vec<Spanned<RpValue<F>>>,
     /// Storing values and their locations.
-    values: HashMap<String, (Loc<String>, Loc<RpValue<F>>)>,
+    values: HashMap<String, (Spanned<String>, Spanned<RpValue<F>>)>,
 }
 
 impl<F: 'static> Selection<F>
@@ -27,14 +27,14 @@ where
     F: Flavor,
 {
     pub fn new(
-        words: Vec<Loc<RpValue<F>>>,
-        values: HashMap<String, (Loc<String>, Loc<RpValue<F>>)>,
+        words: Vec<Spanned<RpValue<F>>>,
+        values: HashMap<String, (Spanned<String>, Spanned<RpValue<F>>)>,
     ) -> Selection<F> {
         Selection { words, values }
     }
 
     /// Take the given value, removing it in the process.
-    pub fn take<Q: ?Sized>(&mut self, key: &Q) -> Option<Loc<RpValue<F>>>
+    pub fn take<Q: ?Sized>(&mut self, key: &Q) -> Option<Spanned<RpValue<F>>>
     where
         String: Borrow<Q>,
         Q: Hash + Eq,
@@ -43,20 +43,20 @@ where
     }
 
     /// Take the given value, removing it in the process.
-    pub fn take_words(&mut self) -> Vec<Loc<RpValue<F>>> {
+    pub fn take_words(&mut self) -> Vec<Spanned<RpValue<F>>> {
         mem::replace(&mut self.words, vec![])
     }
 
     /// Take a single word.
-    pub fn take_word(&mut self) -> Option<Loc<RpValue<F>>> {
+    pub fn take_word(&mut self) -> Option<Spanned<RpValue<F>>> {
         self.words.pop()
     }
 
     /// Get an iterator over unused positions.
     pub fn unused(&self) -> impl Iterator<Item = Span> {
         let mut positions = Vec::new();
-        positions.extend(self.words.iter().map(|v| Loc::span(v)));
-        positions.extend(self.values.values().map(|v| Loc::span(&v.0)));
+        positions.extend(self.words.iter().map(|v| v.span()));
+        positions.extend(self.values.values().map(|v| v.0.span()));
         positions.into_iter()
     }
 }
@@ -83,7 +83,7 @@ where
     F: Flavor,
 {
     words: HashMap<String, Span>,
-    selections: HashMap<String, Loc<Selection<F>>>,
+    selections: HashMap<String, Spanned<Selection<F>>>,
 }
 
 impl<F: 'static> Attributes<F>
@@ -92,7 +92,7 @@ where
 {
     pub fn new(
         words: HashMap<String, Span>,
-        selections: HashMap<String, Loc<Selection<F>>>,
+        selections: HashMap<String, Spanned<Selection<F>>>,
     ) -> Attributes<F> {
         Attributes { words, selections }
     }
@@ -107,7 +107,7 @@ where
     }
 
     /// Take the given selection, removing it in the process.
-    pub fn take_selection<Q: ?Sized>(&mut self, key: &Q) -> Option<Loc<Selection<F>>>
+    pub fn take_selection<Q: ?Sized>(&mut self, key: &Q) -> Option<Spanned<Selection<F>>>
     where
         String: Borrow<Q>,
         Q: Hash + Eq,
@@ -119,7 +119,7 @@ where
     pub fn unused(&self) -> impl Iterator<Item = Span> {
         let mut positions = Vec::new();
         positions.extend(self.words.values());
-        positions.extend(self.selections.values().map(Loc::span));
+        positions.extend(self.selections.values().map(Spanned::span));
         positions.into_iter()
     }
 }

@@ -8,72 +8,75 @@ use std::hash;
 use std::ops;
 use std::result;
 
-/// Loc is a value and a span combined.
+/// Spanned is a value and a span combined.
 ///
 /// The span indicates a byte range where the value was extracted from.
 #[derive(Clone)]
-pub struct Loc<T> {
+pub struct Spanned<T> {
     inner: T,
     span: Span,
 }
 
-impl<T> Loc<T> {
+impl<T> Spanned<T> {
     /// Create a new spanned item.
-    pub fn new<P: Into<Span>>(inner: T, span: P) -> Loc<T> {
-        Loc {
+    pub fn new<P: Into<Span>>(inner: T, span: P) -> Spanned<T> {
+        Spanned {
             inner,
             span: span.into(),
         }
     }
 
     /// Access the span of the item.
-    pub fn span(loc: &Loc<T>) -> Span {
-        loc.span
+    pub fn span(&self) -> Span {
+        self.span
     }
 
-    /// Consume the loc and take the value of it.
-    pub fn take(loc: Loc<T>) -> T {
-        loc.inner
+    /// Consume the spanned and take the value of it.
+    pub fn take(spanned: Spanned<T>) -> T {
+        spanned.inner
     }
 
-    /// Consume the loc and take the value and the span.
-    pub fn take_pair(loc: Loc<T>) -> (T, Span) {
-        (loc.inner, loc.span)
+    /// Consume the spanned and take the value and the span.
+    pub fn take_pair(spanned: Spanned<T>) -> (T, Span) {
+        (spanned.inner, spanned.span)
     }
 
-    /// Borrow the value from a loc.
-    pub fn borrow(loc: &Loc<T>) -> &T {
-        &loc.inner
+    /// Borrow the value from a spanned.
+    pub fn borrow(spanned: &Spanned<T>) -> &T {
+        &spanned.inner
     }
 
-    /// Borrow a value and the span from a loc.
-    pub fn borrow_pair(loc: &Loc<T>) -> (&T, Span) {
-        (&loc.inner, loc.span)
+    /// Borrow a value and the span from a spanned.
+    pub fn borrow_pair(spanned: &Spanned<T>) -> (&T, Span) {
+        (&spanned.inner, spanned.span)
     }
 
-    /// Map the loc.
-    pub fn map<U, O>(loc: Loc<T>, op: O) -> Loc<U>
+    /// Map the spanned.
+    pub fn map<U, O>(spanned: Spanned<T>, op: O) -> Spanned<U>
     where
         O: FnOnce(T) -> U,
     {
-        Loc::new(op(loc.inner), loc.span)
+        Spanned::new(op(spanned.inner), spanned.span)
     }
 
-    /// Convert a reference to a loc, into a loc of a reference.
-    pub fn as_ref(loc: &Loc<T>) -> Loc<&T> {
-        Loc::new(&loc.inner, loc.span)
+    /// Convert a reference to a spanned, into a reference.
+    pub fn as_ref(spanned: &Spanned<T>) -> Spanned<&T> {
+        Spanned::new(&spanned.inner, spanned.span)
     }
 
     /// Apply the fallible operation over the given location.
-    pub fn and_then<U, O, E>(Loc { inner, span }: Loc<T>, op: O) -> result::Result<Loc<U>, E>
+    pub fn and_then<U, O, E>(
+        Spanned { inner, span }: Spanned<T>,
+        op: O,
+    ) -> result::Result<Spanned<U>, E>
     where
         O: FnOnce(T) -> result::Result<U, E>,
     {
-        op(inner).map(|value| Loc::new(value, span))
+        op(inner).map(|value| Spanned::new(value, span))
     }
 }
 
-impl<T: Serialize> Serialize for Loc<T> {
+impl<T: Serialize> Serialize for Spanned<T> {
     fn serialize<S>(&self, serializer: S) -> result::Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -82,7 +85,7 @@ impl<T: Serialize> Serialize for Loc<T> {
     }
 }
 
-impl<T> cmp::PartialEq for Loc<T>
+impl<T> cmp::PartialEq for Spanned<T>
 where
     T: cmp::PartialEq,
 {
@@ -91,9 +94,9 @@ where
     }
 }
 
-impl<T> cmp::Eq for Loc<T> where T: cmp::Eq {}
+impl<T> cmp::Eq for Spanned<T> where T: cmp::Eq {}
 
-impl<T> cmp::PartialOrd for Loc<T>
+impl<T> cmp::PartialOrd for Spanned<T>
 where
     T: cmp::PartialOrd,
 {
@@ -102,7 +105,7 @@ where
     }
 }
 
-impl<T> cmp::Ord for Loc<T>
+impl<T> cmp::Ord for Spanned<T>
 where
     T: cmp::Ord,
 {
@@ -111,7 +114,7 @@ where
     }
 }
 
-impl<T> hash::Hash for Loc<T>
+impl<T> hash::Hash for Spanned<T>
 where
     T: hash::Hash,
 {
@@ -123,7 +126,7 @@ where
     }
 }
 
-impl<T> ops::Deref for Loc<T> {
+impl<T> ops::Deref for Spanned<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -131,25 +134,25 @@ impl<T> ops::Deref for Loc<T> {
     }
 }
 
-impl<T> ops::DerefMut for Loc<T> {
+impl<T> ops::DerefMut for Spanned<T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.inner
     }
 }
 
-impl<T> ::std::convert::AsMut<T> for Loc<T> {
+impl<T> ::std::convert::AsMut<T> for Spanned<T> {
     fn as_mut(&mut self) -> &mut T {
         &mut self.inner
     }
 }
 
-impl<T> borrow::Borrow<T> for Loc<T> {
+impl<T> borrow::Borrow<T> for Spanned<T> {
     fn borrow(&self) -> &T {
         &**self
     }
 }
 
-impl<T> fmt::Display for Loc<T>
+impl<T> fmt::Display for Spanned<T>
 where
     T: fmt::Display,
 {
@@ -158,7 +161,7 @@ where
     }
 }
 
-impl<T> fmt::Debug for Loc<T>
+impl<T> fmt::Debug for Spanned<T>
 where
     T: fmt::Debug,
 {
@@ -167,8 +170,8 @@ where
     }
 }
 
-impl<'a, T> From<&'a Loc<T>> for Span {
-    fn from(value: &'a Loc<T>) -> Self {
-        Loc::span(value)
+impl<'a, T> From<&'a Spanned<T>> for Span {
+    fn from(value: &'a Spanned<T>) -> Self {
+        value.span()
     }
 }

@@ -2,7 +2,9 @@
 
 use crate::errors::Result;
 use crate::translator;
-use crate::{Diagnostics, Flavor, FlavorField, Loc, RpCode, RpDecl, RpReg, Translate, Translator};
+use crate::{
+    Diagnostics, Flavor, FlavorField, RpCode, RpDecl, RpReg, Spanned, Translate, Translator,
+};
 use linked_hash_map::LinkedHashMap;
 use serde::Serialize;
 
@@ -30,9 +32,9 @@ impl Default for RpSubTypeStrategy {
 
 decl_body!(
     pub struct RpInterfaceBody<F> {
-        pub fields: Vec<Loc<F::Field>>,
-        pub codes: Vec<Loc<RpCode>>,
-        pub sub_types: Vec<Loc<RpSubType<F>>>,
+        pub fields: Vec<Spanned<F::Field>>,
+        pub codes: Vec<Spanned<RpCode>>,
+        pub sub_types: Vec<Spanned<RpSubType<F>>>,
         pub sub_type_strategy: RpSubTypeStrategy,
     }
 );
@@ -41,7 +43,7 @@ impl<F: 'static> RpInterfaceBody<F>
 where
     F: Flavor,
 {
-    pub fn fields(&self) -> impl Iterator<Item = &Loc<F::Field>> {
+    pub fn fields(&self) -> impl Iterator<Item = &Spanned<F::Field>> {
         self.fields.iter()
     }
 }
@@ -95,10 +97,10 @@ where
     /// Inner declarations.
     pub decls: Vec<RpDecl<F>>,
     pub decl_idents: LinkedHashMap<String, usize>,
-    pub fields: Vec<Loc<F::Field>>,
-    pub codes: Vec<Loc<RpCode>>,
+    pub fields: Vec<Spanned<F::Field>>,
+    pub codes: Vec<Spanned<RpCode>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sub_type_name: Option<Loc<String>>,
+    pub sub_type_name: Option<Spanned<String>>,
 }
 
 impl<F: 'static> RpSubType<F>
@@ -113,12 +115,12 @@ where
     }
 
     /// Access all fields of the sub type.
-    pub fn fields(&self) -> impl Iterator<Item = &Loc<F::Field>> {
+    pub fn fields(&self) -> impl Iterator<Item = &Spanned<F::Field>> {
         self.fields.iter()
     }
 
     /// Access the set of fields which are used to make this sub-type unique.
-    pub fn discriminating_fields(&self) -> impl Iterator<Item = &Loc<F::Field>> {
+    pub fn discriminating_fields(&self) -> impl Iterator<Item = &Spanned<F::Field>> {
         let fields = self
             .fields
             .iter()

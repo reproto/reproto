@@ -1,34 +1,34 @@
 //! Utility trait to convert various wrapper types into locations.
 
-use super::Loc;
+use super::Spanned;
 use std::rc::Rc;
 
 pub trait AsLoc {
     type Output;
 
-    fn as_loc(self) -> Loc<Self::Output>;
+    fn as_loc(self) -> Spanned<Self::Output>;
 }
 
-impl<T> AsLoc for Loc<T> {
+impl<T> AsLoc for Spanned<T> {
     type Output = T;
 
-    fn as_loc(self) -> Loc<Self::Output> {
+    fn as_loc(self) -> Spanned<Self::Output> {
         self
     }
 }
 
-impl<'a, T: 'a> AsLoc for &'a Loc<T> {
+impl<'a, T: 'a> AsLoc for &'a Spanned<T> {
     type Output = &'a T;
 
-    fn as_loc(self) -> Loc<Self::Output> {
-        Loc::as_ref(self)
+    fn as_loc(self) -> Spanned<Self::Output> {
+        Spanned::as_ref(self)
     }
 }
 
-impl<'a, T: 'a> AsLoc for &'a Rc<Loc<T>> {
+impl<'a, T: 'a> AsLoc for &'a Rc<Spanned<T>> {
     type Output = &'a T;
 
-    fn as_loc(self) -> Loc<Self::Output> {
-        Loc::as_ref(self)
+    fn as_loc(self) -> Spanned<Self::Output> {
+        Spanned::as_ref(self)
     }
 }

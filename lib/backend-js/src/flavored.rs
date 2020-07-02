@@ -4,8 +4,8 @@ use crate::TYPE_SEP;
 use backend::package_processor;
 use core::errors::Result;
 use core::{
-    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberType,
-    RpStringType, Translate, Translator,
+    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, PackageTranslator, RpNumberType,
+    RpStringType, Spanned, Translate, Translator,
 };
 use genco::prelude::*;
 use genco::tokens::{FormatInto, ItemStr};
@@ -246,7 +246,7 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
         Ok(Type::String)
     }
 
-    fn translate_name(&self, _from: &RpPackage, reg: RpReg, name: Loc<RpName>) -> Result<Type> {
+    fn translate_name(&self, _from: &RpPackage, reg: RpReg, name: Spanned<RpName>) -> Result<Type> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 
         if let Some(used) = &name.prefix {
@@ -271,12 +271,12 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
         _: &T,
         _: &mut Diagnostics,
         reg: RpReg,
-        name: Loc<core::RpName<CoreFlavor>>,
+        name: Spanned<core::RpName<CoreFlavor>>,
     ) -> Result<Name>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
-        let (name, _) = Loc::take_pair(name);
+        let (name, _) = Spanned::take_pair(name);
 
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |v| v.join(TYPE_SEP));
         let package = self.translate_package(name.package)?;

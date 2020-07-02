@@ -5,7 +5,7 @@ use crate::flavored::{JavaEndpoint, RpEndpointHttp1, RpPathStep};
 use crate::serialization::Serialization;
 use crate::utils::Override;
 use core::errors::Result;
-use core::Loc;
+use core::Spanned;
 use genco::java::{self, Argument, Class, Constructor, Field, Method, Modifier, VOID};
 use genco::{nested, push, toks, Cons, IntoTokens, Java, Quoted, Tokens};
 use serde::Deserialize;
@@ -244,7 +244,7 @@ impl OkHttpServiceCodegen {
     fn request<'el>(
         &self,
         mut method: Method<'el>,
-        e: &'el Loc<JavaEndpoint>,
+        e: &'el Spanned<JavaEndpoint>,
         http: &'el RpEndpointHttp1,
         client: Field<'el>,
         base_url: Field<'el>,

@@ -22,7 +22,9 @@ use core::flavored::{
     RpChannel, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpTupleBody, RpType,
     RpTypeBody, RpVersionedPackage,
 };
-use core::{CoreFlavor, Handle, Loc, RelativePath, RelativePathBuf, RpHttpMethod, RpNumberKind};
+use core::{
+    CoreFlavor, Handle, RelativePath, RelativePathBuf, RpHttpMethod, RpNumberKind, Spanned,
+};
 use linked_hash_map::LinkedHashMap;
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use std::any::Any;
@@ -332,7 +334,7 @@ impl<'builder> SpecBuilder<'builder> {
         };
 
         if let core::RpType::Name { ref name } = *channel.ty() {
-            queue.push_back(Queued::Named(Loc::borrow(name)));
+            queue.push_back(Queued::Named(Spanned::borrow(name)));
         }
 
         let mut payload = Payload::default();
@@ -702,7 +704,7 @@ impl<'builder> SpecBuilder<'builder> {
         &self,
         queue: &mut VecDeque<Queued<'builder>>,
         object: &mut spec::Object<'builder>,
-        fields: impl IntoIterator<Item = &'builder Loc<RpField>>,
+        fields: impl IntoIterator<Item = &'builder Spanned<RpField>>,
     ) -> Result<()> {
         for field in fields {
             let mut schema = self.type_to_schema(queue, &field.ty)?;

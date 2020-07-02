@@ -8,7 +8,7 @@ use crate::utils::Comments;
 use crate::{Options, Root, Service, EXT, MOD, TYPE_SEP};
 use backend::PackageProcessor;
 use core::errors::*;
-use core::{self, Handle, Loc, RelativePathBuf};
+use core::{self, Handle, RelativePathBuf, Spanned};
 use genco::prelude::*;
 use genco::tokens::FormatInto;
 use std::collections::{BTreeMap, BTreeSet};
@@ -242,7 +242,7 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
+impl<'el> PackageProcessor<'el, RustFlavor, Spanned<RpName>> for Compiler<'el> {
     type Out = rust::Tokens;
     type DeclIter = trans::translated::DeclIter<'el, RustFlavor>;
 
@@ -258,7 +258,7 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
         self.handle
     }
 
-    fn default_process(&self, _out: &mut Self::Out, _: &Loc<RpName>) -> Result<()> {
+    fn default_process(&self, _out: &mut Self::Out, _: &Spanned<RpName>) -> Result<()> {
         Ok(())
     }
 
@@ -329,7 +329,7 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
             out: &mut Tokens<Rust>,
             body: &'el RpEnumBody,
             name: &Rc<String>,
-            variants: &'el Vec<Loc<RpVariant<T>>>,
+            variants: &'el Vec<Spanned<RpVariant<T>>>,
         ) where
             T: fmt::Display,
         {
@@ -360,7 +360,7 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
             out: &mut Tokens<Rust>,
             body: &'el RpEnumBody,
             name: &Rc<String>,
-            variants: &'el Vec<Loc<RpVariant<T>>>,
+            variants: &'el Vec<Spanned<RpVariant<T>>>,
         ) where
             T: fmt::Display,
         {
@@ -386,7 +386,7 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
             out: &mut Tokens<Rust>,
             body: &'el RpEnumBody,
             parent: &Rc<String>,
-            variants: &'el Vec<Loc<RpVariant<T>>>,
+            variants: &'el Vec<Spanned<RpVariant<T>>>,
             name: &'el str,
         ) where
             T: fmt::Display,
@@ -428,7 +428,7 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
         fn numeric_expecting<'el, T>(
             out: &mut Tokens<Rust>,
             parent: &Rc<String>,
-            variants: &'el Vec<Loc<RpVariant<T>>>,
+            variants: &'el Vec<Spanned<RpVariant<T>>>,
         ) where
             T: fmt::Display,
         {
@@ -453,7 +453,7 @@ impl<'el> PackageProcessor<'el, RustFlavor, Loc<RpName>> for Compiler<'el> {
             out: &mut Tokens<Rust>,
             ty: &'el Type,
             parent: &Rc<String>,
-            variants: &'el Vec<Loc<RpVariant<T>>>,
+            variants: &'el Vec<Spanned<RpVariant<T>>>,
         ) where
             T: fmt::Display,
         {

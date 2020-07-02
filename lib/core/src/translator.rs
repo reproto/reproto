@@ -3,8 +3,8 @@
 use crate::errors::Result;
 use crate::Flavor;
 use crate::{
-    CoreFlavor, Diagnostics, Loc, RpEndpoint, RpEnumType, RpField, RpName, RpNumberType, RpReg,
-    RpStringType, RpType, RpVersionedPackage,
+    CoreFlavor, Diagnostics, RpEndpoint, RpEnumType, RpField, RpName, RpNumberType, RpReg,
+    RpStringType, RpType, RpVersionedPackage, Spanned,
 };
 use linked_hash_map::LinkedHashMap;
 use std::cell::RefCell;
@@ -61,7 +61,7 @@ pub trait FlavorTranslator {
         &self,
         from: &<Self::Target as Flavor>::Package,
         reg: RpReg,
-        name: Loc<RpName<Self::Target>>,
+        name: Spanned<RpName<Self::Target>>,
     ) -> Result<<Self::Target as Flavor>::Type>;
 
     /// Translate the given field.
@@ -133,7 +133,7 @@ where
         Type = RpType<F>,
         Field = RpField<F>,
         Endpoint = RpEndpoint<F>,
-        Name = Loc<RpName<F>>,
+        Name = Spanned<RpName<F>>,
         EnumType = RpEnumType,
     >,
 {
@@ -214,16 +214,16 @@ where
     fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Self::Out>;
 }
 
-impl<T, V> Translate<T> for Loc<V>
+impl<T, V> Translate<T> for Spanned<V>
 where
     V: Translate<T>,
     T: Translator,
 {
-    type Out = Loc<V::Out>;
+    type Out = Spanned<V::Out>;
 
     /// Translate into different flavor.
-    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Loc<V::Out>> {
-        Loc::and_then(self, |s| s.translate(diag, translator))
+    fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Spanned<V::Out>> {
+        Spanned::and_then(self, |s| s.translate(diag, translator))
     }
 }
 
@@ -312,21 +312,21 @@ where
     }
 }
 
-pub struct Fields<T>(pub Vec<Loc<T>>);
+pub struct Fields<T>(pub Vec<Spanned<T>>);
 
 impl<T, F: 'static> Translate<T> for Fields<F::Field>
 where
     F: Flavor,
     T: Translator<Source = F>,
 {
-    type Out = Vec<Loc<<T::Target as Flavor>::Field>>;
+    type Out = Vec<Spanned<<T::Target as Flavor>::Field>>;
 
     /// Translate into different flavor.
     fn translate(self, diag: &mut Diagnostics, translator: &T) -> Result<Self::Out> {
         let out = self
             .0
             .into_iter()
-            .map(|f| Loc::and_then(f, |f| translator.translate_field(diag, f)))
+            .map(|f| Spanned::and_then(f, |f| translator.translate_field(diag, f)))
             .collect::<Result<Vec<_>>>()?;
 
         Ok(out)
@@ -342,7 +342,7 @@ where
     /// Type used to translate types.
     pub flavor: &'a T,
     /// Registered declarations of the source type.
-    pub types: Rc<LinkedHashMap<RpName<T::Source>, Loc<RpReg>>>,
+    pub types: Rc<LinkedHashMap<RpName<T::Source>, Spanned<RpReg>>>,
     /// Cached and translated registered declarations.
     pub decls: Option<Rc<RefCell<LinkedHashMap<RpName<T::Source>, RpReg>>>>,
 }
@@ -352,8 +352,8 @@ where
     T: FlavorTranslator<Source = CoreFlavor>,
 {
     /// Lookup and cause the given name to be registered.
-    fn lookup(&self, diag: &mut Diagnostics, key: &Loc<RpName<T::Source>>) -> Result<RpReg> {
-        let (key, span) = Loc::borrow_pair(key);
+    fn lookup(&self, diag: &mut Diagnostics, key: &Spanned<RpName<T::Source>>) -> Result<RpReg> {
+        let (key, span) = Spanned::borrow_pair(key);
         let key = key.clone().without_prefix();
 
         let decls = self.decls.as_ref().ok_or_else(|| "no declarations")?;
@@ -364,7 +364,7 @@ where
         }
 
         let reg = match self.types.get(&key) {
-            Some(reg) => Loc::borrow(reg).clone(),
+            Some(reg) => Spanned::borrow(reg).clone(),
             None => {
                 diag.err(span, format!("`{}` does not exist", key));
                 return Err(format!("no such type: {}", key).into());
@@ -384,7 +384,7 @@ where
     type Target = T::Target;
 
     /// Indicate that the given name has been visited.
-    fn visit(&self, diag: &mut Diagnostics, name: &Loc<RpName<Self::Source>>) -> Result<()> {
+    fn visit(&self, diag: &mut Diagnostics, name: &Spanned<RpName<Self::Source>>) -> Result<()> {
         self.lookup(diag, name)?;
         Ok(())
     }

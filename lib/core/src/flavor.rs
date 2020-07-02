@@ -1,7 +1,9 @@
 //! The flavor of RpIR being used.
 
 use crate::errors::Result;
-use crate::{Loc, RpEndpoint, RpEnumType, RpField, RpName, RpPackage, RpType, RpVersionedPackage};
+use crate::{
+    RpEndpoint, RpEnumType, RpField, RpName, RpPackage, RpType, RpVersionedPackage, Spanned,
+};
 use serde::Serialize;
 use std::borrow::Cow;
 use std::cmp;
@@ -46,7 +48,7 @@ pub struct CoreFlavor;
 
 impl Flavor for CoreFlavor {
     type Type = RpType<CoreFlavor>;
-    type Name = Loc<RpName<CoreFlavor>>;
+    type Name = Spanned<RpName<CoreFlavor>>;
     type Field = RpField<CoreFlavor>;
     type Endpoint = RpEndpoint<CoreFlavor>;
     type Package = RpVersionedPackage;

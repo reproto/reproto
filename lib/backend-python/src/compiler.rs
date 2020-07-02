@@ -9,7 +9,7 @@ use crate::utils::BlockComment;
 use crate::{FileSpec, Options, EXT, INIT_PY};
 use backend::PackageProcessor;
 use core::errors::*;
-use core::{self, Handle, Loc, RelativePathBuf};
+use core::{self, Handle, RelativePathBuf, Spanned};
 use genco::prelude::*;
 use naming::{self, Naming};
 use std::collections::BTreeMap;
@@ -18,7 +18,7 @@ use trans::{self, Translated};
 
 pub struct Compiler<'el> {
     pub env: &'el Translated<PythonFlavor>,
-    variant_field: Loc<RpField>,
+    variant_field: Spanned<RpField>,
     to_lower_snake: naming::ToLowerSnake,
     enum_enum: python::Import,
     service_generators: Vec<Box<dyn ServiceCodegen>>,
@@ -28,7 +28,7 @@ pub struct Compiler<'el> {
 impl<'el> Compiler<'el> {
     pub fn new(
         env: &'el Translated<PythonFlavor>,
-        variant_field: Loc<RpField>,
+        variant_field: Spanned<RpField>,
         options: Options,
         handle: &'el dyn Handle,
     ) -> Compiler<'el> {
@@ -69,7 +69,7 @@ impl<'el> Compiler<'el> {
     fn encode_method(
         &self,
         t: &mut python::Tokens,
-        fields: &[Loc<RpField>],
+        fields: &[Spanned<RpField>],
         builder: python::Tokens,
         extra: Option<python::Tokens>,
     ) {
@@ -107,7 +107,7 @@ impl<'el> Compiler<'el> {
 
     fn encode_tuple_method<'a, I>(&self, t: &mut python::Tokens, fields: I)
     where
-        I: IntoIterator<Item = &'a Loc<RpField>>,
+        I: IntoIterator<Item = &'a Spanned<RpField>>,
     {
         let mut args = Vec::new();
 
@@ -125,7 +125,7 @@ impl<'el> Compiler<'el> {
         }
     }
 
-    fn repr_method(&self, t: &mut python::Tokens, name: &Name, fields: &[Loc<RpField>]) {
+    fn repr_method(&self, t: &mut python::Tokens, name: &Name, fields: &[Spanned<RpField>]) {
         use std::fmt::Write;
 
         let mut it = fields.into_iter().peekable();
@@ -169,7 +169,7 @@ impl<'el> Compiler<'el> {
         variable_fn: F,
     ) where
         F: Fn(usize, &'el RpField) -> python::Tokens,
-        I: IntoIterator<Item = &'el Loc<RpField>>,
+        I: IntoIterator<Item = &'el Spanned<RpField>>,
     {
         let mut args = Vec::new();
 
@@ -211,7 +211,7 @@ impl<'el> Compiler<'el> {
         }
     }
 
-    fn build_constructor(&self, t: &mut python::Tokens, fields: &[Loc<RpField>]) {
+    fn build_constructor(&self, t: &mut python::Tokens, fields: &[Spanned<RpField>]) {
         quote_in! { *t =>
             def __init__(self#(for f in fields => , #(f.safe_ident()))):
                 #(if fields.is_empty() {
@@ -227,7 +227,7 @@ impl<'el> Compiler<'el> {
     /// Construct property accessors for reading and mutating the underlying value.
     ///
     /// This allows documentation to be generated and be made accessible for the various fields.
-    fn build_accessors(&self, t: &mut python::Tokens, fields: &[Loc<RpField>]) {
+    fn build_accessors(&self, t: &mut python::Tokens, fields: &[Spanned<RpField>]) {
         quote_in! { *t =>
             #(for field in fields join (#<line>) {
                 #(ref t {
@@ -334,14 +334,14 @@ impl<'el> PackageProcessor<'el, PythonFlavor, Name> for Compiler<'el> {
 
         return Ok(());
 
-        fn encode_method(t: &mut python::Tokens, field: &Loc<RpField>) {
+        fn encode_method(t: &mut python::Tokens, field: &Spanned<RpField>) {
             quote_in! { *t =>
                 def encode(self):
                     return self.#(field.safe_ident())
             }
         }
 
-        fn decode_method(t: &mut python::Tokens, field: &Loc<RpField>) {
+        fn decode_method(t: &mut python::Tokens, field: &Spanned<RpField>) {
             quote_in! { *t =>
                 @classmethod
                 def decode(cls, data):
@@ -476,7 +476,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor, Name> for Compiler<'el> {
         /// Return a set of quoted tags.
         fn quoted_tags<'a, F>(fields: F) -> python::Tokens
         where
-            F: IntoIterator<Item = &'a Loc<RpField>>,
+            F: IntoIterator<Item = &'a Spanned<RpField>>,
         {
             let mut tags = Tokens::new();
             let mut c = 0;

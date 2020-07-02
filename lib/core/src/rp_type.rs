@@ -2,7 +2,7 @@
 
 use crate::errors::Result;
 use crate::regex::Regex;
-use crate::{BigInt, CoreFlavor, Flavor, Loc, RpEnumType, RpName, RpNumber};
+use crate::{BigInt, CoreFlavor, Flavor, RpEnumType, RpName, RpNumber, Spanned};
 use serde::Serialize;
 use std::fmt;
 
@@ -127,7 +127,7 @@ where
     Bytes,
     Any,
     Name {
-        name: Loc<RpName<F>>,
+        name: Spanned<RpName<F>>,
     },
     Array {
         inner: Box<RpType<F>>,
@@ -162,7 +162,7 @@ where
 
         match self {
             Name { name } => Name {
-                name: Loc::map(name, f),
+                name: Spanned::map(name, f),
             },
             Array { inner } => Array {
                 inner: Box::new(inner.with_name(f)),

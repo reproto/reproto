@@ -1,6 +1,6 @@
 use crate::flavored::{Field, Name, RpEnumBody, RpInterfaceBody, RpPackage};
 use crate::Compiler;
-use core::Loc;
+use core::Spanned;
 use genco::prelude::*;
 use std::rc::Rc;
 
@@ -56,20 +56,20 @@ decl_codegen! {
     type_added<'a> {
         pub container: &'a mut Vec<swift::Tokens>,
         pub name: &'a Name,
-        pub fields: &'a [Loc<Field>],
+        pub fields: &'a [Spanned<Field>],
     }
 
     /// Event emitted when a struct has been added.
     tuple_added<'a> {
         pub container: &'a mut Vec<swift::Tokens>,
         pub name: &'a Name,
-        pub fields: &'a [Loc<Field>],
+        pub fields: &'a [Spanned<Field>],
     }
 
     /// Event emitted when a struct has been added.
     struct_model_added<'a> {
         pub container: &'a mut Vec<swift::Tokens>,
-        pub fields: &'a [Loc<Field>],
+        pub fields: &'a [Spanned<Field>],
     }
 
     /// Event emitted when an enum has been added.

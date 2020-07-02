@@ -2,8 +2,8 @@
 
 use crate::errors::Result;
 use crate::{
-    Diagnostics, Flavor, Loc, RpEnumBody, RpInterfaceBody, RpReg, RpServiceBody, RpSubType,
-    RpTupleBody, RpTypeBody, RpVariantRef, Span, Translate, Translator,
+    Diagnostics, Flavor, RpEnumBody, RpInterfaceBody, RpReg, RpServiceBody, RpSubType, RpTupleBody,
+    RpTypeBody, RpVariantRef, Span, Spanned, Translate, Translator,
 };
 use serde::Serialize;
 use std::fmt;
@@ -13,13 +13,13 @@ pub enum RpNamed<'a, F: 'static>
 where
     F: Flavor,
 {
-    Type(&'a Loc<RpTypeBody<F>>),
-    Tuple(&'a Loc<RpTupleBody<F>>),
-    Interface(&'a Loc<RpInterfaceBody<F>>),
-    SubType(&'a Loc<RpSubType<F>>),
-    Enum(&'a Loc<RpEnumBody<F>>),
+    Type(&'a Spanned<RpTypeBody<F>>),
+    Tuple(&'a Spanned<RpTupleBody<F>>),
+    Interface(&'a Spanned<RpInterfaceBody<F>>),
+    SubType(&'a Spanned<RpSubType<F>>),
+    Enum(&'a Spanned<RpEnumBody<F>>),
     EnumVariant(RpVariantRef<'a, F>),
-    Service(&'a Loc<RpServiceBody<F>>),
+    Service(&'a Spanned<RpServiceBody<F>>),
 }
 
 impl<'a, F: 'static> RpNamed<'a, F>
@@ -46,13 +46,13 @@ where
         use self::RpNamed::*;
 
         match *self {
-            Type(ref body) => Loc::span(body),
-            Tuple(ref tuple) => Loc::span(tuple),
-            Interface(ref interface) => Loc::span(interface),
-            SubType(ref sub_type) => Loc::span(sub_type),
-            Enum(ref en) => Loc::span(en),
+            Type(ref body) => body.span(),
+            Tuple(ref tuple) => tuple.span(),
+            Interface(ref interface) => interface.span(),
+            SubType(ref sub_type) => sub_type.span(),
+            Enum(ref en) => en.span(),
             EnumVariant(ref variant) => variant.span,
-            Service(ref service) => Loc::span(service),
+            Service(ref service) => service.span(),
         }
     }
 }
@@ -67,11 +67,11 @@ pub enum RpDecl<F: 'static>
 where
     F: Flavor,
 {
-    Type(Loc<RpTypeBody<F>>),
-    Tuple(Loc<RpTupleBody<F>>),
-    Interface(Loc<RpInterfaceBody<F>>),
-    Enum(Loc<RpEnumBody<F>>),
-    Service(Loc<RpServiceBody<F>>),
+    Type(Spanned<RpTypeBody<F>>),
+    Tuple(Spanned<RpTupleBody<F>>),
+    Interface(Spanned<RpInterfaceBody<F>>),
+    Enum(Spanned<RpEnumBody<F>>),
+    Service(Spanned<RpServiceBody<F>>),
 }
 
 impl<F: 'static> RpDecl<F>
@@ -144,27 +144,27 @@ where
 
         match *self {
             Type(ref ty) => {
-                out.push((&ty.name, Loc::span(ty), RpReg::Type));
+                out.push((&ty.name, ty.span(), RpReg::Type));
             }
             Interface(ref interface) => {
                 for sub_type in &interface.sub_types {
-                    out.push((&sub_type.name, Loc::span(sub_type), RpReg::SubType));
+                    out.push((&sub_type.name, sub_type.span(), RpReg::SubType));
                 }
 
-                out.push((&interface.name, Loc::span(interface), RpReg::Interface));
+                out.push((&interface.name, interface.span(), RpReg::Interface));
             }
             Enum(ref en) => {
                 for variant in &en.variants {
                     out.push((variant.name, variant.span, RpReg::EnumVariant));
                 }
 
-                out.push((&en.name, Loc::span(en), RpReg::Enum));
+                out.push((&en.name, en.span(), RpReg::Enum));
             }
             Tuple(ref tuple) => {
-                out.push((&tuple.name, Loc::span(tuple), RpReg::Tuple));
+                out.push((&tuple.name, tuple.span(), RpReg::Tuple));
             }
             Service(ref service) => {
-                out.push((&service.name, Loc::span(service), RpReg::Service));
+                out.push((&service.name, service.span(), RpReg::Service));
             }
         }
 
@@ -226,11 +226,11 @@ where
         use self::RpDecl::*;
 
         match *self {
-            Type(ref body) => Loc::span(body),
-            Interface(ref body) => Loc::span(body),
-            Enum(ref body) => Loc::span(body),
-            Tuple(ref body) => Loc::span(body),
-            Service(ref body) => Loc::span(body),
+            Type(ref body) => body.span(),
+            Interface(ref body) => body.span(),
+            Enum(ref body) => body.span(),
+            Tuple(ref body) => body.span(),
+            Service(ref body) => body.span(),
         }
     }
 

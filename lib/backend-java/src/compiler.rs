@@ -6,7 +6,7 @@ use crate::flavored::{
 };
 use crate::Options;
 use core::errors::Result;
-use core::{Handle, Loc, RelativePathBuf};
+use core::{Handle, RelativePathBuf, Spanned};
 use genco::fmt;
 use genco::prelude::*;
 use genco::tokens::from_fn;
@@ -76,7 +76,7 @@ impl<'a> Compiler<'a> {
         Ok(())
     }
 
-    fn field<'f>(&'f self, f: &'f Loc<Field>) -> impl FormatInto<Java> + 'f {
+    fn field<'f>(&'f self, f: &'f Spanned<Field>) -> impl FormatInto<Java> + 'f {
         from_fn(move |t| {
             let mut ann = Vec::new();
             self.options.gen.class_field(f, &mut ann);
@@ -91,7 +91,7 @@ impl<'a> Compiler<'a> {
     fn constructor<'f>(
         &'f self,
         name: &'f str,
-        fields: &'f [Loc<Field>],
+        fields: &'f [Spanned<Field>],
     ) -> impl FormatInto<Java> + 'f {
         from_fn(move |t| {
             if !self.options.build_constructor {
@@ -426,7 +426,11 @@ impl<'a> Compiler<'a> {
     }
 
     /// Build a new complete getter.
-    fn getter<'f>(&'f self, f: &'f Loc<Field>, is_override: bool) -> impl FormatInto<Java> + 'f {
+    fn getter<'f>(
+        &'f self,
+        f: &'f Spanned<Field>,
+        is_override: bool,
+    ) -> impl FormatInto<Java> + 'f {
         from_fn(move |t| {
             if !self.options.build_getters {
                 return;
@@ -459,7 +463,7 @@ impl<'a> Compiler<'a> {
     fn to_string<'f>(
         &'f self,
         name: &'f str,
-        fields: &'f [Loc<Field>],
+        fields: &'f [Spanned<Field>],
     ) -> impl FormatInto<Java> + 'f {
         from_fn(move |t| {
             if !self.options.build_to_string {
@@ -498,7 +502,7 @@ impl<'a> Compiler<'a> {
     }
 
     /// Build a hashCode function.
-    fn hash_code<'f>(&'f self, fields: &'f [Loc<Field>]) -> impl FormatInto<Java> + 'f {
+    fn hash_code<'f>(&'f self, fields: &'f [Spanned<Field>]) -> impl FormatInto<Java> + 'f {
         from_fn(move |t| {
             if !self.options.build_hash_code {
                 return;
@@ -521,7 +525,11 @@ impl<'a> Compiler<'a> {
     }
 
     /// Build a equals function.
-    fn equals<'f>(&'f self, name: &'f str, fields: &'f [Loc<Field>]) -> impl FormatInto<Java> + 'f {
+    fn equals<'f>(
+        &'f self,
+        name: &'f str,
+        fields: &'f [Spanned<Field>],
+    ) -> impl FormatInto<Java> + 'f {
         from_fn(move |t| {
             if !self.options.build_equals {
                 return;
@@ -555,7 +563,7 @@ impl<'a> Compiler<'a> {
 }
 
 /// Helper macro to implement listeners opt loop.
-fn code(codes: &[Loc<RpCode>]) -> impl FormatInto<Java> + '_ {
+fn code(codes: &[Spanned<RpCode>]) -> impl FormatInto<Java> + '_ {
     from_fn(move |t| {
         for c in codes {
             if let RpContext::Java { imports, .. } = &c.context {

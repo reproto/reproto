@@ -6,7 +6,7 @@ use crate::macros::FormatAttribute;
 use crate::processor::Processor;
 use core::errors::Result;
 use core::flavored::{RpEndpoint, RpServiceBody};
-use core::Loc;
+use core::Spanned;
 
 define_processor!(ServiceProcessor, RpServiceBody, self,
     process => {
@@ -57,7 +57,7 @@ impl<'p> ServiceProcessor<'p> {
                         html!(self, span {class => "keyword"} ~ Escape("stream"));
                     }
 
-                    let (req, _) = Loc::borrow_pair(&arg.channel);
+                    let (req, _) = Spanned::borrow_pair(&arg.channel);
                     self.write_type(req.ty())?;
                 });
             }

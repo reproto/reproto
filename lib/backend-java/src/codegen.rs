@@ -1,5 +1,5 @@
 use crate::flavored::{Field, RpSubType, RpSubTypeStrategy, Type};
-use core::Loc;
+use core::Spanned;
 use genco::lang::java;
 use std::rc::Rc;
 
@@ -56,7 +56,7 @@ decl_codegen! {
         /// The name of the type being generated for.
         pub(crate) ident: &'a str,
         /// Fields associated with class.
-        pub(crate) fields: &'a [Loc<Field>],
+        pub(crate) fields: &'a [Spanned<Field>],
         /// Additional declarations.
         pub(crate) inner: &'a mut Vec<java::Tokens>,
         /// Annotations to add to the class.
@@ -68,7 +68,7 @@ decl_codegen! {
         /// The identifier for the interface.
         pub(crate) ident: &'a str,
         /// Sub types associated with the interface.
-        pub(crate) sub_types: &'a [Loc<RpSubType>],
+        pub(crate) sub_types: &'a [Spanned<RpSubType>],
         /// The sub type strategy associated with the interface.
         pub(crate) sub_type_strategy: &'a RpSubTypeStrategy,
         /// Annotations to add to the interface.
@@ -88,7 +88,7 @@ decl_codegen! {
     /// Generator used for class constructors.
     class_constructor<'a> {
         /// Fields associated with constructor.
-        pub(crate) fields: &'a [Loc<Field>],
+        pub(crate) fields: &'a [Spanned<Field>],
         /// Annotations to add to the class.
         pub(crate) annotations: &'a mut Vec<java::Tokens>,
     }
@@ -97,7 +97,7 @@ decl_codegen! {
         /// The name of the type being generated for.
         pub(crate) ident: &'a str,
         /// Fields associated with tuple.
-        pub(crate) fields: &'a [Loc<Field>],
+        pub(crate) fields: &'a [Spanned<Field>],
         /// Additional inner declarations.
         pub(crate) inner: &'a mut Vec<java::Tokens>,
         /// Annotations to add to the class.
@@ -115,21 +115,21 @@ decl_codegen! {
 
     class_constructor_arg<'a> {
         /// Field associated with the constructor argument.
-        pub(crate) field: &'a Loc<Field>,
+        pub(crate) field: &'a Spanned<Field>,
         /// Annotations to add to the class.
         pub(crate) annotations: &'a mut Vec<java::Tokens>,
     }
 
     class_field<'a> {
         /// Field declaration being generated for.
-        pub(crate) field: &'a Loc<Field>,
+        pub(crate) field: &'a Spanned<Field>,
         /// Annotations to add to the class field.
         pub(crate) annotations: &'a mut Vec<java::Tokens>,
     }
 
     class_getter<'a> {
         /// Field declaration being generated for.
-        pub(crate) field: &'a Loc<Field>,
+        pub(crate) field: &'a Spanned<Field>,
         /// Annotations to add to the class field.
         pub(crate) annotations: &'a mut Vec<java::Tokens>,
     }

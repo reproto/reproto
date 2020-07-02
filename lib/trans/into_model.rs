@@ -6,8 +6,8 @@ use ast::*;
 use core::errors::Error;
 use core::flavored::*;
 use core::{
-    BigInt, Diagnostics, EnabledFeature, Import, Loc, Range, RpNumberKind, RpNumberType,
-    RpNumberValidate, RpStringType, RpStringValidate, Span, SymbolKind, WithSpan,
+    BigInt, Diagnostics, EnabledFeature, Import, Range, RpNumberKind, RpNumberType,
+    RpNumberValidate, RpStringType, RpStringValidate, Span, Spanned, SymbolKind, WithSpan,
 };
 use linked_hash_map::LinkedHashMap;
 use naming::Naming;
@@ -62,7 +62,7 @@ macro_rules! check_field_tag {
             core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 if $field.name() == tag {
                     $diag.err(
-                        Loc::span(&$field),
+                        &$field.span(),
                         format!(
                             "field with name `{}` is the same as tag used in type_info",
                             tag
@@ -84,7 +84,7 @@ macro_rules! check_field_reserved {
     ($diag:ident, $field:expr, $reserved:expr) => {
         if let Some(reserved) = $reserved.get($field.name()) {
             $diag.err(
-                Loc::span(&$field),
+                &$field.span(),
                 format!("field with name `{}` is reserved", $field.name()),
             );
 
@@ -111,8 +111,8 @@ pub struct SubTypeConstraint<'input> {
 
 #[derive(Debug)]
 pub struct Members {
-    fields: Vec<Loc<RpField>>,
-    codes: Vec<Loc<RpCode>>,
+    fields: Vec<Spanned<RpField>>,
+    codes: Vec<Spanned<RpCode>>,
     decls: Vec<RpDecl>,
     decl_idents: LinkedHashMap<String, usize>,
     field_names: HashMap<String, Span>,
@@ -130,18 +130,18 @@ pub trait IntoModel {
 }
 
 /// Generic implementation for vectors.
-impl<T> IntoModel for Loc<T>
+impl<T> IntoModel for Spanned<T>
 where
     T: IntoModel,
 {
-    type Output = Loc<T::Output>;
+    type Output = Spanned<T::Output>;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
     where
         I: Import,
     {
-        let (value, span) = Loc::take_pair(self);
-        Ok(Loc::new(value.into_model(diag, scope)?, span))
+        let (value, span) = Spanned::take_pair(self);
+        Ok(Spanned::new(value.into_model(diag, scope)?, span))
     }
 }
 
@@ -249,7 +249,7 @@ impl<C: IntoIterator<Item = S>, S: AsRef<str>> IntoModel for Comment<C> {
     }
 }
 
-impl<'input> IntoModel for Loc<Type<'input>> {
+impl<'input> IntoModel for Spanned<Type<'input>> {
     type Output = RpType;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
@@ -260,7 +260,7 @@ impl<'input> IntoModel for Loc<Type<'input>> {
     }
 }
 
-impl<'input> IntoModel for (Option<&'input mut Attributes>, Loc<Type<'input>>) {
+impl<'input> IntoModel for (Option<&'input mut Attributes>, Spanned<Type<'input>>) {
     type Output = RpType;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
@@ -270,7 +270,7 @@ impl<'input> IntoModel for (Option<&'input mut Attributes>, Loc<Type<'input>>) {
         use self::Type::*;
 
         let (attributes, ty) = self;
-        let (ty, span) = Loc::take_pair(ty);
+        let (ty, span) = Spanned::take_pair(ty);
 
         let out = match ty {
             Double => core::RpType::Double,
@@ -336,7 +336,7 @@ impl<'input> IntoModel for Decl<'input> {
     {
         use self::Decl::*;
 
-        scope.push(Loc::take(self.name()));
+        scope.push(Spanned::take(self.name()));
 
         let out = match self {
             Type(body) => body.into_model(diag, scope).map(core::RpDecl::Type),
@@ -353,7 +353,7 @@ impl<'input> IntoModel for Decl<'input> {
 }
 
 impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
-    type Output = Loc<RpEnumBody>;
+    type Output = Spanned<RpEnumBody>;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
     where
@@ -399,9 +399,9 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
             item,
         } = self;
 
-        let (item, span) = Loc::take_pair(item);
+        let (item, span) = Spanned::take_pair(item);
 
-        let name = scope.as_name(Loc::span(&item.name));
+        let name = scope.as_name(item.name.span());
 
         diag.symbol(SymbolKind::Enum, &span, &name);
 
@@ -416,7 +416,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
         }
 
         let enum_type = {
-            let span = Loc::span(&item.ty);
+            let span = &item.ty.span();
             let enum_type = item.ty.into_model(diag, scope)?;
 
             match enum_type.as_enum_type() {
@@ -443,7 +443,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
         let attributes = attributes.into_model(diag, scope)?;
         check_attributes!(diag, attributes);
 
-        return Ok(Loc::new(
+        return Ok(Spanned::new(
             RpEnumBody {
                 name,
                 ident: item.name.to_string(),
@@ -542,7 +542,7 @@ impl<'input, 'a, D> IntoModel for (Item<'input, EnumVariant<'input>>, &'a mut D)
 where
     D: DefaultVariant,
 {
-    type Output = Loc<RpVariant<D::Type>>;
+    type Output = Spanned<RpVariant<D::Type>>;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
     where
@@ -556,14 +556,14 @@ where
             item,
         } = variant;
 
-        let (item, span) = Loc::take_pair(item);
+        let (item, span) = Spanned::take_pair(item);
 
-        let name = Loc::map(scope.as_name(Loc::span(&item.name)), |n| {
+        let name = Spanned::map(scope.as_name(item.name.span()), |n| {
             n.push(item.name.to_string())
         });
 
         let value = if let Some(argument) = item.argument {
-            let (value, span) = Loc::take_pair(argument.into_model(diag, scope)?);
+            let (value, span) = Spanned::take_pair(argument.into_model(diag, scope)?);
 
             match default.process(value) {
                 Err(e) => {
@@ -579,10 +579,10 @@ where
         let attributes = attributes.into_model(diag, scope)?;
         check_attributes!(diag, attributes);
 
-        Ok(Loc::new(
+        Ok(Spanned::new(
             RpVariant {
                 name,
-                ident: Loc::map(item.name.clone(), |s| s.to_string()),
+                ident: Spanned::map(item.name.clone(), |s| s.to_string()),
                 comment: Comment(&comment).into_model(diag, scope)?,
                 value: value,
             },
@@ -644,7 +644,7 @@ where
 }
 
 impl<'input> IntoModel for Item<'input, Field<'input>> {
-    type Output = Loc<RpField>;
+    type Output = Spanned<RpField>;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
     where
@@ -656,7 +656,7 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
             item,
         } = self;
 
-        let (item, span) = Loc::take_pair(item);
+        let (item, span) = Spanned::take_pair(item);
 
         if !item.endl {
             diag.err(span.end(), "missing `;`");
@@ -680,7 +680,7 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
 
         check_attributes!(diag, attributes);
 
-        return Ok(Loc::new(
+        return Ok(Spanned::new(
             RpField {
                 required: item.required,
                 safe_ident,
@@ -696,8 +696,8 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
             diag: &mut Diagnostics,
             scope: &mut Scope<I>,
             attributes: &mut Attributes,
-            ty: Loc<Type<'input>>,
-        ) -> Result<Loc<Type<'input>>>
+            ty: Spanned<Type<'input>>,
+        ) -> Result<Spanned<Type<'input>>>
         where
             I: Import,
         {
@@ -707,7 +707,7 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
             let feature = match scope.feature("format_attribute") {
                 None => {
                     // not allowed unless feature is active.
-                    if let Some(span) = format.as_ref().map(Loc::span) {
+                    if let Some(span) = format.as_ref().map(Spanned::span) {
                         diag.err(span, "attribute not supported");
                         diag.info(span, "HINT: use #![feature(format_attribute)] to enable");
                         return Err(());
@@ -718,7 +718,7 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
                 Some(feature) => feature,
             };
 
-            let (ty, span) = Loc::take_pair(ty);
+            let (ty, span) = Spanned::take_pair(ty);
 
             // report error on types that should be declared using a format attribute.
             let ty = match ty {
@@ -741,7 +741,7 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
                     return Err(());
                 }
                 Type::String => {
-                    if let Some(format) = format.map(Loc::take) {
+                    if let Some(format) = format.map(Spanned::take) {
                         match format {
                             attributes::StringFormat::DateTime => Type::DateTime,
                             attributes::StringFormat::Bytes => Type::Bytes,
@@ -757,13 +757,13 @@ impl<'input> IntoModel for Item<'input, Field<'input>> {
                 return Err(());
             }
 
-            Ok(Loc::new(ty, span))
+            Ok(Spanned::new(ty, span))
         }
     }
 }
 
 /// Process use declarations found at the top of each object.
-impl<'input> IntoModel for Vec<Loc<UseDecl<'input>>> {
+impl<'input> IntoModel for Vec<Spanned<UseDecl<'input>>> {
     type Output = HashMap<String, RpVersionedPackage>;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
@@ -775,7 +775,7 @@ impl<'input> IntoModel for Vec<Loc<UseDecl<'input>>> {
         let mut prefixes = HashMap::new();
 
         for use_decl in self {
-            let (use_decl, span) = Loc::take_pair(use_decl);
+            let (use_decl, span) = Spanned::take_pair(use_decl);
 
             if use_decl.endl.is_none() {
                 diag.err(span.end(), "missing `;`");
@@ -784,7 +784,7 @@ impl<'input> IntoModel for Vec<Loc<UseDecl<'input>>> {
             let range = {
                 match use_decl.range {
                     Some(range) => {
-                        let (range, span) = Loc::take_pair(range);
+                        let (range, span) = Spanned::take_pair(range);
 
                         match Range::parse(&range) {
                             Ok(range) => range,
@@ -798,7 +798,7 @@ impl<'input> IntoModel for Vec<Loc<UseDecl<'input>>> {
                 }
             };
 
-            let (package, span) = Loc::take_pair(use_decl.package);
+            let (package, span) = Spanned::take_pair(use_decl.package);
 
             // Handle Error.
             let package = match package {
@@ -818,7 +818,7 @@ impl<'input> IntoModel for Vec<Loc<UseDecl<'input>>> {
                 if let Some(used) = package.parts().last() {
                     let (alias, span) = match use_decl.alias.as_ref() {
                         Some(alias) => {
-                            let (alias, span) = Loc::borrow_pair(alias);
+                            let (alias, span) = Spanned::borrow_pair(alias);
                             (alias.as_ref(), span)
                         }
                         None => (used.as_str(), span),
@@ -869,7 +869,7 @@ impl<'input> IntoModel for File<'input> {
         let mut activated_features = HashMap::new();
 
         for feature in attributes::features(scope, diag, &mut attributes)? {
-            let (feature, span) = Loc::borrow_pair(&feature);
+            let (feature, span) = Spanned::borrow_pair(&feature);
 
             if let Some(e) = features.insert(feature.name, EnabledFeature { span }) {
                 diag.err(span, "feature already activated");
@@ -883,7 +883,7 @@ impl<'input> IntoModel for File<'input> {
         scope.activated_features = activated_features;
 
         if let Some(endpoint_naming) = attributes.take_selection("endpoint_naming") {
-            let (mut endpoint_naming, span) = Loc::take_pair(endpoint_naming);
+            let (mut endpoint_naming, span) = Spanned::take_pair(endpoint_naming);
 
             scope.endpoint_naming = endpoint_naming
                 .take_word()
@@ -899,7 +899,7 @@ impl<'input> IntoModel for File<'input> {
         }
 
         if let Some(field_naming) = attributes.take_selection("field_naming") {
-            let (mut field_naming, span) = Loc::take_pair(field_naming);
+            let (mut field_naming, span) = Spanned::take_pair(field_naming);
 
             scope.field_naming = field_naming
                 .take_word()
@@ -955,7 +955,7 @@ impl<'input> IntoModel for File<'input> {
 }
 
 impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
-    type Output = Loc<RpInterfaceBody>;
+    type Output = Spanned<RpInterfaceBody>;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
     where
@@ -967,9 +967,9 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
             item,
         } = self;
 
-        let (item, span) = Loc::take_pair(item);
+        let (item, span) = Spanned::take_pair(item);
 
-        let name = scope.as_name(Loc::span(&item.name));
+        let name = scope.as_name(item.name.span());
 
         diag.symbol(SymbolKind::Interface, &span, &name);
 
@@ -1017,7 +1017,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                 untagged: &mut untagged,
             };
 
-            scope.push(Loc::borrow(&sub_type.name));
+            scope.push(Spanned::borrow(&sub_type.name));
             let out = (sub_type, constraint).into_model(diag, scope);
             scope.pop();
 
@@ -1086,7 +1086,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
             _ => {}
         }
 
-        return Ok(Loc::new(
+        return Ok(Spanned::new(
             RpInterfaceBody {
                 name,
                 ident: item.name.to_string(),
@@ -1104,7 +1104,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
         /// Check invariants that need to be enforced with unique fields
         fn check_untagged<'a, I: 'a>(
             diag: &mut Diagnostics,
-            sub_types: &Vec<Loc<RpSubType>>,
+            sub_types: &Vec<Spanned<RpSubType>>,
             untagged: I,
         ) -> Result<()>
         where
@@ -1130,7 +1130,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
 
                     for f in optional.filter(|f| key.contains(f.name())) {
                         any = true;
-                        diag.err(Loc::span(f), "is a required field of another sub-type");
+                        diag.err(f.span(), "is a required field of another sub-type");
                     }
 
                     if any {
@@ -1152,13 +1152,13 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
             selection: &mut Selection,
         ) -> Result<RpSubTypeStrategy> {
             if let Some(strategy) = selection.take("strategy") {
-                let (strategy, span) = Loc::take_pair(strategy);
+                let (strategy, span) = Spanned::take_pair(strategy);
                 let id = strategy.as_string().with_span(diag, span)?;
 
                 match id {
                     "tagged" => {
                         if let Some(tag) = selection.take("tag") {
-                            let (tag, span) = Loc::take_pair(tag);
+                            let (tag, span) = Spanned::take_pair(tag);
                             let tag = tag.as_string().with_span(diag, span)?;
 
                             return Ok(core::RpSubTypeStrategy::Tagged {
@@ -1181,8 +1181,8 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
     }
 }
 
-impl<'input> IntoModel for Loc<Name<'input>> {
-    type Output = Loc<RpName>;
+impl<'input> IntoModel for Spanned<Name<'input>> {
+    type Output = Spanned<RpName>;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
     where
@@ -1190,7 +1190,7 @@ impl<'input> IntoModel for Loc<Name<'input>> {
     {
         use self::Name::*;
 
-        let (name, span) = Loc::take_pair(self);
+        let (name, span) = Spanned::take_pair(self);
 
         let out = match name {
             Relative { path } => {
@@ -1198,23 +1198,23 @@ impl<'input> IntoModel for Loc<Name<'input>> {
 
                 scope
                     .as_name(span)
-                    .extend(path.into_iter().map(|p| Loc::take(p)))
+                    .extend(path.into_iter().map(|p| Spanned::take(p)))
             }
             Absolute { prefix, path } => {
                 let path = path
                     .into_model(diag, scope)?
                     .into_iter()
-                    .map(|s| Loc::take(s))
+                    .map(|s| Spanned::take(s))
                     .collect();
 
                 let (prefix, package) = match prefix {
                     Some(prefix) => {
-                        let (prefix, span) = Loc::take_pair(prefix);
+                        let (prefix, span) = Spanned::take_pair(prefix);
 
                         match scope.lookup_prefix(prefix.as_ref()) {
                             Some(package) => {
                                 let prefix = prefix.to_string();
-                                (Some(Loc::new(prefix, span)), package.clone())
+                                (Some(Spanned::new(prefix, span)), package.clone())
                             }
                             None => {
                                 diag.err(span, format!("missing prefix `{}`", prefix.clone()));
@@ -1233,7 +1233,7 @@ impl<'input> IntoModel for Loc<Name<'input>> {
             }
         };
 
-        Ok(Loc::new(out, span))
+        Ok(Spanned::new(out, span))
     }
 }
 
@@ -1249,7 +1249,7 @@ impl<'input> IntoModel for (&'input Path, usize, usize) {
 }
 
 impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
-    type Output = Loc<RpServiceBody>;
+    type Output = Spanned<RpServiceBody>;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
     where
@@ -1261,9 +1261,9 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
             item,
         } = self;
 
-        let (item, span) = Loc::take_pair(item);
+        let (item, span) = Spanned::take_pair(item);
 
-        let name = scope.as_name(Loc::span(&item.name));
+        let name = scope.as_name(item.name.span());
 
         diag.symbol(SymbolKind::Service, &span, &name);
 
@@ -1303,14 +1303,14 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
         let mut http = RpServiceBodyHttp::default();
 
         if let Some(selection) = attributes.take_selection("http") {
-            let (mut selection, _) = Loc::take_pair(selection);
+            let (mut selection, _) = Spanned::take_pair(selection);
             push_http(diag, &mut selection, &mut http)?;
             check_selection!(diag, selection);
         }
 
         check_attributes!(diag, attributes);
 
-        return Ok(Loc::new(
+        return Ok(Spanned::new(
             RpServiceBody {
                 name,
                 ident: item.name.to_string(),
@@ -1329,9 +1329,9 @@ impl<'input> IntoModel for Item<'input, ServiceBody<'input>> {
             http: &mut RpServiceBodyHttp,
         ) -> Result<()> {
             if let Some(url) = selection.take("url") {
-                let (url, span) = Loc::take_pair(url);
+                let (url, span) = Spanned::take_pair(url);
                 let url = url.as_string().with_span(diag, span)?.to_string();
-                http.url = Some(Loc::new(url, span));
+                http.url = Some(Spanned::new(url, span));
             }
 
             Ok(())
@@ -1360,7 +1360,7 @@ impl<'input> IntoModel for EndpointArgument<'input> {
 }
 
 impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
-    type Output = Loc<RpEndpoint>;
+    type Output = Spanned<RpEndpoint>;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
     where
@@ -1372,7 +1372,7 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
             item,
         } = self;
 
-        let (item, span) = Loc::take_pair(item);
+        let (item, span) = Spanned::take_pair(item);
 
         let id = item.id.into_model(diag, scope)?;
         let alias = item.alias.into_model(diag, scope)?;
@@ -1391,11 +1391,8 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
         for argument in item.arguments {
             let argument = argument.into_model(diag, scope)?;
 
-            if let Some(other) = seen.insert(
-                argument.ident.to_string(),
-                Loc::span(&argument.ident).clone(),
-            ) {
-                diag.err(Loc::span(&argument.ident), "argument already present");
+            if let Some(other) = seen.insert(argument.ident.to_string(), argument.ident.span()) {
+                diag.err(&argument.ident.span(), "argument already present");
                 diag.info(other, "argument present here");
                 return Err(());
             }
@@ -1419,7 +1416,7 @@ impl<'input> IntoModel for Item<'input, Endpoint<'input>> {
 
         check_attributes!(diag, attributes);
 
-        Ok(Loc::new(
+        Ok(Spanned::new(
             RpEndpoint {
                 ident: ident,
                 safe_ident: safe_ident,
@@ -1459,7 +1456,7 @@ impl<'input> IntoModel for Channel<'input> {
 }
 
 impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'input>) {
-    type Output = Loc<RpSubType>;
+    type Output = Spanned<RpSubType>;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
     where
@@ -1483,9 +1480,9 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
             item,
         } = item;
 
-        let (item, span) = Loc::take_pair(item);
+        let (item, span) = Spanned::take_pair(item);
 
-        let name = scope.as_name(Loc::span(&item.name));
+        let name = scope.as_name(item.name.span());
 
         let mut attributes = attributes.into_model(diag, scope)?;
         let reserved = attributes::reserved(diag, &mut attributes)?;
@@ -1551,7 +1548,7 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
             _ => {}
         }
 
-        return Ok(Loc::new(
+        return Ok(Spanned::new(
             RpSubType {
                 name,
                 ident: item.name.to_string(),
@@ -1568,16 +1565,16 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
         /// Extract all names provided.
         fn alias_name<'input, I>(
             diag: &mut Diagnostics,
-            alias: Loc<Value<'input>>,
+            alias: Spanned<Value<'input>>,
             scope: &mut Scope<I>,
-        ) -> Result<Loc<String>>
+        ) -> Result<Spanned<String>>
         where
             I: Import,
         {
-            let (alias, span) = Loc::take_pair(alias.into_model(diag, scope)?);
+            let (alias, span) = Spanned::take_pair(alias.into_model(diag, scope)?);
 
             match alias {
-                core::RpValue::String(string) => Ok(Loc::new(string, span)),
+                core::RpValue::String(string) => Ok(Spanned::new(string, span)),
                 _ => {
                     diag.err(span, "expected string");
                     return Err(());
@@ -1587,9 +1584,9 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
 
         fn sub_type_name<'input, I>(
             diag: &mut Diagnostics,
-            alias: option::Option<Loc<Value<'input>>>,
+            alias: option::Option<Spanned<Value<'input>>>,
             scope: &mut Scope<I>,
-        ) -> Result<::std::option::Option<Loc<String>>>
+        ) -> Result<::std::option::Option<Spanned<String>>>
         where
             I: Import,
         {
@@ -1603,7 +1600,7 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
 }
 
 impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
-    type Output = Loc<RpTupleBody>;
+    type Output = Spanned<RpTupleBody>;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
     where
@@ -1615,9 +1612,9 @@ impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
             item,
         } = self;
 
-        let (item, span) = Loc::take_pair(item);
+        let (item, span) = Spanned::take_pair(item);
 
-        let name = scope.as_name(Loc::span(&item.name));
+        let name = scope.as_name(item.name.span());
 
         diag.symbol(SymbolKind::Tuple, &span, &name);
 
@@ -1632,7 +1629,7 @@ impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
         let attributes = attributes.into_model(diag, scope)?;
         check_attributes!(diag, attributes);
 
-        Ok(Loc::new(
+        Ok(Spanned::new(
             RpTupleBody {
                 name,
                 ident: item.name.to_string(),
@@ -1648,7 +1645,7 @@ impl<'input> IntoModel for Item<'input, TupleBody<'input>> {
 }
 
 impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
-    type Output = Loc<RpTypeBody>;
+    type Output = Spanned<RpTypeBody>;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
     where
@@ -1660,9 +1657,9 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
             item,
         } = self;
 
-        let (item, span) = Loc::take_pair(item);
+        let (item, span) = Spanned::take_pair(item);
 
-        let name = scope.as_name(Loc::span(&item.name));
+        let name = scope.as_name(item.name.span());
 
         diag.symbol(SymbolKind::Type, &span, &name);
 
@@ -1686,7 +1683,7 @@ impl<'input> IntoModel for Item<'input, TypeBody<'input>> {
             (item.members, constraint).into_model(diag, scope)?
         };
 
-        Ok(Loc::new(
+        Ok(Spanned::new(
             RpTypeBody {
                 name,
                 ident: item.name.to_string(),
@@ -1729,7 +1726,7 @@ impl<'input> IntoModel for (Vec<TypeMember<'input>>, MemberConstraint<'input>) {
             reserved,
         } = constraint;
 
-        let mut fields: Vec<Loc<RpField>> = Vec::new();
+        let mut fields: Vec<Spanned<RpField>> = Vec::new();
         let mut codes = Vec::new();
         let mut decls = Vec::new();
         let mut decl_idents = LinkedHashMap::new();
@@ -1793,7 +1790,7 @@ impl<'input> IntoModel for Code<'input> {
 
         // Context-specific settings.
         let context = {
-            let (context, span) = Loc::take_pair(context);
+            let (context, span) = Spanned::take_pair(context);
 
             match context.as_str() {
                 "csharp" => core::RpContext::Csharp {},
@@ -1844,7 +1841,7 @@ impl<'input> IntoModel for Value<'input> {
     }
 }
 
-impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
+impl<'input> IntoModel for Vec<Spanned<Attribute<'input>>> {
     type Output = Attributes;
 
     fn into_model<I>(self, diag: &mut Diagnostics, scope: &mut Scope<I>) -> Result<Self::Output>
@@ -1857,11 +1854,11 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
         let mut selections = HashMap::new();
 
         for attribute in self {
-            let (attr, attr_pos) = Loc::take_pair(attribute);
+            let (attr, attr_pos) = Spanned::take_pair(attribute);
 
             match attr {
                 Word(word) => {
-                    let (word, span) = Loc::take_pair(word.into_model(diag, scope)?);
+                    let (word, span) = Spanned::take_pair(word.into_model(diag, scope)?);
 
                     if let Some(old) = words.insert(word, span.clone()) {
                         diag.err(span, "word already present");
@@ -1870,7 +1867,7 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
                     }
                 }
                 List(key, name_values) => {
-                    let key = Loc::take(key.into_model(diag, scope)?);
+                    let key = Spanned::take(key.into_model(diag, scope)?);
 
                     match selections.entry(key) {
                         hash_map::Entry::Vacant(entry) => {
@@ -1885,17 +1882,18 @@ impl<'input> IntoModel for Vec<Loc<Attribute<'input>>> {
                                     AttributeItem::NameValue { name, value } => {
                                         let name = name.into_model(diag, scope)?;
                                         let value = value.into_model(diag, scope)?;
-                                        values.insert(Loc::borrow(&name).clone(), (name, value));
+                                        values
+                                            .insert(Spanned::borrow(&name).clone(), (name, value));
                                     }
                                 }
                             }
 
                             let selection = Selection::new(words, values);
-                            entry.insert(Loc::new(selection, attr_pos));
+                            entry.insert(Spanned::new(selection, attr_pos));
                         }
                         hash_map::Entry::Occupied(entry) => {
                             diag.err(attr_pos, "attribute already present");
-                            diag.info(Loc::span(entry.get()), "attribute here");
+                            diag.info(entry.get().span(), "attribute here");
                             return Err(());
                         }
                     }

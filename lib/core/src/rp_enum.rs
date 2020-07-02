@@ -2,8 +2,8 @@
 
 use crate::errors::Result;
 use crate::{
-    Diagnostics, Flavor, Loc, RpCode, RpNumber, RpNumberType, RpReg, RpStringType, RpValue, Span,
-    Translate, Translator,
+    Diagnostics, Flavor, RpCode, RpNumber, RpNumberType, RpReg, RpStringType, RpValue, Span,
+    Spanned, Translate, Translator,
 };
 use serde::Serialize;
 use std::fmt;
@@ -16,7 +16,7 @@ decl_body!(
         /// Variants in the enum.
         pub variants: RpVariants<F>,
         /// Custom code blocks in the enum.
-        pub codes: Vec<Loc<RpCode>>,
+        pub codes: Vec<Spanned<RpCode>>,
     }
 );
 
@@ -88,7 +88,7 @@ where
 {
     pub span: Span,
     pub name: &'a F::Name,
-    pub ident: &'a Loc<String>,
+    pub ident: &'a Spanned<String>,
     pub comment: &'a Vec<String>,
     pub value: RpVariantValue<'a>,
 }
@@ -138,7 +138,7 @@ where
     F: Flavor,
 {
     pub name: F::Name,
-    pub ident: Loc<String>,
+    pub ident: Spanned<String>,
     pub comment: Vec<String>,
     pub value: V,
 }
@@ -228,10 +228,10 @@ where
     F: Flavor,
 {
     String {
-        variants: Vec<Loc<RpVariant<F, String>>>,
+        variants: Vec<Spanned<RpVariant<F, String>>>,
     },
     Number {
-        variants: Vec<Loc<RpVariant<F, RpNumber>>>,
+        variants: Vec<Spanned<RpVariant<F, RpNumber>>>,
     },
 }
 
@@ -284,7 +284,7 @@ where
                     let mut __o = Vec::new();
 
                     for v in variants {
-                        let (value, span) = Loc::borrow_pair(v);
+                        let (value, span) = Spanned::borrow_pair(v);
 
                         __o.push(RpVariantRef {
                             span: span,

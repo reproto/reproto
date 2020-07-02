@@ -5,7 +5,7 @@ use crate::utils::{is_defined, is_not_defined};
 use crate::{FileSpec, Options, EXT};
 use backend::PackageProcessor;
 use core::errors::Result;
-use core::{Handle, Loc, Span};
+use core::{Handle, Span, Spanned};
 use genco::prelude::*;
 use genco::tokens::FormatInto;
 use naming::Naming;
@@ -73,7 +73,7 @@ impl<'a> Compiler<'a> {
     }
 
     /// Build a function that throws an exception if the given value `toks` is None.
-    fn throw_if_null<T>(&self, out: &mut js::Tokens, toks: T, field: &Loc<RpField>)
+    fn throw_if_null<T>(&self, out: &mut js::Tokens, toks: T, field: &Spanned<RpField>)
     where
         T: Copy + FormatInto<JavaScript>,
     {
@@ -92,7 +92,7 @@ impl<'a> Compiler<'a> {
         extra: Option<Tokens<JavaScript>>,
     ) where
         B: FormatInto<JavaScript>,
-        I: IntoIterator<Item = &'el Loc<RpField>>,
+        I: IntoIterator<Item = &'el Spanned<RpField>>,
     {
         quote_in! { *out =>
             encode() {
@@ -129,7 +129,7 @@ impl<'a> Compiler<'a> {
 
     fn encode_tuple_method<'el, I>(&self, out: &mut js::Tokens, fields: I)
     where
-        I: IntoIterator<Item = &'el Loc<RpField>>,
+        I: IntoIterator<Item = &'el Spanned<RpField>>,
     {
         let mut values = Vec::new();
 
@@ -148,7 +148,7 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    fn decode_enum_method(&self, out: &mut js::Tokens, name: &Name, field: &Loc<RpField>) {
+    fn decode_enum_method(&self, out: &mut js::Tokens, name: &Name, field: &Spanned<RpField>) {
         let members = &quote!(#name.#(&self.values));
 
         quote_in! { *out =>
@@ -168,8 +168,8 @@ impl<'a> Compiler<'a> {
 
     fn decode_method<'el, F, I, O>(&self, out: &mut js::Tokens, fields: I, name: &Name, var_fn: F)
     where
-        F: Fn(usize, &'el Loc<RpField>) -> O,
-        I: IntoIterator<Item = &'el Loc<RpField>>,
+        F: Fn(usize, &'el Spanned<RpField>) -> O,
+        I: IntoIterator<Item = &'el Spanned<RpField>>,
         O: FormatInto<JavaScript> + Copy,
     {
         let mut arguments = Vec::<Rc<String>>::new();
@@ -214,18 +214,18 @@ impl<'a> Compiler<'a> {
 
     fn field_by_name<'o>(
         _i: usize,
-        field: &'o Loc<RpField>,
+        field: &'o Spanned<RpField>,
     ) -> impl FormatInto<JavaScript> + 'o + Copy {
         quoted(field.name())
     }
 
-    fn field_by_index(i: usize, _field: &Loc<RpField>) -> impl FormatInto<JavaScript> + Copy {
+    fn field_by_index(i: usize, _field: &Spanned<RpField>) -> impl FormatInto<JavaScript> + Copy {
         display(i)
     }
 
     fn build_constructor<'el, I>(&self, out: &mut js::Tokens, fields: I)
     where
-        I: IntoIterator<Item = &'el Loc<RpField>>,
+        I: IntoIterator<Item = &'el Spanned<RpField>>,
     {
         let mut arguments = Vec::new();
         let mut assign = Vec::new();
@@ -251,7 +251,7 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    fn enum_encode(&self, out: &mut js::Tokens, field: &Loc<RpField>) {
+    fn enum_encode(&self, out: &mut js::Tokens, field: &Spanned<RpField>) {
         quote_in! { *out =>
             encode() {
                 return this.#(field.safe_ident());
@@ -261,7 +261,7 @@ impl<'a> Compiler<'a> {
 
     fn build_getters<'el, I>(&self, fields: I) -> Vec<Tokens<JavaScript>>
     where
-        I: IntoIterator<Item = &'el Loc<RpField>>,
+        I: IntoIterator<Item = &'el Spanned<RpField>>,
     {
         let mut result = Vec::new();
 
@@ -322,7 +322,8 @@ impl<'a> PackageProcessor<'a, JavaScriptFlavor, Name> for Compiler<'a> {
     fn process_enum(&self, out: &mut Self::Out, body: &RpEnumBody) -> Result<()> {
         let mut values = Vec::new();
 
-        let variant_field = Loc::new(RpField::new("value", body.enum_type.clone()), Span::empty());
+        let variant_field =
+            Spanned::new(RpField::new("value", body.enum_type.clone()), Span::empty());
 
         quote_in! { out.0 =>
             export class #(&body.name) {

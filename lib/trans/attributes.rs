@@ -8,7 +8,7 @@ use core::flavored::{
     Attributes, RpAccept, RpChannel, RpEndpointArgument, RpEndpointHttp, RpHttpMethod, RpPathSpec,
     RpValue,
 };
-use core::{self, Diagnostics, Import, Loc, RpStringValidate, Span, Version, WithSpan};
+use core::{self, Diagnostics, Import, RpStringValidate, Span, Spanned, Version, WithSpan};
 use std::collections::HashMap;
 
 /// `#![feature(..)]` attributes.
@@ -16,7 +16,7 @@ pub fn features<'s, I>(
     scope: &'s Scope<I>,
     diag: &mut Diagnostics,
     attributes: &mut Attributes,
-) -> Result<Vec<Loc<&'s Feature>>, ()>
+) -> Result<Vec<Spanned<&'s Feature>>, ()>
 where
     I: Import,
 {
@@ -27,10 +27,10 @@ where
 
     let mut out = Vec::new();
 
-    let (mut selection, _) = Loc::take_pair(selection);
+    let (mut selection, _) = Spanned::take_pair(selection);
 
     for feature in selection.take_words() {
-        let (feature, span) = Loc::take_pair(feature);
+        let (feature, span) = Spanned::take_pair(feature);
 
         let feature = match feature.into_identifier() {
             Ok(feature) => feature,
@@ -48,7 +48,7 @@ where
             }
         };
 
-        out.push(Loc::new(feature, span));
+        out.push(Spanned::new(feature, span));
     }
 
     check_selection!(diag, selection);
@@ -75,7 +75,7 @@ pub fn reproto(diag: &mut Diagnostics, attributes: &mut Attributes) -> Result<Re
     };
 
     if let Some(version) = selection.take("version") {
-        let (version, span) = Loc::take_pair(version);
+        let (version, span) = Spanned::take_pair(version);
 
         let v = version
             .as_string()
@@ -102,10 +102,10 @@ pub fn reserved(
         Some(selection) => selection,
     };
 
-    let (mut selection, _pos) = Loc::take_pair(selection);
+    let (mut selection, _pos) = Spanned::take_pair(selection);
 
     for word in selection.take_words() {
-        let (field, span) = Loc::take_pair(word);
+        let (field, span) = Spanned::take_pair(word);
         let field = field
             .as_string()
             .map(|id| id.to_string())
@@ -124,7 +124,7 @@ pub fn endpoint_http<I>(
     scope: &mut Scope<I>,
     attributes: &mut Attributes,
     request: &mut Option<RpEndpointArgument>,
-    response: Option<&Loc<RpChannel>>,
+    response: Option<&Spanned<RpChannel>>,
     arguments: &Vec<RpEndpointArgument>,
 ) -> Result<RpEndpointHttp, ()>
 where
@@ -137,7 +137,7 @@ where
         None => return Ok(http),
     };
 
-    let (mut selection, _pos) = Loc::take_pair(selection);
+    let (mut selection, _pos) = Spanned::take_pair(selection);
 
     // Keep track of used variables.
     let mut args = arguments
@@ -154,7 +154,7 @@ where
     }
 
     if let Some(accept) = selection.take("accept") {
-        let (accept, span) = Loc::take_pair(accept);
+        let (accept, span) = Spanned::take_pair(accept);
 
         let a = accept.as_string().with_span(diag, span)?;
 
@@ -167,9 +167,9 @@ where
             }
         };
 
-        let accept = Loc::new(accept, span);
+        let accept = Spanned::new(accept, span);
         http_verify_accept(diag, &accept, response)?;
-        http.accept = Loc::take(accept);
+        http.accept = Spanned::take(accept);
     }
 
     // All arguments used, no request body.
@@ -187,7 +187,7 @@ where
             }
 
             diag.err(
-                Loc::span(&arg.ident),
+                &arg.ident.span(),
                 "Argument not used in #[http(...)] attribute",
             );
         }
@@ -204,13 +204,13 @@ where
     fn parse_path<'a, 'b: 'a, I>(
         diag: &mut Diagnostics,
         scope: &mut Scope<I>,
-        path: Loc<RpValue>,
+        path: Spanned<RpValue>,
         args: &'a mut HashMap<&'b str, &'b RpEndpointArgument>,
     ) -> Result<RpPathSpec, ()>
     where
         I: Import,
     {
-        let (path, span) = Loc::take_pair(path);
+        let (path, span) = Spanned::take_pair(path);
 
         let path = path.as_string().with_span(diag, span)?;
 
@@ -227,10 +227,10 @@ where
     }
 
     /// Parse a method.
-    fn parse_method(diag: &mut Diagnostics, method: Loc<RpValue>) -> Result<RpHttpMethod, ()> {
+    fn parse_method(diag: &mut Diagnostics, method: Spanned<RpValue>) -> Result<RpHttpMethod, ()> {
         use core::RpHttpMethod::*;
 
-        let (method, span) = Loc::take_pair(method);
+        let (method, span) = Spanned::take_pair(method);
 
         let m = match method.as_string().with_span(diag, &span)? {
             "GET" => Get,
@@ -252,15 +252,15 @@ where
     /// Check that accept matches response.
     fn http_verify_accept(
         diag: &mut Diagnostics,
-        accept: &Loc<RpAccept>,
-        response: Option<&Loc<RpChannel>>,
+        accept: &Spanned<RpAccept>,
+        response: Option<&Spanned<RpChannel>>,
     ) -> Result<(), ()> {
         let response = match response {
             Some(response) => response,
             None => return Ok(()),
         };
 
-        let (accept, span) = Loc::borrow_pair(&accept);
+        let (accept, span) = Spanned::borrow_pair(&accept);
 
         match *accept {
             // Can handle complex data types.
@@ -271,7 +271,7 @@ where
                 }
 
                 diag.err(
-                    Loc::span(response),
+                    response.span(),
                     "only `string` responses are supported for the given `accept`",
                 );
 
@@ -283,14 +283,17 @@ where
 }
 
 /// `#[import(..)]` attributes
-pub fn import(diag: &mut Diagnostics, attributes: &mut Attributes) -> Result<Vec<Loc<String>>, ()> {
+pub fn import(
+    diag: &mut Diagnostics,
+    attributes: &mut Attributes,
+) -> Result<Vec<Spanned<String>>, ()> {
     let mut out = Vec::new();
 
     if let Some(mut imports) = attributes.take_selection("import") {
         for import in imports.take_words() {
-            let (import, span) = Loc::take_pair(import);
+            let (import, span) = Spanned::take_pair(import);
             let import = import.as_str().with_span(diag, span)?;
-            out.push(Loc::new(import.to_string(), span));
+            out.push(Spanned::new(import.to_string(), span));
         }
 
         check_selection!(diag, imports);
@@ -308,13 +311,13 @@ pub enum StringFormat {
 pub fn string_format(
     diag: &mut Diagnostics,
     attributes: &mut Attributes,
-) -> Result<Option<Loc<StringFormat>>, ()> {
+) -> Result<Option<Spanned<StringFormat>>, ()> {
     let selection = match attributes.take_selection("format") {
         Some(selection) => selection,
         None => return Ok(None),
     };
 
-    let (mut selection, attribute_span) = Loc::take_pair(selection);
+    let (mut selection, attribute_span) = Spanned::take_pair(selection);
 
     let format = match selection.take_word() {
         Some(format) => format,
@@ -324,7 +327,7 @@ pub fn string_format(
         }
     };
 
-    let (format, span) = Loc::take_pair(format);
+    let (format, span) = Spanned::take_pair(format);
 
     let format = match format.into_string() {
         Ok(format) => format,
@@ -345,7 +348,7 @@ pub fn string_format(
     };
 
     check_selection!(diag, selection);
-    Ok(Some(Loc::new(format, attribute_span)))
+    Ok(Some(Spanned::new(format, attribute_span)))
 }
 
 /// `#[validate(pattern = "[a-z]+")]` attributes on string fields.
@@ -361,7 +364,7 @@ pub fn string_validate(
     };
 
     if let Some(pattern) = validate.take("pattern") {
-        let (pattern, span) = Loc::take_pair(pattern);
+        let (pattern, span) = Spanned::take_pair(pattern);
         let pattern = pattern.as_string().with_span(diag, span)?;
 
         let regex = match regex_parser::parse(pattern) {

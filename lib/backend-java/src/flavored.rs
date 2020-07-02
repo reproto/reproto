@@ -5,8 +5,8 @@
 use backend::package_processor;
 use core::errors::Result;
 use core::{
-    CoreFlavor, Diagnostics, Flavor, FlavorField, FlavorTranslator, Loc, PackageTranslator,
-    RpNumberKind, RpNumberType, RpStringType, Translate, Translator,
+    CoreFlavor, Diagnostics, Flavor, FlavorField, FlavorTranslator, PackageTranslator,
+    RpNumberKind, RpNumberType, RpStringType, Spanned, Translate, Translator,
 };
 use genco::prelude::*;
 use genco::tokens::{from_fn, FormatInto};
@@ -403,7 +403,7 @@ impl FlavorTranslator for JavaFlavorTranslator {
         })
     }
 
-    fn translate_name(&self, _from: &RpPackage, reg: RpReg, name: Loc<RpName>) -> Result<Type> {
+    fn translate_name(&self, _from: &RpPackage, reg: RpReg, name: Spanned<RpName>) -> Result<Type> {
         let ident = Rc::new(reg.ident(&name, |p| p.join("."), |c| c.join(".")));
         let package = name.package.join(".");
 
@@ -421,12 +421,12 @@ impl FlavorTranslator for JavaFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         reg: RpReg,
-        name: Loc<core::RpName<CoreFlavor>>,
+        name: Spanned<core::RpName<CoreFlavor>>,
     ) -> Result<Name>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
-        let (name, span) = Loc::take_pair(name);
+        let (name, span) = Spanned::take_pair(name);
 
         let ident = Rc::new(reg.ident(&name, |p| p.join("."), |c| c.join(".")));
         let package = self.translate_package(name.package)?;

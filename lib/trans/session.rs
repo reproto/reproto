@@ -4,9 +4,9 @@ use crate::scope::Scope;
 use crate::translated::Translated;
 use core::errors::{Error, Result};
 use core::{
-    translator, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Import, Loc, PackageTranslator,
+    translator, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Import, PackageTranslator,
     Reporter, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg, RpRequiredPackage,
-    RpVersionedPackage, Source, Translate, Version,
+    RpVersionedPackage, Source, Spanned, Translate, Version,
 };
 use linked_hash_map::LinkedHashMap;
 use naming::Naming;
@@ -68,7 +68,7 @@ where
     /// Files and associated declarations.
     files: BTreeMap<RpVersionedPackage, File<F>>,
     /// Registered types.
-    types: Rc<LinkedHashMap<RpName<F>, Loc<RpReg>>>,
+    types: Rc<LinkedHashMap<RpName<F>, Spanned<RpReg>>>,
     /// Keywords that need to be translated.
     keywords: Rc<HashMap<String, String>>,
     /// Whether to use safe packages or not.
@@ -520,7 +520,7 @@ impl<'a> Session<'a, CoreFlavor> {
         };
 
         for (key, _, t) in file.file.decls.iter().flat_map(|d| d.to_reg()) {
-            let (key, span) = Loc::borrow_pair(key);
+            let (key, span) = Spanned::borrow_pair(key);
             let key = key.clone().without_prefix();
 
             log::debug!("new reg ty: {}", key);
@@ -534,13 +534,13 @@ impl<'a> Session<'a, CoreFlavor> {
             };
 
             match types.entry(key.clone()) {
-                Vacant(entry) => entry.insert(Loc::new(t, span)),
+                Vacant(entry) => entry.insert(Spanned::new(t, span)),
                 Occupied(entry) => {
                     diag.err(
                         span,
                         format!("`{}` conflicts with existing declaration", key),
                     );
-                    diag.info(Loc::span(entry.get()), "existing declaration here");
+                    diag.info(entry.get().span(), "existing declaration here");
                     continue;
                 }
             };

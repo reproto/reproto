@@ -1,20 +1,20 @@
 //! Model for services.
 
 use crate::errors::Result;
-use crate::{Diagnostics, Flavor, Loc, RpReg, Translate, Translator};
+use crate::{Diagnostics, Flavor, RpReg, Spanned, Translate, Translator};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct RpServiceBodyHttp {
     /// Default URL to use for service.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub url: Option<Loc<String>>,
+    pub url: Option<Spanned<String>>,
 }
 
 decl_body!(
     pub struct RpServiceBody<F> {
         pub http: RpServiceBodyHttp,
-        pub endpoints: Vec<Loc<F::Endpoint>>,
+        pub endpoints: Vec<Spanned<F::Endpoint>>,
     }
 );
 
@@ -34,7 +34,7 @@ where
         let endpoints = self
             .endpoints
             .into_iter()
-            .map(|e| Loc::and_then(e, |e| translator.translate_endpoint(diag, e)))
+            .map(|e| Spanned::and_then(e, |e| translator.translate_endpoint(diag, e)))
             .collect::<Result<Vec<_>>>()?;
 
         let decls = self.decls.translate(diag, translator)?;

@@ -4,8 +4,8 @@ use crate::loaded_file::LoadedFile;
 use crate::models::{Completion, Jump, Prefix, Range, Rename, RenameResult, Symbol};
 use core::errors::{Error, Result};
 use core::{
-    Encoding, Filesystem, Handle, Loc, Reported, Resolved, Resolver, RpPackage, RpRequiredPackage,
-    RpVersionedPackage, Source,
+    Encoding, Filesystem, Handle, Reported, Resolved, Resolver, RpPackage, RpRequiredPackage,
+    RpVersionedPackage, Source, Spanned,
 };
 use repository::{path_to_package, Packages, EXT};
 use std::collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
@@ -459,7 +459,7 @@ impl Workspace {
             };
 
             let package = {
-                let (package, span) = Loc::borrow_pair(&u.package);
+                let (package, span) = Spanned::borrow_pair(&u.package);
 
                 let (start, end) = loaded.diag.source.span_to_range(span, Encoding::Utf16)?;
                 let range = Range { start, end };
@@ -484,14 +484,14 @@ impl Workspace {
 
             let prefix = if let Some(ref alias) = u.alias {
                 // note: can be renamed!
-                let (alias, span) = Loc::borrow_pair(alias);
+                let (alias, span) = Spanned::borrow_pair(alias);
                 let range = loaded.range(span)?;
                 loaded.register_rename_immediate_prefix(range, alias.as_ref())?;
                 Some((alias.as_ref(), span))
             } else {
                 match parts.last() {
                     Some(suffix) => {
-                        let (suffix, span) = Loc::borrow_pair(suffix);
+                        let (suffix, span) = Spanned::borrow_pair(suffix);
 
                         loaded.implicit_prefix(suffix.as_ref(), endl)?;
                         loaded.register_rename_prefix_trigger(suffix.as_ref(), span)?;
@@ -511,7 +511,7 @@ impl Workspace {
                 if let Some((package, read_only)) = package {
                     // register a jump for the last part of the package, if it is present.
                     if let Some(last) = parts.last() {
-                        let (_, span) = Loc::borrow_pair(last);
+                        let (_, span) = Spanned::borrow_pair(last);
                         let range = loaded.range(span)?;
 
                         loaded.register_jump(
@@ -558,13 +558,13 @@ impl Workspace {
             let symbol_path = path.clone();
             path.push(decl.name().to_string());
 
-            loaded.symbol.insert(path.clone(), Loc::span(&decl.name()));
+            loaded.symbol.insert(path.clone(), decl.name().span());
 
             self.process_decl(&path, loaded, content.as_str(), decl)?;
 
             queue.extend(decl.decls().map(|decl| (path.clone(), decl)));
 
-            let (name, span) = Loc::take_pair(decl.name());
+            let (name, span) = Spanned::take_pair(decl.name());
 
             let (start, end) = loaded.diag.source.span_to_range(span, Encoding::Utf16)?;
             let range = Range { start, end };
@@ -596,7 +596,7 @@ impl Workspace {
     ) -> Result<()> {
         use ast::Decl::*;
 
-        let (_, span) = Loc::take_pair(decl.name());
+        let (_, span) = Spanned::take_pair(decl.name());
 
         let range = loaded.range(span)?;
         let package = loaded.package.clone();
@@ -651,9 +651,9 @@ impl Workspace {
         current: &Vec<String>,
         loaded: &mut LoadedFile,
         content: &str,
-        ty: &Loc<ast::Type<'input>>,
+        ty: &Spanned<ast::Type<'input>>,
     ) -> Result<()> {
-        let (ty, span) = Loc::borrow_pair(ty);
+        let (ty, span) = Spanned::borrow_pair(ty);
 
         match *ty {
             ast::Type::Array { ref inner } => {
@@ -688,11 +688,11 @@ impl Workspace {
     ///  * Register prefix renames.
     fn process_name<'input>(
         &mut self,
-        name: &Loc<ast::Name<'input>>,
+        name: &Spanned<ast::Name<'input>>,
         current: &Vec<String>,
         loaded: &mut LoadedFile,
     ) -> Result<()> {
-        let (name, _) = Loc::borrow_pair(name);
+        let (name, _) = Spanned::borrow_pair(name);
 
         match *name {
             ast::Name::Relative { ref path } => {
@@ -700,7 +700,7 @@ impl Workspace {
                 let mut full_path = current.clone();
 
                 for p in path {
-                    let (p, span) = Loc::borrow_pair(p);
+                    let (p, span) = Spanned::borrow_pair(p);
 
                     full_path.push(p.to_string());
 
@@ -730,7 +730,7 @@ impl Workspace {
                 let mut full_path = Vec::new();
 
                 if let Some(ref prefix) = *prefix {
-                    let (prefix, span) = Loc::borrow_pair(prefix);
+                    let (prefix, span) = Spanned::borrow_pair(prefix);
 
                     let range = loaded.range(span)?;
 
@@ -759,7 +759,7 @@ impl Workspace {
                 let prefix = prefix.as_ref().map(|p| p.to_string());
 
                 for p in path {
-                    let (p, span) = Loc::borrow_pair(p);
+                    let (p, span) = Spanned::borrow_pair(p);
 
                     full_path.push(p.to_string());
 

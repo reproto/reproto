@@ -6,8 +6,8 @@ use crate::{Options, TYPE_SEP};
 use backend::package_processor;
 use core::errors::Result;
 use core::{
-    CoreFlavor, Diagnostics, Flavor, FlavorField, FlavorTranslator, Loc, PackageTranslator,
-    RpNumberKind, RpNumberType, RpStringType, Translate, Translator,
+    CoreFlavor, Diagnostics, Flavor, FlavorField, FlavorTranslator, PackageTranslator,
+    RpNumberKind, RpNumberType, RpStringType, Spanned, Translate, Translator,
 };
 use genco::prelude::*;
 use genco::tokens::{from_fn, FormatInto, ItemStr};
@@ -364,7 +364,7 @@ impl FlavorTranslator for SwiftFlavorTranslator {
         })
     }
 
-    fn translate_name(&self, _from: &RpPackage, reg: RpReg, name: Loc<RpName>) -> Result<Type> {
+    fn translate_name(&self, _from: &RpPackage, reg: RpReg, name: Spanned<RpName>) -> Result<Type> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
         let package_name = name.package.join("_");
         Ok(Type::local(format!("{}_{}", package_name, ident)))
@@ -379,13 +379,13 @@ impl FlavorTranslator for SwiftFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         reg: RpReg,
-        name: Loc<core::RpName<CoreFlavor>>,
+        name: Spanned<core::RpName<CoreFlavor>>,
     ) -> Result<Name>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
         let name = name.translate(diag, translator)?;
-        let (name, _) = Loc::take_pair(name);
+        let (name, _) = Spanned::take_pair(name);
 
         let package_name = name.package.join("_");
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));

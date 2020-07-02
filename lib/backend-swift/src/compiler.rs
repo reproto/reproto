@@ -6,7 +6,7 @@ use crate::flavored::{
 use crate::{Options, EXT};
 use backend::PackageProcessor;
 use core::errors::Result;
-use core::{Handle, Loc};
+use core::{Handle, Spanned};
 use genco::prelude::*;
 use genco::tokens::{FormatInto, ItemStr};
 use trans::{self, Packages, Translated};
@@ -50,7 +50,7 @@ impl<'a> Compiler<'a> {
         t: &mut swift::Tokens,
         name: &Name,
         comment: &[String],
-        fields: &[Loc<Field>],
+        fields: &[Spanned<Field>],
         extends: bool,
     ) -> Result<()> {
         let extends = match (extends, &self.opt.struct_model_extends) {
@@ -83,7 +83,7 @@ impl<'a> Compiler<'a> {
         t: &mut swift::Tokens,
         name: &Name,
         comment: &[String],
-        fields: &[Loc<Field>],
+        fields: &[Spanned<Field>],
     ) -> Result<()> {
         self.model_struct(t, name, comment, fields, true)?;
 

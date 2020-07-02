@@ -4,8 +4,8 @@
 
 use core::errors::Result;
 use core::{
-    CoreFlavor, Diagnostics, Flavor, FlavorField, FlavorTranslator, Loc, PackageTranslator,
-    RpNumberKind, RpNumberType, RpNumberValidate, RpStringType, Translate, Translator,
+    CoreFlavor, Diagnostics, Flavor, FlavorField, FlavorTranslator, PackageTranslator,
+    RpNumberKind, RpNumberType, RpNumberValidate, RpStringType, Spanned, Translate, Translator,
 };
 use genco::prelude::*;
 use genco::tokens::from_fn;
@@ -177,7 +177,7 @@ pub(crate) struct CsharpFlavor;
 
 impl Flavor for CsharpFlavor {
     type Type = Type;
-    type Name = Loc<RpName>;
+    type Name = Spanned<RpName>;
     type Field = Field;
     type Endpoint = RpEndpoint;
     type Package = core::RpPackage;
@@ -285,7 +285,7 @@ impl FlavorTranslator for CsharpFlavorTranslator {
         Ok(Type::ByteArray)
     }
 
-    fn translate_name(&self, _from: &RpPackage, reg: RpReg, name: Loc<RpName>) -> Result<Type> {
+    fn translate_name(&self, _from: &RpPackage, reg: RpReg, name: Spanned<RpName>) -> Result<Type> {
         let package_name = Rc::new(name.package.join("."));
         let name = Rc::new(reg.ident(&name, |p| p.join("."), |c| c.join(".")));
 

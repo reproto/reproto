@@ -5,8 +5,8 @@
 use crate::{EXT, TYPE_SEP};
 use core::errors::Result;
 use core::{
-    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Loc, PackageTranslator, RpNumberKind,
-    RpNumberType, RpStringType, Translate, Translator,
+    self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, PackageTranslator, RpNumberKind,
+    RpNumberType, RpStringType, Spanned, Translate, Translator,
 };
 use genco::prelude::*;
 use genco::tokens::{FormatInto, ItemStr};
@@ -182,7 +182,7 @@ pub struct DartFlavor;
 
 impl Flavor for DartFlavor {
     type Type = Type;
-    type Name = Loc<RpName>;
+    type Name = Spanned<RpName>;
     type Field = core::RpField<DartFlavor>;
     type Endpoint = DartEndpoint;
     type Package = core::RpPackage;
@@ -251,7 +251,7 @@ impl FlavorTranslator for DartFlavorTranslator {
         Ok(Type::String)
     }
 
-    fn translate_name(&self, from: &RpPackage, reg: RpReg, name: Loc<RpName>) -> Result<Type> {
+    fn translate_name(&self, from: &RpPackage, reg: RpReg, name: Spanned<RpName>) -> Result<Type> {
         let ident = reg.ident(&name, |p| p.join(TYPE_SEP), |c| c.join(TYPE_SEP));
 
         if let Some(ref prefix) = name.prefix {

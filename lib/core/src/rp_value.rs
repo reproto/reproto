@@ -1,7 +1,7 @@
 //! Value of models
 
 use crate::errors::Result;
-use crate::{Diagnostics, Flavor, Loc, RpName, RpNumber, Translate, Translator};
+use crate::{Diagnostics, Flavor, RpName, RpNumber, Spanned, Translate, Translator};
 use serde::Serialize;
 use std::fmt;
 
@@ -19,8 +19,8 @@ where
     String(String),
     Number(RpNumber),
     Identifier(String),
-    Array(Vec<Loc<RpValue<F>>>),
-    Name(Loc<RpName<F>>),
+    Array(Vec<Spanned<RpValue<F>>>),
+    Name(Spanned<RpName<F>>),
 }
 
 impl<F: 'static> RpValue<F>

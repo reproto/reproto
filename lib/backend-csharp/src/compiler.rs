@@ -7,7 +7,7 @@ use crate::flavored::{
 use crate::processor::Processor;
 use crate::Options;
 use core::errors::Result;
-use core::{Handle, Loc, RelativePathBuf};
+use core::{Handle, RelativePathBuf, Spanned};
 use genco::prelude::*;
 use genco::tokens::from_fn;
 use naming::Naming as _;
@@ -222,7 +222,7 @@ impl Compiler {
         &'f self,
         ident: &'f str,
         tag: &'f str,
-        fields: &'f [Loc<Field>],
+        fields: &'f [Spanned<Field>],
     ) -> impl FormatInto<Csharp> + 'f {
         let mut ann = Vec::new();
         self.opt.gen.class_constructor(&mut ann);
@@ -249,7 +249,7 @@ impl Compiler {
         &'f self,
         ident: &'f str,
         sub_type_strategy: &'f RpSubTypeStrategy,
-        fields: &'f [Loc<Field>],
+        fields: &'f [Spanned<Field>],
     ) -> impl FormatInto<Csharp> + 'f {
         quote_fn! {
             #(match sub_type_strategy {
@@ -327,7 +327,7 @@ impl Compiler {
     }
 
     /// Format a constructor argument.
-    fn constructor_arg<'f>(&'f self, f: &'f Loc<Field>) -> impl FormatInto<Csharp> + 'f {
+    fn constructor_arg<'f>(&'f self, f: &'f Spanned<Field>) -> impl FormatInto<Csharp> + 'f {
         let mut ann = Vec::new();
         self.opt.gen.class_constructor_arg(f, &mut ann);
 
@@ -339,7 +339,7 @@ impl Compiler {
     fn constructor<'f>(
         &'f self,
         ident: &'f str,
-        fields: &'f [Loc<Field>],
+        fields: &'f [Spanned<Field>],
     ) -> impl FormatInto<Csharp> + 'f {
         let mut annotations = Vec::new();
         self.opt.gen.class_constructor(&mut annotations);
@@ -392,7 +392,7 @@ impl Compiler {
         }
     }
 
-    fn field<'f>(&'f self, f: &'f Loc<Field>) -> impl FormatInto<Csharp> + 'f {
+    fn field<'f>(&'f self, f: &'f Spanned<Field>) -> impl FormatInto<Csharp> + 'f {
         let mut annotations = Vec::new();
         self.opt.gen.class_field(f, &mut annotations);
 
@@ -406,7 +406,7 @@ impl Compiler {
     }
 
     /// Build a GetHashCode function.
-    fn get_hash_code<'f>(&'f self, fields: &'f [Loc<Field>]) -> impl FormatInto<Csharp> + 'f {
+    fn get_hash_code<'f>(&'f self, fields: &'f [Spanned<Field>]) -> impl FormatInto<Csharp> + 'f {
         quote_fn! {
             public override int GetHashCode()  {
                 int result = 1;
@@ -422,7 +422,7 @@ impl Compiler {
     fn equals<'f>(
         &'f self,
         ident: &'f str,
-        fields: &'f [Loc<Field>],
+        fields: &'f [Spanned<Field>],
     ) -> impl FormatInto<Csharp> + 'f {
         quote_fn! {
             public override bool Equals(#(&self.object) other)  {
@@ -459,7 +459,7 @@ impl Compiler {
     fn to_string<'f>(
         &'f self,
         name: &'f str,
-        fields: &'f [Loc<Field>],
+        fields: &'f [Spanned<Field>],
     ) -> impl FormatInto<Csharp> + 'f {
         from_fn(move |t| {
             if fields.is_empty() {

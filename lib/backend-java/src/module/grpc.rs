@@ -4,7 +4,7 @@ use crate::codegen::{Configure, ServiceAdded, ServiceCodegen};
 use crate::flavored::JavaEndpoint;
 use crate::utils::Override;
 use core::errors::Result;
-use core::Loc;
+use core::Spanned;
 use genco::java::{imported, local, Argument, Class, Constructor, Field, Method, Modifier, VOID};
 use genco::{push, toks, Cons, IntoTokens, Java, Quoted, Tokens};
 use naming::Naming;
@@ -227,11 +227,11 @@ impl GrpcClient {
     }
 
     /// Get the MethodType variant for the given endpoint.
-    fn method_type(&self, e: &Loc<JavaEndpoint>) -> Result<MethodType> {
+    fn method_type(&self, e: &Spanned<JavaEndpoint>) -> Result<MethodType> {
         use core::RpChannel::*;
 
-        let request = e.request.as_ref().map(|v| Loc::borrow(&v.channel));
-        let response = e.response.as_ref().map(|v| Loc::borrow(v));
+        let request = e.request.as_ref().map(|v| Spanned::borrow(&v.channel));
+        let response = e.response.as_ref().map(|v| Spanned::borrow(v));
 
         let out = match (request, response) {
             (Some(&Unary { .. }), Some(&Unary { .. })) => MethodType::Unary,
@@ -249,7 +249,7 @@ impl GrpcClient {
         &self,
         service_name: Rc<String>,
         method_type: &MethodType,
-        e: &'el Loc<JavaEndpoint>,
+        e: &'el Spanned<JavaEndpoint>,
         request_ty: &Java<'el>,
         response_ty: &Java<'el>,
     ) -> Field<'el> {
@@ -369,7 +369,7 @@ impl GrpcClient {
         &self,
         field: &Field<'el>,
         method_type: &MethodType,
-        e: &'el Loc<JavaEndpoint>,
+        e: &'el Spanned<JavaEndpoint>,
         request_ty: &Java<'el>,
         response_ty: &Java<'el>,
     ) -> Method<'el> {
@@ -464,7 +464,7 @@ impl GrpcClient {
         &self,
         field: &Field<'el>,
         method_type: &MethodType,
-        e: &'el Loc<JavaEndpoint>,
+        e: &'el Spanned<JavaEndpoint>,
         request_ty: &Java<'el>,
         response_ty: &Java<'el>,
     ) -> Method<'el> {

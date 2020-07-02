@@ -1,4 +1,4 @@
-use core::{Loc, RpNumber, Span};
+use core::{RpNumber, Span, Spanned};
 use std::borrow::Cow;
 use std::ops;
 
@@ -15,8 +15,8 @@ use std::ops;
 #[derive(Debug, PartialEq, Eq)]
 pub struct Item<'input, T> {
     pub comment: Vec<Cow<'input, str>>,
-    pub attributes: Vec<Loc<Attribute<'input>>>,
-    pub item: Loc<T>,
+    pub attributes: Vec<Spanned<Attribute<'input>>>,
+    pub item: Spanned<T>,
 }
 
 /// Item derefs into target.
@@ -24,7 +24,7 @@ impl<'input, T> ops::Deref for Item<'input, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        Loc::borrow(&self.item)
+        Spanned::borrow(&self.item)
     }
 }
 
@@ -37,10 +37,10 @@ impl<'input, T> ops::Deref for Item<'input, T> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub enum AttributeItem<'input> {
-    Word(Loc<Value<'input>>),
+    Word(Spanned<Value<'input>>),
     NameValue {
-        name: Loc<Cow<'input, str>>,
-        value: Loc<Value<'input>>,
+        name: Spanned<Cow<'input, str>>,
+        value: Spanned<Value<'input>>,
     },
 }
 
@@ -59,8 +59,8 @@ pub enum AttributeItem<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub enum Attribute<'input> {
-    Word(Loc<Cow<'input, str>>),
-    List(Loc<Cow<'input, str>>, Vec<AttributeItem<'input>>),
+    Word(Spanned<Cow<'input, str>>),
+    List(Spanned<Cow<'input, str>>, Vec<AttributeItem<'input>>),
 }
 
 /// A type.
@@ -83,14 +83,14 @@ pub enum Type<'input> {
     /// ISO-8601 for date and time.
     DateTime,
     Name {
-        name: Loc<Name<'input>>,
+        name: Spanned<Name<'input>>,
     },
     Array {
-        inner: Box<Loc<Type<'input>>>,
+        inner: Box<Spanned<Type<'input>>>,
     },
     Map {
-        key: Box<Loc<Type<'input>>>,
-        value: Box<Loc<Type<'input>>>,
+        key: Box<Spanned<Type<'input>>>,
+        value: Box<Spanned<Type<'input>>>,
     },
     /// A complete error.
     Error,
@@ -108,10 +108,10 @@ pub enum Decl<'input> {
 
 impl<'input> Decl<'input> {
     /// Get the local name for the declaration.
-    pub fn name(&self) -> Loc<&str> {
+    pub fn name(&self) -> Spanned<&str> {
         use self::Decl::*;
 
-        let name: &Loc<Cow<str>> = match *self {
+        let name: &Spanned<Cow<str>> = match *self {
             Type(ref body) => &body.name,
             Tuple(ref body) => &body.name,
             Interface(ref body) => &body.name,
@@ -119,7 +119,7 @@ impl<'input> Decl<'input> {
             Service(ref body) => &body.name,
         };
 
-        Loc::map(Loc::as_ref(name), |n| n.as_ref())
+        Spanned::map(Spanned::as_ref(name), |n| n.as_ref())
     }
 
     /// Get all the sub-declarations of this declaraiton.
@@ -164,8 +164,8 @@ impl<'input> Decl<'input> {
 /// Note: members must only be options.
 #[derive(Debug, PartialEq, Eq)]
 pub struct EnumBody<'input> {
-    pub name: Loc<Cow<'input, str>>,
-    pub ty: Loc<Type<'input>>,
+    pub name: Spanned<Cow<'input, str>>,
+    pub ty: Spanned<Type<'input>>,
     pub variants: Vec<Item<'input, EnumVariant<'input>>>,
     pub members: Vec<EnumMember<'input>>,
 }
@@ -179,14 +179,14 @@ impl<'input> EnumBody<'input> {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct EnumVariant<'input> {
-    pub name: Loc<Cow<'input, str>>,
-    pub argument: Option<Loc<Value<'input>>>,
+    pub name: Spanned<Cow<'input, str>>,
+    pub argument: Option<Spanned<Value<'input>>>,
 }
 
 /// A member in a tuple, type, or interface.
 #[derive(Debug, PartialEq, Eq)]
 pub enum EnumMember<'input> {
-    Code(Loc<Code<'input>>),
+    Code(Spanned<Code<'input>>),
 }
 
 /// A field.
@@ -198,7 +198,7 @@ pub enum EnumMember<'input> {
 pub struct Field<'input> {
     pub required: bool,
     pub name: Cow<'input, str>,
-    pub ty: Loc<Type<'input>>,
+    pub ty: Spanned<Type<'input>>,
     pub field_as: Option<String>,
     /// If the end-of-line indicator present.
     /// A `false` value should indicate an error.
@@ -217,8 +217,8 @@ pub struct Field<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct File<'input> {
     pub comment: Vec<Cow<'input, str>>,
-    pub attributes: Vec<Loc<Attribute<'input>>>,
-    pub uses: Vec<Loc<UseDecl<'input>>>,
+    pub attributes: Vec<Spanned<Attribute<'input>>>,
+    pub uses: Vec<Spanned<UseDecl<'input>>>,
     pub decls: Vec<Decl<'input>>,
 }
 
@@ -246,11 +246,11 @@ impl<'input> Field<'input> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Name<'input> {
     Relative {
-        path: Vec<Loc<Cow<'input, str>>>,
+        path: Vec<Spanned<Cow<'input, str>>>,
     },
     Absolute {
-        prefix: Option<Loc<Cow<'input, str>>>,
-        path: Vec<Loc<Cow<'input, str>>>,
+        prefix: Option<Spanned<Cow<'input, str>>>,
+        path: Vec<Spanned<Cow<'input, str>>>,
     },
 }
 
@@ -264,7 +264,7 @@ pub enum Name<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct InterfaceBody<'input> {
-    pub name: Loc<Cow<'input, str>>,
+    pub name: Spanned<Cow<'input, str>>,
     pub members: Vec<TypeMember<'input>>,
     pub sub_types: Vec<Item<'input, SubType<'input>>>,
 }
@@ -289,7 +289,7 @@ impl<'input> InterfaceBody<'input> {
 
         for m in &self.members {
             if let TypeMember::Field(ref field) = *m {
-                out.push(Loc::borrow(&field.item));
+                out.push(Spanned::borrow(&field.item));
             }
         }
 
@@ -300,8 +300,8 @@ impl<'input> InterfaceBody<'input> {
 /// A contextual code-block.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Code<'input> {
-    pub attributes: Vec<Loc<Attribute<'input>>>,
-    pub context: Loc<Cow<'input, str>>,
+    pub attributes: Vec<Spanned<Attribute<'input>>>,
+    pub context: Spanned<Cow<'input, str>>,
     pub content: Vec<Cow<'input, str>>,
 }
 
@@ -309,7 +309,7 @@ pub struct Code<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub enum TypeMember<'input> {
     Field(Item<'input, Field<'input>>),
-    Code(Loc<Code<'input>>),
+    Code(Spanned<Code<'input>>),
     InnerDecl(Decl<'input>),
 }
 
@@ -322,7 +322,7 @@ pub enum TypeMember<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct ServiceBody<'input> {
-    pub name: Loc<Cow<'input, str>>,
+    pub name: Spanned<Cow<'input, str>>,
     pub members: Vec<ServiceMember<'input>>,
 }
 
@@ -346,7 +346,7 @@ impl<'input> ServiceBody<'input> {
 
         for m in &self.members {
             if let ServiceMember::Endpoint(ref endpoint) = *m {
-                out.push(Loc::borrow(&endpoint.item));
+                out.push(Spanned::borrow(&endpoint.item));
             }
         }
 
@@ -364,8 +364,8 @@ pub enum ServiceMember<'input> {
 /// The argument in and endpoint.
 #[derive(Debug, PartialEq, Eq)]
 pub struct EndpointArgument<'input> {
-    pub ident: Loc<Cow<'input, str>>,
-    pub channel: Loc<Channel<'input>>,
+    pub ident: Spanned<Cow<'input, str>>,
+    pub channel: Spanned<Channel<'input>>,
 }
 
 /// An endpoint
@@ -377,10 +377,10 @@ pub struct EndpointArgument<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct Endpoint<'input> {
-    pub id: Loc<Cow<'input, str>>,
+    pub id: Spanned<Cow<'input, str>>,
     pub alias: Option<String>,
     pub arguments: Vec<EndpointArgument<'input>>,
-    pub response: Option<Loc<Channel<'input>>>,
+    pub response: Option<Spanned<Channel<'input>>>,
 }
 
 /// Describes how data is transferred over a channel.
@@ -392,14 +392,14 @@ pub struct Endpoint<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Channel<'input> {
     /// Single send.
-    Unary { ty: Loc<Type<'input>> },
+    Unary { ty: Spanned<Type<'input>> },
     /// Multiple sends.
-    Streaming { ty: Loc<Type<'input>> },
+    Streaming { ty: Spanned<Type<'input>> },
 }
 
 impl<'input> Channel<'input> {
     /// Access the type of the channel.
-    pub fn ty(&self) -> &Loc<Type<'input>> {
+    pub fn ty(&self) -> &Spanned<Type<'input>> {
         use self::Channel::*;
 
         match *self {
@@ -419,9 +419,9 @@ impl<'input> Channel<'input> {
 /// Sub-types in interface declarations.
 #[derive(Debug, PartialEq, Eq)]
 pub struct SubType<'input> {
-    pub name: Loc<Cow<'input, str>>,
+    pub name: Spanned<Cow<'input, str>>,
     pub members: Vec<TypeMember<'input>>,
-    pub alias: Option<Loc<Value<'input>>>,
+    pub alias: Option<Spanned<Value<'input>>>,
 }
 
 /// The body of a tuple
@@ -433,7 +433,7 @@ pub struct SubType<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct TupleBody<'input> {
-    pub name: Loc<Cow<'input, str>>,
+    pub name: Spanned<Cow<'input, str>>,
     pub members: Vec<TypeMember<'input>>,
 }
 
@@ -457,7 +457,7 @@ impl<'input> TupleBody<'input> {
 
         for m in &self.members {
             if let TypeMember::Field(ref field) = *m {
-                out.push(Loc::borrow(&field.item));
+                out.push(Spanned::borrow(&field.item));
             }
         }
 
@@ -474,7 +474,7 @@ impl<'input> TupleBody<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct TypeBody<'input> {
-    pub name: Loc<Cow<'input, str>>,
+    pub name: Spanned<Cow<'input, str>>,
     pub members: Vec<TypeMember<'input>>,
 }
 
@@ -498,7 +498,7 @@ impl<'input> TypeBody<'input> {
 
         for m in &self.members {
             if let TypeMember::Field(ref field) = *m {
-                out.push(Loc::borrow(&field.item));
+                out.push(Spanned::borrow(&field.item));
             }
         }
 
@@ -510,7 +510,9 @@ impl<'input> TypeBody<'input> {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Package<'input> {
     /// A parsed package.
-    Package { parts: Vec<Loc<Cow<'input, str>>> },
+    Package {
+        parts: Vec<Spanned<Cow<'input, str>>>,
+    },
     /// A recovered error.
     Error,
 }
@@ -522,9 +524,9 @@ pub enum Package<'input> {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct UseDecl<'input> {
-    pub package: Loc<Package<'input>>,
-    pub range: Option<Loc<String>>,
-    pub alias: Option<Loc<Cow<'input, str>>>,
+    pub package: Spanned<Package<'input>>,
+    pub range: Option<Spanned<String>>,
+    pub alias: Option<Spanned<Cow<'input, str>>>,
     /// If the end-of-line indicator present.
     /// A empty value should indicate an error.
     pub endl: Option<Span>,
@@ -538,8 +540,8 @@ pub enum Value<'input> {
     String(String),
     Number(RpNumber),
     Identifier(Cow<'input, str>),
-    Array(Vec<Loc<Value<'input>>>),
-    Name(Loc<Name<'input>>),
+    Array(Vec<Spanned<Value<'input>>>),
+    Name(Spanned<Name<'input>>),
 }
 
 /// A part of a step.

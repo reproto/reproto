@@ -1,6 +1,5 @@
 use anyhow::{format_err, Context as _, Result};
 use clap::{App, Arg};
-use std::env;
 use std::path::Path;
 use syntect::dumps::dump_to_file;
 use syntect::highlighting::ThemeSet;

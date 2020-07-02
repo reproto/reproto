@@ -3,7 +3,7 @@ use core::flavored::{
     RpDecl, RpEndpoint, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody, RpSubType,
     RpTupleBody, RpTypeBody, RpVariantRef,
 };
-use core::{CoreFlavor, Handle, Loc, RelativePathBuf, DEFAULT_TAG};
+use core::{CoreFlavor, Handle, RelativePathBuf, Spanned, DEFAULT_TAG};
 use genco::fmt;
 use genco::prelude::*;
 use genco::tokens::{FormatInto, ItemStr};
@@ -14,9 +14,9 @@ use std::path::Path;
 use trans::Session;
 
 pub enum Interior<'a> {
-    Field(&'a Loc<RpField>),
+    Field(&'a Spanned<RpField>),
     Decl(&'a RpDecl),
-    SubType(&'a Loc<RpSubType>),
+    SubType(&'a Spanned<RpSubType>),
 }
 
 impl FormatInto<Reproto> for Interior<'_> {

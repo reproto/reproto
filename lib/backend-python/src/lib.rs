@@ -9,7 +9,7 @@ use crate::compiler::Compiler;
 use crate::utils::VersionHelper;
 use backend::Initializer;
 use core::errors::Result;
-use core::{CoreFlavor, Handle, Loc, RpField, Span};
+use core::{CoreFlavor, Handle, RpField, Span, Spanned};
 use genco::prelude::*;
 use genco::tokens::ItemStr;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
@@ -168,7 +168,7 @@ fn compile(handle: &dyn Handle, session: Session<CoreFlavor>, manifest: Manifest
         helper.clone(),
     ))?;
 
-    let variant_field = Loc::new(
+    let variant_field = Spanned::new(
         RpField::new(
             "ordinal",
             flavored::Type::String {

@@ -2,12 +2,12 @@
 
 use crate::errors::Result;
 use crate::translator;
-use crate::{Diagnostics, Flavor, Loc, RpCode, RpReg, Translate, Translator};
+use crate::{Diagnostics, Flavor, RpCode, RpReg, Spanned, Translate, Translator};
 
 decl_body!(
     pub struct RpTypeBody<F> {
-        pub fields: Vec<Loc<F::Field>>,
-        pub codes: Vec<Loc<RpCode>>,
+        pub fields: Vec<Spanned<F::Field>>,
+        pub codes: Vec<Spanned<RpCode>>,
     }
 );
 
@@ -15,7 +15,7 @@ impl<F> RpTypeBody<F>
 where
     F: Flavor,
 {
-    pub fn fields(&self) -> impl Iterator<Item = &Loc<F::Field>> {
+    pub fn fields(&self) -> impl Iterator<Item = &Spanned<F::Field>> {
         self.fields.iter()
     }
 }

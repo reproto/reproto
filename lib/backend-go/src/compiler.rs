@@ -6,7 +6,7 @@ use crate::flavored::{
 use crate::{EnumAdded, FieldAdded, FileSpec, InterfaceAdded, Options, Tags, TupleAdded, EXT};
 use backend::PackageProcessor;
 use core::errors::*;
-use core::{Handle, Loc, RelativePathBuf};
+use core::{Handle, RelativePathBuf, Spanned};
 use genco::prelude::*;
 use genco::tokens::{FormatInto, ItemStr};
 use trans::{self, Translated};
@@ -53,7 +53,7 @@ impl<'el> Compiler<'el> {
         t: &mut Tokens<Go>,
         name: &GoName,
         comment: &[String],
-        fields: &[Loc<RpField>],
+        fields: &[Spanned<RpField>],
     ) -> Result<()> {
         quote_in! { *t =>
             #(Comments(comment))
