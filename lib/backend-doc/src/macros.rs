@@ -77,7 +77,7 @@ macro_rules! define_processor {
     );
 
     (@tail $slf:ident current_package => $body:block; $($tail:tt)*) => (
-        fn current_package(&$slf) -> Option<&'session ::core::RpVersionedPackage> $body
+        fn current_package(&$slf) -> Option<&'session core::RpVersionedPackage> $body
 
         define_processor!(@tail $slf $($tail)*);
     );

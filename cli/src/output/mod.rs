@@ -6,8 +6,8 @@ pub use self::colored::Colored;
 pub use self::json::Json;
 pub use self::non_colored::NonColored;
 use core::errors::{Error, Result};
-use core::flavored::RpName;
-use core::{self, Diagnostic, Reported, Source};
+use core::flavored::*;
+use core::{Diagnostic, Reported, Source, Span, SymbolKind};
 use log;
 use std::io::{self, Write};
 
@@ -127,15 +127,15 @@ pub trait Output {
 
     fn print(&self, m: &str) -> Result<()>;
 
-    fn print_info(&self, source: &core::Source, p: &core::Span, m: &str) -> Result<()>;
+    fn print_info(&self, source: &Source, p: &Span, m: &str) -> Result<()>;
 
-    fn print_error(&self, source: &core::Source, p: &core::Span, m: &str) -> Result<()>;
+    fn print_error(&self, source: &Source, p: &Span, m: &str) -> Result<()>;
 
     fn print_symbol(
         &self,
-        _source: &core::Source,
-        _kind: core::SymbolKind,
-        _pos: &core::Span,
+        _source: &Source,
+        _kind: SymbolKind,
+        _pos: &Span,
         _name: &RpName,
     ) -> Result<()> {
         Ok(())

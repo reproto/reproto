@@ -1,9 +1,6 @@
 //! Java backend for reproto
 
-use crate::flavored::{
-    Field, JavaFlavor, Primitive, RpCode, RpContext, RpDecl, RpEnumBody, RpInterfaceBody,
-    RpServiceBody, RpTupleBody, RpTypeBody, RpVariants,
-};
+use crate::flavored::*;
 use crate::Options;
 use core::errors::Result;
 use core::{Handle, RelativePathBuf, Spanned};

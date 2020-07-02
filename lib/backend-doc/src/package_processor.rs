@@ -7,7 +7,7 @@ use crate::escape::Escape;
 use crate::macros::FormatAttribute;
 use crate::processor::Processor;
 use core::errors::Result;
-use core::flavored::{RpFile, RpVersionedPackage};
+use core::flavored::*;
 
 pub struct Data<'a> {
     pub package: &'a RpVersionedPackage,
@@ -38,8 +38,6 @@ macro_rules! types_section {
 
 define_processor!(PackageProcessor, Data<'session>, self,
     process => {
-        use core::RpDecl::*;
-
         self.write_doc(|| {
             let mut types = Vec::new();
             let mut interfaces = Vec::new();
@@ -49,11 +47,11 @@ define_processor!(PackageProcessor, Data<'session>, self,
 
             for decl in self.body.file.for_each_decl() {
                 match *decl {
-                    Type(ref ty) => types.push(ty),
-                    Interface(ref interface) => interfaces.push(interface),
-                    Enum(ref en) => enums.push(en),
-                    Tuple(ref tuple) => tuples.push(tuple),
-                    Service(ref service) => services.push(service),
+                    RpDecl::Type(ref ty) => types.push(ty),
+                    RpDecl::Interface(ref interface) => interfaces.push(interface),
+                    RpDecl::Enum(ref en) => enums.push(en),
+                    RpDecl::Tuple(ref tuple) => tuples.push(tuple),
+                    RpDecl::Service(ref service) => services.push(service),
                 }
             }
 

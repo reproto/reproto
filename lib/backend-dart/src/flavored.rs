@@ -183,9 +183,9 @@ pub enum DartFlavor {}
 impl Flavor for DartFlavor {
     type Type = Type;
     type Name = Spanned<RpName>;
-    type Field = core::RpField<DartFlavor>;
+    type Field = RpField<DartFlavor>;
     type Endpoint = DartEndpoint;
-    type Package = core::RpPackage;
+    type Package = RpPackage;
     type EnumType = Type;
 }
 
@@ -274,7 +274,7 @@ impl FlavorTranslator for DartFlavorTranslator {
         &self,
         translator: &T,
         diag: &mut Diagnostics,
-        endpoint: core::RpEndpoint<CoreFlavor>,
+        endpoint: RpEndpoint<CoreFlavor>,
     ) -> Result<DartEndpoint>
     where
         T: Translator<Source = CoreFlavor, Target = DartFlavor>,
@@ -293,14 +293,14 @@ impl FlavorTranslator for DartFlavorTranslator {
         &self,
         translator: &T,
         diag: &mut Diagnostics,
-        enum_type: core::RpEnumType,
+        enum_type: RpEnumType,
     ) -> Result<Type>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
         match enum_type {
-            core::RpEnumType::String(string) => self.translate_string(string),
-            core::RpEnumType::Number(number) => self.translate_number(number),
+            RpEnumType::String(string) => self.translate_string(string),
+            RpEnumType::Number(number) => self.translate_number(number),
         }
     }
 }

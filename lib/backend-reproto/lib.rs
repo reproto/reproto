@@ -1,8 +1,5 @@
 use core::errors::Result;
-use core::flavored::{
-    RpDecl, RpEndpoint, RpEnumBody, RpField, RpInterfaceBody, RpServiceBody, RpSubType,
-    RpTupleBody, RpTypeBody, RpVariantRef,
-};
+use core::flavored::*;
 use core::{CoreFlavor, Handle, RelativePathBuf, Spanned, DEFAULT_TAG};
 use genco::fmt;
 use genco::prelude::*;
@@ -178,11 +175,11 @@ fn compile(handle: &dyn Handle, env: Session<CoreFlavor>, _manifest: Manifest) -
 /// Format a single declaration as a reproto specification.
 pub fn format(out: &mut Tokens<Reproto>, decl: &RpDecl) {
     match decl {
-        core::RpDecl::Type(type_) => format_type(out, type_),
-        core::RpDecl::Interface(interface) => format_interface(out, interface),
-        core::RpDecl::Tuple(tuple) => format_tuple(out, tuple),
-        core::RpDecl::Enum(en) => format_enum(out, en),
-        core::RpDecl::Service(service) => format_service(out, service),
+        RpDecl::Type(type_) => format_type(out, type_),
+        RpDecl::Interface(interface) => format_interface(out, interface),
+        RpDecl::Tuple(tuple) => format_tuple(out, tuple),
+        RpDecl::Enum(en) => format_enum(out, en),
+        RpDecl::Service(service) => format_service(out, service),
     }
 }
 
@@ -210,10 +207,10 @@ fn format_interface(out: &mut Tokens<Reproto>, body: &RpInterfaceBody) {
 
     quote_in! { *out =>
         #(match &body.sub_type_strategy {
-            core::RpSubTypeStrategy::Tagged { tag, .. } if tag != DEFAULT_TAG => {
+            RpSubTypeStrategy::Tagged { tag, .. } if tag != DEFAULT_TAG => {
                 #[type_info(strategy = "tagged", tag = #(quoted(tag.as_str())))]
             }
-            core::RpSubTypeStrategy::Untagged => {
+            RpSubTypeStrategy::Untagged => {
                 #[type_info(strategy = "untagged")]
             }
             _ => {}
@@ -297,10 +294,10 @@ fn format_variant(out: &mut Tokens<Reproto>, variant: RpVariantRef<'_>) {
     quote_in! { *out =>
         #(Comments(variant.comment))
         #(variant.ident()) as #(match variant.value {
-            core::RpVariantValue::String(string) => {
+            RpVariantValue::String(string) => {
                 #(quoted(string))
             }
-            core::RpVariantValue::Number(number) => {
+            RpVariantValue::Number(number) => {
                 #(number.to_string())
             }
         });

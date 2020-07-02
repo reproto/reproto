@@ -1,20 +1,17 @@
 //! Backend for Rust
 
-use crate::flavored::{
-    Primitive, RpEnumBody, RpField, RpInterfaceBody, RpName, RpPackage, RpServiceBody, RpTupleBody,
-    RpTypeBody, RpVariant, RpVariants, RustFlavor, Type,
-};
+use crate::flavored::*;
 use crate::utils::Comments;
 use crate::{Options, Root, Service, EXT, MOD, TYPE_SEP};
 use backend::PackageProcessor;
-use core::errors::*;
-use core::{self, Handle, RelativePathBuf, Spanned};
+use core::errors::Result;
+use core::{Handle, RelativePathBuf, Spanned};
 use genco::prelude::*;
 use genco::tokens::FormatInto;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::rc::Rc;
-use trans::{self, Translated};
+use trans::Translated;
 
 /// Serializer derives.
 pub struct Derives {
@@ -126,10 +123,10 @@ impl<'el> Compiler<'el> {
                 match self {
                     #(for v in variants join (#<push>) =>
                         #(match v.value {
-                            core::RpVariantValue::String(string) => {
+                            RpVariantValue::String(string) => {
                                 Self::#(v.ident()) => #(quoted(string)),
                             }
-                            core::RpVariantValue::Number(number) => {
+                            RpVariantValue::Number(number) => {
                                 Self::#(v.ident()) => #(display(number)),
                             }
                         })
@@ -280,7 +277,7 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
         let (name, mut attributes) = self.convert_type_name(&body.name);
         let name = &name;
 
-        if let core::RpVariants::Number { .. } = body.variants {
+        if let RpVariants::Number { .. } = body.variants {
             // TODO: commented out, see: https://github.com/rust-lang/rust/issues/49973
             // enable through option?
             // attributes.push(Repr(body.enum_type.clone()));
@@ -298,7 +295,7 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
                 #(for v in &body.variants join (#<push>) =>
                     #(Comments(v.comment))
                     #(match v.value {
-                        core::RpVariantValue::String(string) if string != v.ident() => {
+                        RpVariantValue::String(string) if string != v.ident() => {
                             #(Rename(string))
                         }
                         _ => {}
@@ -310,12 +307,12 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
             impl #name {
                 #(ref out => self.enum_value_fn(out, body, &body.variants))
 
-                #(if backend::code_contains!(body.codes, core::RpContext::Rust) {
-                    #(ref out => backend::code_in!(out, &body.codes, core::RpContext::Rust))
+                #(if backend::code_contains!(body.codes, RpContext::Rust) {
+                    #(ref out => backend::code_in!(out, &body.codes, RpContext::Rust))
                 })
             }
 
-            #(if let core::RpVariants::Number { variants } = &body.variants {
+            #(if let RpVariants::Number { variants } = &body.variants {
                 #(ref t => numeric_serialize(t, body, &name, variants))
 
                 #(ref t => numeric_deserialize(t, body, &name, variants))
@@ -508,9 +505,9 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
                 )
             }
 
-            #(if backend::code_contains!(body.codes, core::RpContext::Rust) {
+            #(if backend::code_contains!(body.codes, RpContext::Rust) {
                 impl #name {
-                    #(ref out => backend::code_in!(out, &body.codes, core::RpContext::Rust))
+                    #(ref out => backend::code_in!(out, &body.codes, RpContext::Rust))
                 }
             })
         };
@@ -526,8 +523,8 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
             #(attributes)
             #(&self.derives)
             #(match &body.sub_type_strategy {
-                core::RpSubTypeStrategy::Tagged { tag, .. } => #(Tag(tag.as_str())),
-                core::RpSubTypeStrategy::Untagged => #Untagged,
+                RpSubTypeStrategy::Tagged { tag, .. } => #(Tag(tag.as_str())),
+                RpSubTypeStrategy::Untagged => #Untagged,
             })
             pub enum #(&name) {
                 #(for s in &body.sub_types join (#<line>) => #(ref out =>
@@ -545,9 +542,9 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
                 ))
             }
 
-            #(if backend::code_contains!(body.codes, core::RpContext::Rust) {
+            #(if backend::code_contains!(body.codes, RpContext::Rust) {
                 impl #name {
-                    #(ref out => backend::code_in!(out, &body.codes, core::RpContext::Rust))
+                    #(ref out => backend::code_in!(out, &body.codes, RpContext::Rust))
                 }
             })
 

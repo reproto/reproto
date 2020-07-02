@@ -5,9 +5,9 @@ use crate::doc_builder::DocBuilder;
 use crate::escape::Escape;
 use crate::macros::FormatAttribute;
 use crate::rendering::markdown_to_html;
-use core::errors::*;
-use core::flavored::{RpDecl, RpField, RpName, RpType, RpVersionedPackage};
-use core::{self, AsPackage, CoreFlavor, Spanned};
+use core::errors::Result;
+use core::flavored::*;
+use core::{AsPackage, CoreFlavor, Spanned};
 use std::ops::DerefMut;
 use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
@@ -38,7 +38,7 @@ pub trait Processor<'session> {
         let reg = self.session().lookup(name)?;
 
         let (fragment, path) = match *reg {
-            core::RpReg::EnumVariant | core::RpReg::SubType => {
+            RpReg::EnumVariant | RpReg::SubType => {
                 let fragment = format!("#{}", name.path.clone().join("_"));
 
                 let path: Vec<_> = name
@@ -106,32 +106,30 @@ pub trait Processor<'session> {
     }
 
     fn write_type(&self, ty: &RpType) -> Result<()> {
-        use core::RpType::*;
-
         write!(self.out(), "<span class=\"ty\">")?;
 
-        match *ty {
-            Double => self.primitive("double")?,
-            Float => self.primitive("float")?,
-            Boolean => self.primitive("boolean")?,
-            String(..) => self.primitive("string")?,
-            DateTime => self.primitive("datetime")?,
-            Bytes => self.primitive("bytes")?,
-            Any => self.primitive("any")?,
-            Number(ref number) => self.primitive(number.to_string().as_str())?,
-            Name { ref name } => {
+        match ty {
+            RpType::Double => self.primitive("double")?,
+            RpType::Float => self.primitive("float")?,
+            RpType::Boolean => self.primitive("boolean")?,
+            RpType::String(..) => self.primitive("string")?,
+            RpType::DateTime => self.primitive("datetime")?,
+            RpType::Bytes => self.primitive("bytes")?,
+            RpType::Any => self.primitive("any")?,
+            RpType::Number(number) => self.primitive(number.to_string().as_str())?,
+            RpType::Name { name } => {
                 html!(self, span {class => "type-rp-name"} => {
                     self.full_name_without_package(name)?;
                 });
             }
-            Array { ref inner } => {
+            RpType::Array { inner } => {
                 html!(self, span {class => "type-array"} => {
                     html!(self, span {class => "type-array-left"} ~ "[");
                     self.write_type(inner)?;
                     html!(self, span {class => "type-array-right"} ~ "]");
                 });
             }
-            Map { ref key, ref value } => {
+            RpType::Map { key, value } => {
                 html!(self, span {class => "type-map"} => {
                     html!(self, span {class => "type-map-left"} ~ "{");
                     self.write_type(key)?;

@@ -1,6 +1,6 @@
 //! gRPC module for Rust.
 
-use crate::flavored::{RpEndpointHttp1, RpPackage, RpPathSpec, RpServiceBody, RustEndpoint, Type};
+use crate::flavored::*;
 use crate::utils::Comments;
 use crate::{Options, Root, RootCodegen, Service, ServiceCodegen, SCOPE_SEP};
 use core::errors::Result;
@@ -254,10 +254,10 @@ impl<'el> FormatInto<Rust> for WritePath<'el> {
                 #var.push_str("/");
                 #(for part in &step.parts join (#<push>) =>
                     #(match part {
-                        core::RpPathPart::Variable(arg) => {
+                        RpPathPart::Variable(arg) => {
                             write!(#var, "{}", #(path_encode)(#(arg.safe_ident())))?;
                         }
-                        core::RpPathPart::Segment(s) => {
+                        RpPathPart::Segment(s) => {
                             #var.push_str(#(quoted(s.as_str())));
                         }
                     })
@@ -277,8 +277,6 @@ struct Endpoint<'el> {
 
 impl<'el> FormatInto<Rust> for Endpoint<'el> {
     fn format_into(self, t: &mut Tokens<Rust>) {
-        use core::RpHttpMethod::*;
-
         let Endpoint {
             result,
             path_encode,
@@ -301,13 +299,13 @@ impl<'el> FormatInto<Rust> for Endpoint<'el> {
             .map(|a| quote!(#(a.safe_ident()): #(a.channel.ty())));
 
         let method = match http.method {
-            Get => "GET",
-            Post => "POST",
-            Put => "PUT",
-            Update => "UPDATE",
-            Delete => "DELETE",
-            Patch => "PATCH",
-            Head => "HEAD",
+            RpHttpMethod::Get => "GET",
+            RpHttpMethod::Post => "POST",
+            RpHttpMethod::Put => "PUT",
+            RpHttpMethod::Update => "UPDATE",
+            RpHttpMethod::Delete => "DELETE",
+            RpHttpMethod::Patch => "PATCH",
+            RpHttpMethod::Head => "HEAD",
         };
 
         let method_ty = rust::import("reqwest", "Method");

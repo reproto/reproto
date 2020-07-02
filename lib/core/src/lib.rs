@@ -70,7 +70,7 @@ pub use self::rp_enum::{
     RpEnumBody, RpEnumType, RpVariant, RpVariantRef, RpVariantValue, RpVariants,
 };
 pub use self::rp_field::RpField;
-pub use self::rp_file::{EnabledFeature, RpFile};
+pub use self::rp_file::{RpEnabledFeature, RpFile};
 pub use self::rp_interface::{RpInterfaceBody, RpSubType, RpSubTypeStrategy, DEFAULT_TAG};
 pub use self::rp_name::RpName;
 pub use self::rp_number::RpNumber;

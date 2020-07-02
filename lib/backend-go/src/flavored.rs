@@ -232,7 +232,7 @@ impl FlavorTranslator for GoFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         reg: RpReg,
-        name: Spanned<core::RpName<CoreFlavor>>,
+        name: Spanned<RpName<CoreFlavor>>,
     ) -> Result<GoName>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
@@ -257,14 +257,14 @@ impl FlavorTranslator for GoFlavorTranslator {
         &self,
         translator: &T,
         diag: &mut Diagnostics,
-        enum_type: core::RpEnumType,
+        enum_type: RpEnumType,
     ) -> Result<Type>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
         match enum_type {
-            core::RpEnumType::String(string) => self.translate_string(string),
-            core::RpEnumType::Number(number) => self.translate_number(number),
+            RpEnumType::String(string) => self.translate_string(string),
+            RpEnumType::Number(number) => self.translate_number(number),
         }
     }
 }

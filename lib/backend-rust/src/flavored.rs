@@ -121,9 +121,9 @@ pub(crate) enum RustFlavor {}
 impl Flavor for RustFlavor {
     type Type = Type;
     type Name = Spanned<RpName>;
-    type Field = core::RpField<RustFlavor>;
+    type Field = RpField<RustFlavor>;
     type Endpoint = RustEndpoint;
-    type Package = core::RpPackage;
+    type Package = RpPackage;
     type EnumType = Type;
 }
 
@@ -221,7 +221,7 @@ impl FlavorTranslator for RustFlavorTranslator {
         &self,
         translator: &T,
         diag: &mut Diagnostics,
-        endpoint: core::RpEndpoint<CoreFlavor>,
+        endpoint: RpEndpoint<CoreFlavor>,
     ) -> Result<RustEndpoint>
     where
         T: Translator<Source = CoreFlavor, Target = RustFlavor>,
@@ -240,14 +240,14 @@ impl FlavorTranslator for RustFlavorTranslator {
         &self,
         _: &T,
         _: &mut Diagnostics,
-        enum_type: core::RpEnumType,
+        enum_type: RpEnumType,
     ) -> Result<Type>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
         match enum_type {
-            core::RpEnumType::String(_) => Ok(Type::StaticStr),
-            core::RpEnumType::Number(number) => self.translate_number(number),
+            RpEnumType::String(_) => Ok(Type::StaticStr),
+            RpEnumType::Number(number) => self.translate_number(number),
         }
     }
 }

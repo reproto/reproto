@@ -5,7 +5,7 @@ use crate::escape::Escape;
 use crate::macros::FormatAttribute;
 use crate::processor::Processor;
 use core::errors::Result;
-use core::flavored::{RpEndpoint, RpServiceBody};
+use core::flavored::*;
 use core::Spanned;
 
 define_processor!(ServiceProcessor, RpServiceBody, self,

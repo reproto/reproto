@@ -18,10 +18,7 @@ macro_rules! number_rule {
 
 use self::spec::*;
 use core::errors::Result;
-use core::flavored::{
-    RpChannel, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpTupleBody, RpType,
-    RpTypeBody, RpVersionedPackage,
-};
+use core::flavored::*;
 use core::{
     CoreFlavor, Handle, RelativePath, RelativePathBuf, RpHttpMethod, RpNumberKind, Spanned,
 };
@@ -143,7 +140,7 @@ impl<'handle> Compiler<'handle> {
             for d in file.for_each_decl() {
                 // Use services as entrypoints.
                 let service = match *d {
-                    core::RpDecl::Service(ref service) => service,
+                    RpDecl::Service(ref service) => service,
                     _ => continue,
                 };
 
@@ -292,7 +289,7 @@ impl<'builder> SpecBuilder<'builder> {
 
             if let Some(req) = e.request.as_ref() {
                 let mut request =
-                    self.channel_to_content(&mut queue, core::RpAccept::Json, &req.channel)?;
+                    self.channel_to_content(&mut queue, RpAccept::Json, &req.channel)?;
                 request.required = true;
                 method.request_body = Some(request);
             }
@@ -323,17 +320,17 @@ impl<'builder> SpecBuilder<'builder> {
     fn channel_to_content(
         &self,
         queue: &mut VecDeque<Queued<'builder>>,
-        accept: core::RpAccept,
+        accept: RpAccept,
         channel: &'builder RpChannel,
     ) -> Result<Payload<'builder>> {
         let schema = self.type_to_schema(queue, channel.ty())?;
 
         let content_type = match accept {
-            core::RpAccept::Text => "text/plain",
-            core::RpAccept::Json => "application/json",
+            RpAccept::Text => "text/plain",
+            RpAccept::Json => "application/json",
         };
 
-        if let core::RpType::Name { ref name } = *channel.ty() {
+        if let RpType::Name { ref name } = *channel.ty() {
             queue.push_back(Queued::Named(Spanned::borrow(name)));
         }
 
@@ -365,16 +362,12 @@ impl<'builder> SpecBuilder<'builder> {
                     let decl = self.env.lookup_decl(name)?;
 
                     let schema = match *decl {
-                        core::RpDecl::Type(ref body) => {
-                            self.decl_type_to_schema(&mut queue, body)?
-                        }
-                        core::RpDecl::Interface(ref body) => {
+                        RpDecl::Type(ref body) => self.decl_type_to_schema(&mut queue, body)?,
+                        RpDecl::Interface(ref body) => {
                             self.decl_interface_to_schema(&mut queue, body)?
                         }
-                        core::RpDecl::Enum(ref body) => self.decl_enum_to_schema(body)?,
-                        core::RpDecl::Tuple(ref body) => {
-                            self.decl_tuple_to_schema(&mut queue, body)?
-                        }
+                        RpDecl::Enum(ref body) => self.decl_enum_to_schema(body)?,
+                        RpDecl::Tuple(ref body) => self.decl_tuple_to_schema(&mut queue, body)?,
                         _ => {
                             continue;
                         }
@@ -410,7 +403,7 @@ impl<'builder> SpecBuilder<'builder> {
         let decl = self.env.lookup_decl(name)?;
 
         let (body, sub_type) = match *decl {
-            core::RpDecl::Interface(ref body) => match body.sub_types.get(index) {
+            RpDecl::Interface(ref body) => match body.sub_types.get(index) {
                 Some(sub_type) => (body, sub_type),
                 None => return Err("bad sub-type index".into()),
             },
@@ -470,7 +463,7 @@ impl<'builder> SpecBuilder<'builder> {
         }
 
         match body.sub_type_strategy {
-            core::RpSubTypeStrategy::Untagged => {
+            RpSubTypeStrategy::Untagged => {
                 let mut fields = Vec::new();
                 fields.extend(body.fields());
 
@@ -488,7 +481,7 @@ impl<'builder> SpecBuilder<'builder> {
                     schema.one_of.push(spec::Schema::from(object));
                 }
             }
-            core::RpSubTypeStrategy::Tagged { ref tag } => {
+            RpSubTypeStrategy::Tagged { ref tag } => {
                 let mut discriminator = spec::Discriminator::default();
 
                 discriminator.property_name = Some(tag);
@@ -527,7 +520,7 @@ impl<'builder> SpecBuilder<'builder> {
             array.required.push(index);
 
             // reference to external type, so add to queue.
-            if let core::RpType::Name { name } = &field.ty {
+            if let RpType::Name { name } = &field.ty {
                 queue.push_back(Queued::Named(name));
             }
         }
@@ -538,7 +531,7 @@ impl<'builder> SpecBuilder<'builder> {
     /// Convert a declaration into a set of properties.
     fn decl_enum_to_schema(&self, body: &'builder RpEnumBody) -> Result<spec::Schema<'builder>> {
         let out = match body.variants {
-            core::RpVariants::String { ref variants } => {
+            RpVariants::String { ref variants } => {
                 let mut string = spec::SchemaString::default();
 
                 for v in variants {
@@ -548,8 +541,8 @@ impl<'builder> SpecBuilder<'builder> {
                 spec::Schema::from(string)
             }
             // TODO: are numeric variants supported?
-            core::RpVariants::Number { ref variants } => match body.enum_type {
-                core::RpEnumType::Number(ref number) => match number.kind {
+            RpVariants::Number { ref variants } => match body.enum_type {
+                RpEnumType::Number(ref number) => match number.kind {
                     RpNumberKind::U32 => number_rule!(variants, U32, to_u32),
                     RpNumberKind::U64 => number_rule!(variants, U64, to_u64),
                     RpNumberKind::I32 => number_rule!(variants, I32, to_i32),
@@ -651,45 +644,43 @@ impl<'builder> SpecBuilder<'builder> {
         queue: &mut VecDeque<Queued<'builder>>,
         ty: &'builder RpType,
     ) -> Result<spec::Schema<'builder>> {
-        use core::RpType::*;
-
-        let out = match *ty {
-            Name { ref name } => {
+        let out = match ty {
+            RpType::Name { name } => {
                 let ref_ = self.name_to_ref(name)?;
                 spec::Schema::from(Ref(format!("#/components/schemas/{}", ref_)))
             }
             // NB: only string keys are supported right now.
-            Map { ref value, .. } => {
+            RpType::Map { value, .. } => {
                 let mut object = spec::Object::default();
                 object.additional_properties = Some(Box::new(self.type_to_schema(queue, value)?));
                 spec::Schema::from(object)
             }
-            Array { ref inner } => {
+            RpType::Array { inner } => {
                 let mut array = spec::SchemaArray::default();
                 array.items = Some(Box::new(self.type_to_schema(queue, inner)?));
                 spec::Schema::from(array)
             }
-            String(..) => spec::Schema::from(spec::SchemaString::default()),
-            Number(ref number) => match number.kind {
+            RpType::String(..) => spec::Schema::from(spec::SchemaString::default()),
+            RpType::Number(number) => match number.kind {
                 RpNumberKind::I32 => spec::Schema::from(spec::I32::default()),
                 RpNumberKind::I64 => spec::Schema::from(spec::I64::default()),
                 RpNumberKind::U32 => spec::Schema::from(spec::U32::default()),
                 RpNumberKind::U64 => spec::Schema::from(spec::U64::default()),
             },
-            Float => spec::Schema::from(spec::Float::default()),
-            Double => spec::Schema::from(spec::Double::default()),
-            Boolean => spec::Schema::from(spec::SchemaBoolean::default()),
-            DateTime => {
+            RpType::Float => spec::Schema::from(spec::Float::default()),
+            RpType::Double => spec::Schema::from(spec::Double::default()),
+            RpType::Boolean => spec::Schema::from(spec::SchemaBoolean::default()),
+            RpType::DateTime => {
                 let mut string = spec::SchemaString::default();
                 string.format = Some(spec::Format::DateTime);
                 spec::Schema::from(string)
             }
-            Bytes => {
+            RpType::Bytes => {
                 let mut string = spec::SchemaString::default();
                 string.format = Some(spec::Format::Byte);
                 spec::Schema::from(string)
             }
-            Any => {
+            RpType::Any => {
                 queue.push_back(Queued::Any);
                 let ref_ = self.name_to_ref(&self.any_type)?;
                 spec::Schema::from(Ref(format!("#/components/schemas/{}", ref_)))
@@ -724,7 +715,7 @@ impl<'builder> SpecBuilder<'builder> {
             object.properties.insert(field.safe_ident(), schema);
 
             // reference to external type, so add to queue.
-            if let core::RpType::Name { name } = &field.ty {
+            if let RpType::Name { name } = &field.ty {
                 queue.push_back(Queued::Named(name));
             }
         }

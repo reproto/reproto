@@ -3,7 +3,7 @@ mod flavored;
 mod module;
 
 use crate::compiler::Compiler;
-use crate::flavored::{GoName, RpEnumBody, RpField, RpInterfaceBody, RpTupleBody};
+use crate::flavored::*;
 use backend::Initializer;
 use core::errors::Result;
 use core::{CoreFlavor, Handle};

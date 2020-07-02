@@ -1,13 +1,10 @@
 //! Backend for Dart
 
-use crate::flavored::{
-    DartFlavor, RpEnumBody, RpField, RpInterfaceBody, RpName, RpServiceBody, RpTupleBody,
-    RpTypeBody, Type,
-};
+use crate::flavored::*;
 use crate::utils::Comments;
 use crate::{EXT, TYPE_SEP};
 use backend::PackageProcessor;
-use core::errors::*;
+use core::errors::Result;
 use core::{Handle, Spanned};
 use genco::prelude::*;
 use genco::tokens::ItemStr;
@@ -189,7 +186,7 @@ impl<'el> Compiler<'el> {
                 #(&self.map_of_strings) _data = _dataDyn;
 
                 #(match &body.sub_type_strategy {
-                    core::RpSubTypeStrategy::Tagged { tag, .. } => {
+                    RpSubTypeStrategy::Tagged { tag, .. } => {
                         var tag = _data[#(quoted(tag.as_str()))];
 
                         switch (tag) {
@@ -201,7 +198,7 @@ impl<'el> Compiler<'el> {
                                 throw #_(bad tag: $tag);
                         }
                     }
-                    core::RpSubTypeStrategy::Untagged => {
+                    RpSubTypeStrategy::Untagged => {
                         var keys = Set.of(_data.keys);
 
                         #(for s in &body.sub_types {
@@ -337,10 +334,10 @@ impl<'el> PackageProcessor<'el, DartFlavor> for Compiler<'el> {
                 #(for v in &body.variants join (#<push>) {
                     #(Comments(v.comment))
                     #(match v.value {
-                        core::RpVariantValue::String(string) => {
+                        RpVariantValue::String(string) => {
                             static const #(v.ident()) = const #name._new(#(quoted(string)));
                         }
-                        core::RpVariantValue::Number(number) => {
+                        RpVariantValue::Number(number) => {
                             static const #(v.ident()) = const #name._new(#(display(number)));
                         }
                     })
@@ -354,8 +351,8 @@ impl<'el> PackageProcessor<'el, DartFlavor> for Compiler<'el> {
                     switch (data as #(&body.enum_type)) {
                         #(for v in &body.variants join (#<push>) {
                             case #(match v.value {
-                                core::RpVariantValue::String(string) => #(quoted(string)),
-                                core::RpVariantValue::Number(number) => #(display(number)),
+                                RpVariantValue::String(string) => #(quoted(string)),
+                                RpVariantValue::Number(number) => #(display(number)),
                             }):
                                 return #name.#(v.ident());
                         })
@@ -402,8 +399,8 @@ impl<'el> PackageProcessor<'el, DartFlavor> for Compiler<'el> {
 
                 #(&self.map_of_strings) encode();
 
-                #(if backend::code_contains!(&body.codes, core::RpContext::Dart) {
-                    #(ref t => backend::code_in!(t, &body.codes, core::RpContext::Dart))
+                #(if backend::code_contains!(&body.codes, RpContext::Dart) {
+                    #(ref t => backend::code_in!(t, &body.codes, RpContext::Dart))
                 })
             }
 
@@ -422,7 +419,7 @@ impl<'el> PackageProcessor<'el, DartFlavor> for Compiler<'el> {
                             #(ref t => self.decode_fn(t, name, &fields))
 
                             #(match &body.sub_type_strategy {
-                                core::RpSubTypeStrategy::Tagged { tag, .. } => {
+                                RpSubTypeStrategy::Tagged { tag, .. } => {
                                     #(ref t => self.encode_fn(
                                         t,
                                         s.name(),
@@ -430,13 +427,13 @@ impl<'el> PackageProcessor<'el, DartFlavor> for Compiler<'el> {
                                         Some(tag.as_str()),
                                     ))
                                 }
-                                core::RpSubTypeStrategy::Untagged => {
+                                RpSubTypeStrategy::Untagged => {
                                     #(ref t => self.encode_fn(t, s.name(), &fields, None))
                                 }
                             })
 
-                            #(if backend::code_contains!(&s.codes, core::RpContext::Dart) {
-                                #(ref t => backend::code_in!(t, &s.codes, core::RpContext::Dart))
+                            #(if backend::code_contains!(&s.codes, RpContext::Dart) {
+                                #(ref t => backend::code_in!(t, &s.codes, RpContext::Dart))
                             })
                         }
                     }

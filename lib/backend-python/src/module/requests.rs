@@ -1,6 +1,7 @@
 //! Module that adds fasterxml annotations to generated classes.
 
 use crate::codegen::{ServiceAdded, ServiceCodegen};
+use crate::flavored::*;
 use crate::utils::BlockComment;
 use crate::Options;
 use backend::Initializer;
@@ -72,7 +73,7 @@ impl ServiceCodegen for RequestsServiceCodegen {
                             .http
                             .method
                             .as_ref()
-                            .unwrap_or(&core::RpHttpMethod::Get)
+                            .unwrap_or(&RpHttpMethod::Get)
                             .as_str();
 
                         quote_in! { *t =>
@@ -86,8 +87,8 @@ impl ServiceCodegen for RequestsServiceCodegen {
                                         path.append("/")
                                         #(for part in &step.parts join (#<push>) {
                                             path.append(#(match part {
-                                                core::RpPathPart::Variable(a) => str(#(a.safe_ident())),
-                                                core::RpPathPart::Segment(s) => #(quoted(s.to_string())),
+                                                RpPathPart::Variable(a) => str(#(a.safe_ident())),
+                                                RpPathPart::Segment(s) => #(quoted(s.to_string())),
                                             }))
                                         })
                                     )
@@ -105,7 +106,7 @@ impl ServiceCodegen for RequestsServiceCodegen {
 
                                 #(if let Some(res) = &e.response =>
                                     #(match e.http.accept {
-                                        core::RpAccept::Json => {
+                                        RpAccept::Json => {
                                             data = r.json();
 
                                             #(if let Some(d) = res.ty().decode("data", 0) {
@@ -114,7 +115,7 @@ impl ServiceCodegen for RequestsServiceCodegen {
 
                                             return data
                                         }
-                                        core::RpAccept::Text => {
+                                        RpAccept::Text => {
                                             return r.text
                                         }
                                     })

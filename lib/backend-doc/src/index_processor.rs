@@ -5,7 +5,7 @@ use crate::escape::Escape;
 use crate::macros::FormatAttribute;
 use crate::processor::Processor;
 use core::errors::Result;
-use core::flavored::{RpFile, RpVersionedPackage};
+use core::flavored::*;
 
 pub struct Data<'a> {
     pub entries: Vec<(&'a RpVersionedPackage, &'a RpFile)>,

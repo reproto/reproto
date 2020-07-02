@@ -1,5 +1,5 @@
 use crate::codegen;
-use crate::flavored::{Field, RpSubType, RpSubTypeStrategy, RpVariantValue, RpVariants};
+use crate::flavored::*;
 use crate::Options;
 use core::Spanned;
 use genco::prelude::*;

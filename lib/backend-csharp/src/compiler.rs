@@ -1,9 +1,6 @@
 //! C# backend for reproto
 
-use crate::flavored::{
-    CsharpFlavor, EnumType, Field, RpDecl, RpEnumBody, RpInterfaceBody, RpServiceBody, RpSubType,
-    RpSubTypeStrategy, RpTupleBody, RpTypeBody, RpVariantRef, RpVariantValue,
-};
+use crate::flavored::*;
 use crate::processor::Processor;
 use crate::Options;
 use core::errors::Result;
@@ -197,19 +194,19 @@ impl Compiler {
 
     fn process_decl(&self, t: &mut csharp::Tokens, decl: &RpDecl) -> Result<()> {
         match decl {
-            core::RpDecl::Interface(interface) => {
+            RpDecl::Interface(interface) => {
                 self.process_interface(t, interface)?;
             }
-            core::RpDecl::Type(ty) => {
+            RpDecl::Type(ty) => {
                 self.process_type(t, ty)?;
             }
-            core::RpDecl::Tuple(ty) => {
+            RpDecl::Tuple(ty) => {
                 self.process_tuple(t, ty)?;
             }
-            core::RpDecl::Enum(ty) => {
+            RpDecl::Enum(ty) => {
                 self.process_enum(t, ty)?;
             }
-            core::RpDecl::Service(ty) => {
+            RpDecl::Service(ty) => {
                 self.process_service(t, ty)?;
             }
         }

@@ -286,7 +286,7 @@ pub struct DeriveResult {
 
 #[derive(Debug, Clone)]
 pub struct ParsedFile {
-    package: core::RpPackage,
+    package: RpPackage,
     version: Option<core::Version>,
     content: String,
 }
@@ -357,7 +357,7 @@ pub fn derive(derive: &JsValue) -> JsValue {
     /// Construct content source information.
     fn content_source(
         derive: &Derive,
-    ) -> core::errors::Result<(core::Source, Option<core::RpVersionedPackage>)> {
+    ) -> core::errors::Result<(core::Source, Option<RpVersionedPackage>)> {
         let out = match derive.content {
             Content::Content { ref content } => {
                 let bytes = content.as_bytes().to_vec();
@@ -386,14 +386,14 @@ pub fn derive(derive: &JsValue) -> JsValue {
     fn inner_derive(
         derive: Derive,
         source: &core::Source,
-        package: Option<core::RpVersionedPackage>,
+        package: Option<RpVersionedPackage>,
         reporter: &mut dyn core::Reporter,
     ) -> core::errors::Result<Vec<DeriveFile>> {
         let package_prefix = derive
             .package_prefix
             .as_ref()
-            .map(|s| core::RpPackage::parse(s))
-            .unwrap_or_else(|| core::RpPackage::parse("io.reproto.github"));
+            .map(|s| RpPackage::parse(s))
+            .unwrap_or_else(|| RpPackage::parse("io.reproto.github"));
 
         let input = match derive.format {
             Format::Json => derive_file(&derive, &package_prefix, source, Box::new(derive::Json))?,
@@ -449,8 +449,8 @@ pub fn derive(derive: &JsValue) -> JsValue {
         Ok(out)
     }
 
-    fn parse_package(file: &File) -> core::errors::Result<core::RpVersionedPackage> {
-        let package = core::RpPackage::parse(file.package.as_str());
+    fn parse_package(file: &File) -> core::errors::Result<RpVersionedPackage> {
+        let package = RpPackage::parse(file.package.as_str());
 
         let version =
             if let Some(ref version) = file.version {
@@ -461,12 +461,12 @@ pub fn derive(derive: &JsValue) -> JsValue {
                 None
             };
 
-        Ok(core::RpVersionedPackage::new(package, version))
+        Ok(RpVersionedPackage::new(package, version))
     }
 
     fn derive_file<'input>(
         derive: &Derive,
-        package_prefix: &core::RpPackage,
+        package_prefix: &RpPackage,
         source: &'input core::Source,
         format: Box<dyn derive::Format>,
     ) -> core::errors::Result<compile::Input<'input>> {
@@ -488,7 +488,7 @@ pub fn derive(derive: &JsValue) -> JsValue {
 
         let input = compile::Input::File(
             file,
-            Some(core::RpVersionedPackage::new(package_prefix.clone(), None)),
+            Some(RpVersionedPackage::new(package_prefix.clone(), None)),
         );
 
         Ok(input)
@@ -501,7 +501,7 @@ struct MapResolver(Vec<ParsedFile>);
 impl core::Resolver for MapResolver {
     fn resolve(
         &mut self,
-        required: &core::RpRequiredPackage,
+        required: &RpRequiredPackage,
     ) -> core::errors::Result<Option<core::Resolved>> {
         let mut matches = BTreeMap::new();
 
@@ -536,7 +536,7 @@ impl core::Resolver for MapResolver {
 
     fn resolve_by_prefix(
         &mut self,
-        prefix: &core::RpPackage,
+        prefix: &RpPackage,
     ) -> core::errors::Result<Vec<core::ResolvedByPrefix>> {
         let mut out = Vec::new();
 
@@ -545,7 +545,7 @@ impl core::Resolver for MapResolver {
                 let bytes = file.content.as_bytes().to_vec();
                 let source = core::Source::bytes(file.package.to_string(), bytes);
                 let package =
-                    core::RpVersionedPackage::new(file.package.clone(), file.version.clone());
+                    RpVersionedPackage::new(file.package.clone(), file.version.clone());
 
                 out.push(core::ResolvedByPrefix { package, source })
             }
@@ -555,6 +555,6 @@ impl core::Resolver for MapResolver {
     }
 
     fn resolve_packages(&mut self) -> core::errors::Result<Vec<core::ResolvedByPrefix>> {
-        self.resolve_by_prefix(&core::RpPackage::empty())
+        self.resolve_by_prefix(&RpPackage::empty())
     }
 }

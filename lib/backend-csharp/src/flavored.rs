@@ -180,7 +180,7 @@ impl Flavor for CsharpFlavor {
     type Name = Spanned<RpName>;
     type Field = Field;
     type Endpoint = RpEndpoint;
-    type Package = core::RpPackage;
+    type Package = RpPackage;
     type EnumType = EnumType;
 }
 
@@ -221,7 +221,7 @@ impl FlavorTranslator for CsharpFlavorTranslator {
         &self,
         translator: &T,
         diag: &mut core::Diagnostics,
-        field: core::RpField<Self::Source>,
+        field: RpField<Self::Source>,
     ) -> Result<Field>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
@@ -308,14 +308,14 @@ impl FlavorTranslator for CsharpFlavorTranslator {
         &self,
         translator: &T,
         diag: &mut Diagnostics,
-        enum_type: core::RpEnumType,
+        enum_type: RpEnumType,
     ) -> Result<EnumType>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
         Ok(match enum_type {
-            core::RpEnumType::String(string) => EnumType::String,
-            core::RpEnumType::Number(number) => match number.kind {
+            RpEnumType::String(string) => EnumType::String,
+            RpEnumType::Number(number) => match number.kind {
                 RpNumberKind::U32 => EnumType::Int,
                 RpNumberKind::I32 => EnumType::Int,
                 RpNumberKind::U64 => EnumType::Long,

@@ -1,15 +1,12 @@
 //! Python Compiler
 
 use crate::codegen::{ServiceAdded, ServiceCodegen};
-use crate::flavored::{
-    Name, PythonFlavor, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpServiceBody,
-    RpTupleBody, RpTypeBody,
-};
+use crate::flavored::*;
 use crate::utils::BlockComment;
 use crate::{Options, EXT, INIT_PY};
 use backend::PackageProcessor;
-use core::errors::*;
-use core::{self, Handle, RelativePathBuf, Spanned};
+use core::errors::Result;
+use core::{Handle, RelativePathBuf, Spanned};
 use genco::prelude::*;
 use naming::{self, Naming};
 use std::collections::BTreeMap;
@@ -257,10 +254,10 @@ impl<'el> Compiler<'el> {
         while let Some(v) = it.next() {
             quote_in! { args =>
                 (#(quoted(v.ident())), #(match &v.value {
-                    core::RpVariantValue::String(string) => {
+                    RpVariantValue::String(string) => {
                         #(quoted(*string))
                     }
-                    core::RpVariantValue::Number(number) => {
+                    RpVariantValue::Number(number) => {
                         #(number.to_string())
                     }
                 }))
@@ -306,8 +303,8 @@ impl<'el> PackageProcessor<'el, PythonFlavor> for Compiler<'el> {
 
                 #(ref t => self.repr_method(t, &body.name, &body.fields))
 
-                #(if backend::code_contains!(&body.codes, core::RpContext::Python) =>
-                    #(ref t => backend::code_in!(t, &body.codes, core::RpContext::Python))
+                #(if backend::code_contains!(&body.codes, RpContext::Python) =>
+                    #(ref t => backend::code_in!(t, &body.codes, RpContext::Python))
                 )
         }
 
@@ -327,8 +324,8 @@ impl<'el> PackageProcessor<'el, PythonFlavor> for Compiler<'el> {
 
                 #(ref t => self.repr_method(t, &body.name, slice::from_ref(&self.variant_field)))
 
-                #(if backend::code_contains!(&body.codes, core::RpContext::Python) =>
-                    #(ref t => backend::code_in!(t, &body.codes, core::RpContext::Python))
+                #(if backend::code_contains!(&body.codes, RpContext::Python) =>
+                    #(ref t => backend::code_in!(t, &body.codes, RpContext::Python))
                 )
         }
 
@@ -369,8 +366,8 @@ impl<'el> PackageProcessor<'el, PythonFlavor> for Compiler<'el> {
 
                 #(ref t => self.repr_method(t, &body.name, &body.fields))
 
-                #(if backend::code_contains!(&body.codes, core::RpContext::Python) =>
-                    #(ref t => backend::code_in!(t, &body.codes, core::RpContext::Python))
+                #(if backend::code_contains!(&body.codes, RpContext::Python) =>
+                    #(ref t => backend::code_in!(t, &body.codes, RpContext::Python))
                 )
         }
 
@@ -381,16 +378,16 @@ impl<'el> PackageProcessor<'el, PythonFlavor> for Compiler<'el> {
         quote_in! { *out =>
             class #(&body.name):
                 #(match &body.sub_type_strategy {
-                    core::RpSubTypeStrategy::Tagged { tag, .. } => {
+                    RpSubTypeStrategy::Tagged { tag, .. } => {
                         #(ref t => decode_from_tag(t, &body, tag))
                     }
-                    core::RpSubTypeStrategy::Untagged => {
+                    RpSubTypeStrategy::Untagged => {
                         #(ref t => decode_from_untagged(t, &body))
                     }
                 })
 
-                #(if backend::code_contains!(&body.codes, core::RpContext::Python) =>
-                    #(ref t => backend::code_in!(t, &body.codes, core::RpContext::Python))
+                #(if backend::code_contains!(&body.codes, RpContext::Python) =>
+                    #(ref t => backend::code_in!(t, &body.codes, RpContext::Python))
                 )
 
             #(for sub_type in &body.sub_types join (#<line>) {
@@ -415,7 +412,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor> for Compiler<'el> {
                             }))
 
                             #(match &body.sub_type_strategy {
-                                core::RpSubTypeStrategy::Tagged { tag, .. } => {
+                                RpSubTypeStrategy::Tagged { tag, .. } => {
                                     #(ref t => self.encode_method(
                                         t,
                                         &fields,
@@ -423,15 +420,15 @@ impl<'el> PackageProcessor<'el, PythonFlavor> for Compiler<'el> {
                                         Some(quote!(data[#(quoted(tag.as_str()))] = #(quoted(sub_type.name())))),
                                     ))
                                 }
-                                core::RpSubTypeStrategy::Untagged => {
+                                RpSubTypeStrategy::Untagged => {
                                     #(ref t => self.encode_method(t, &fields, quote!(dict), None))
                                 }
                             })
 
                             #(ref t => self.repr_method(t, &sub_type.name, &fields))
 
-                            #(if backend::code_contains!(&sub_type.codes, core::RpContext::Python) =>
-                                #(ref t => backend::code_in!(t, &sub_type.codes, core::RpContext::Python))
+                            #(if backend::code_contains!(&sub_type.codes, RpContext::Python) =>
+                                #(ref t => backend::code_in!(t, &sub_type.codes, RpContext::Python))
                             )
                     }
                 })
@@ -521,7 +518,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor> for Compiler<'el> {
                 out.line();
             }
 
-            if let core::RpDecl::Enum(ref body) = *decl {
+            if let RpDecl::Enum(ref body) = *decl {
                 enums.push(body);
             }
 

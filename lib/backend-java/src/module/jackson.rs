@@ -1,11 +1,11 @@
 //! Module that adds fasterxml annotations to generated classes.
 
 use crate::codegen;
-use crate::flavored::{Primitive, RpField, Type};
+use crate::flavored::*;
 use crate::Options;
-use core::RpSubTypeStrategy;
 use genco::prelude::*;
 use std::rc::Rc;
+use RpSubTypeStrategy;
 
 pub struct Module;
 

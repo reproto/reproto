@@ -1,11 +1,9 @@
 //! Backend for Go
 
-use crate::flavored::{
-    GoFlavor, GoName, RpEnumBody, RpField, RpInterfaceBody, RpPackage, RpTupleBody, RpTypeBody,
-};
+use crate::flavored::*;
 use crate::{EnumAdded, FieldAdded, FileSpec, InterfaceAdded, Options, Tags, TupleAdded, EXT};
 use backend::PackageProcessor;
-use core::errors::*;
+use core::errors::Result;
 use core::{Handle, RelativePathBuf, Spanned};
 use genco::prelude::*;
 use genco::tokens::{FormatInto, ItemStr};

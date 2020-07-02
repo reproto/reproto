@@ -1,4 +1,4 @@
-use crate::flavored::{Field, RpSubType, RpSubTypeStrategy, Type};
+use crate::flavored::*;
 use core::Spanned;
 use genco::lang::java;
 use std::rc::Rc;

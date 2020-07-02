@@ -1,6 +1,6 @@
 use super::{LockableWrite, Output};
 use core::errors::Result;
-use core::flavored::RpName;
+use core::flavored::*;
 use core::{Encoding, Source, Span, SymbolKind};
 use serde::Serialize;
 use std::io;

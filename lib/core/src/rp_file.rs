@@ -8,7 +8,7 @@ use std::collections::VecDeque;
 
 /// Information about an enabled feature.
 #[derive(Debug, Clone, Serialize)]
-pub struct EnabledFeature {
+pub struct RpEnabledFeature {
     pub span: Span,
 }
 
@@ -26,7 +26,7 @@ where
     /// The schema version in use.
     pub version: Version,
     /// Features enabled and where they are enabled.
-    pub features: LinkedHashMap<&'static str, EnabledFeature>,
+    pub features: LinkedHashMap<&'static str, RpEnabledFeature>,
     /// All nested declarations.
     pub decls: Vec<RpDecl<F>>,
     /// references to the local idents of the declarations.

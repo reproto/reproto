@@ -2,7 +2,7 @@ use super::Objects;
 use crate::index::{Deployment, Index};
 use crate::sha256::to_sha256;
 use crate::update::Update;
-use core::errors::*;
+use core::errors::Result;
 use core::{
     Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage, Source,
     Version,

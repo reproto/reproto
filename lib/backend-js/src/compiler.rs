@@ -1,6 +1,4 @@
-use crate::flavored::{
-    JavaScriptFlavor, Name, RpEnumBody, RpField, RpInterfaceBody, RpTupleBody, RpTypeBody,
-};
+use crate::flavored::*;
 use crate::utils::{is_defined, is_not_defined};
 use crate::{FileSpec, Options, EXT};
 use backend::PackageProcessor;
@@ -310,8 +308,8 @@ impl<'a> PackageProcessor<'a, JavaScriptFlavor> for Compiler<'a> {
 
                 #(ref o => self.encode_tuple_method(o, &body.fields))
 
-                #(if backend::code_contains!(&body.codes, core::RpContext::Js) {
-                    #(ref o => backend::code_in!(o, &body.codes, core::RpContext::Js))
+                #(if backend::code_contains!(&body.codes, RpContext::Js) {
+                    #(ref o => backend::code_in!(o, &body.codes, RpContext::Js))
                 })
             }
         }
@@ -333,8 +331,8 @@ impl<'a> PackageProcessor<'a, JavaScriptFlavor> for Compiler<'a> {
 
                 #(ref o => self.decode_enum_method(o, &body.name, &variant_field))
 
-                #(if backend::code_contains!(&body.codes, core::RpContext::Js) {
-                    #(ref o => backend::code_in!(o, &body.codes, core::RpContext::Js))
+                #(if backend::code_contains!(&body.codes, RpContext::Js) {
+                    #(ref o => backend::code_in!(o, &body.codes, RpContext::Js))
                 })
             }
 
@@ -344,10 +342,10 @@ impl<'a> PackageProcessor<'a, JavaScriptFlavor> for Compiler<'a> {
                 quote_in! { *o =>
                     #<push>
                     #(&body.name).#(v.ident()) = new #(&body.name)(#(quoted(v.ident())), #(match v.value {
-                        core::RpVariantValue::String(string) => {
+                        RpVariantValue::String(string) => {
                             #(quoted(string))
                         }
-                        core::RpVariantValue::Number(number) => {
+                        RpVariantValue::Number(number) => {
                             #(display(number))
                         }
                     }));
@@ -375,8 +373,8 @@ impl<'a> PackageProcessor<'a, JavaScriptFlavor> for Compiler<'a> {
 
                 #(ref o => self.encode_method(o, &body.fields, "{}", None))
 
-                #(if backend::code_contains!(&body.codes, core::RpContext::Js) {
-                    #(ref o => backend::code_in!(o, &body.codes, core::RpContext::Js))
+                #(if backend::code_contains!(&body.codes, RpContext::Js) {
+                    #(ref o => backend::code_in!(o, &body.codes, RpContext::Js))
                 })
             }
         }
@@ -388,16 +386,16 @@ impl<'a> PackageProcessor<'a, JavaScriptFlavor> for Compiler<'a> {
         quote_in! { out.0 =>
             export class #(&body.name) {
                 #(match &body.sub_type_strategy {
-                    core::RpSubTypeStrategy::Tagged { tag, .. } => {
+                    RpSubTypeStrategy::Tagged { tag, .. } => {
                         #(ref o => decode(o, &body, tag.as_str()))
                     }
-                    core::RpSubTypeStrategy::Untagged => {
+                    RpSubTypeStrategy::Untagged => {
                         #(ref o => decode_untagged(o, body))
                     }
                 })
 
-                #(if backend::code_contains!(&body.codes, core::RpContext::Js) {
-                    #(ref o => backend::code_in!(o, &body.codes, core::RpContext::Js))
+                #(if backend::code_contains!(&body.codes, RpContext::Js) {
+                    #(ref o => backend::code_in!(o, &body.codes, RpContext::Js))
                 })
             }
 
@@ -421,7 +419,7 @@ impl<'a> PackageProcessor<'a, JavaScriptFlavor> for Compiler<'a> {
                     })
 
                     #(match &body.sub_type_strategy {
-                        core::RpSubTypeStrategy::Tagged { tag, .. } => {
+                        RpSubTypeStrategy::Tagged { tag, .. } => {
                             #(ref o => {
                                 self.encode_method(
                                     o,
@@ -431,15 +429,15 @@ impl<'a> PackageProcessor<'a, JavaScriptFlavor> for Compiler<'a> {
                                 )
                             })
                         }
-                        core::RpSubTypeStrategy::Untagged => {
+                        RpSubTypeStrategy::Untagged => {
                             #(ref o => {
                                 self.encode_method(o, body.fields.iter().chain(sub_type.fields.iter()), "{}", None)
                             })
                         }
                     })
 
-                    #(if backend::code_contains!(&sub_type.codes, core::RpContext::Js) {
-                        #(ref o => backend::code_in!(o, &sub_type.codes, core::RpContext::Js))
+                    #(if backend::code_contains!(&sub_type.codes, RpContext::Js) {
+                        #(ref o => backend::code_in!(o, &sub_type.codes, RpContext::Js))
                     })
                 }
             })

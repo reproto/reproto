@@ -11,7 +11,7 @@ use crate::service_processor::ServiceProcessor;
 use crate::tuple_processor::TupleProcessor;
 use crate::type_processor::TypeProcessor;
 use core::errors::Result;
-use core::flavored::{RpDecl, RpFile, RpVersionedPackage};
+use core::flavored::*;
 use core::{AsPackage, CoreFlavor};
 use genco::IoFmt;
 use std::cell::RefCell;
@@ -58,8 +58,6 @@ impl<'a> DocCompiler<'a> {
 
     /// Process a single declaration.
     fn process_decl(&self, decl: &RpDecl) -> Result<()> {
-        use core::RpDecl::*;
-
         let package = decl.name().package.try_as_package()?;
 
         // maintain to know where to import static resources from.
@@ -88,44 +86,44 @@ impl<'a> DocCompiler<'a> {
         let out = RefCell::new(DocBuilder::new(&mut fmt));
 
         match *decl {
-            Interface(ref body) => InterfaceProcessor {
-                out: out,
+            RpDecl::Interface(ref body) => InterfaceProcessor {
+                out,
                 session: &self.session,
                 syntax: (self.syntax_theme, self.syntax_set),
                 root: &root,
-                body: body,
+                body,
             }
             .process(),
-            Type(ref body) => TypeProcessor {
-                out: out,
+            RpDecl::Type(ref body) => TypeProcessor {
+                out,
                 session: &self.session,
                 syntax: (self.syntax_theme, self.syntax_set),
                 root: &root,
-                body: body,
+                body,
             }
             .process(),
-            Tuple(ref body) => TupleProcessor {
-                out: out,
+            RpDecl::Tuple(ref body) => TupleProcessor {
+                out,
                 session: &self.session,
                 syntax: (self.syntax_theme, self.syntax_set),
                 root: &root,
-                body: body,
+                body,
             }
             .process(),
-            Enum(ref body) => EnumProcessor {
-                out: out,
+            RpDecl::Enum(ref body) => EnumProcessor {
+                out,
                 session: &self.session,
                 syntax: (self.syntax_theme, self.syntax_set),
                 root: &root,
-                body: body,
+                body,
             }
             .process(),
-            Service(ref body) => ServiceProcessor {
-                out: out,
+            RpDecl::Service(ref body) => ServiceProcessor {
+                out,
                 session: &self.session,
                 syntax: (self.syntax_theme, self.syntax_set),
                 root: &root,
-                body: body,
+                body,
             }
             .process(),
         }

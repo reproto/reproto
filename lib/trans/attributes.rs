@@ -4,11 +4,8 @@ use crate::features::Feature;
 use crate::into_model::IntoModel;
 use crate::scope::Scope;
 use core::errors::Error;
-use core::flavored::{
-    Attributes, RpAccept, RpChannel, RpEndpointArgument, RpEndpointHttp, RpHttpMethod, RpPathSpec,
-    RpValue,
-};
-use core::{self, Diagnostics, Import, RpStringValidate, Span, Spanned, Version, WithSpan};
+use core::flavored::*;
+use core::{Diagnostics, Import, RpStringValidate, Span, Spanned, Version, WithSpan};
 use std::collections::HashMap;
 
 /// `#![feature(..)]` attributes.
@@ -159,8 +156,8 @@ where
         let a = accept.as_string().with_span(diag, span)?;
 
         let accept = match a {
-            "application/json" => core::RpAccept::Json,
-            "text/plain" => core::RpAccept::Text,
+            "application/json" => RpAccept::Json,
+            "text/plain" => RpAccept::Text,
             _ => {
                 diag.err(span, "unsupported media type");
                 return Err(());
@@ -228,18 +225,16 @@ where
 
     /// Parse a method.
     fn parse_method(diag: &mut Diagnostics, method: Spanned<RpValue>) -> Result<RpHttpMethod, ()> {
-        use core::RpHttpMethod::*;
-
         let (method, span) = Spanned::take_pair(method);
 
         let m = match method.as_string().with_span(diag, &span)? {
-            "GET" => Get,
-            "POST" => Post,
-            "PUT" => Put,
-            "UPDATE" => Update,
-            "DELETE" => Delete,
-            "PATCH" => Patch,
-            "HEAD" => Head,
+            "GET" => RpHttpMethod::Get,
+            "POST" => RpHttpMethod::Post,
+            "PUT" => RpHttpMethod::Put,
+            "UPDATE" => RpHttpMethod::Update,
+            "DELETE" => RpHttpMethod::Delete,
+            "PATCH" => RpHttpMethod::Patch,
+            "HEAD" => RpHttpMethod::Head,
             method => {
                 diag.err(span, format!("no such method: {}", method));
                 return Err(());
@@ -264,9 +259,9 @@ where
 
         match *accept {
             // Can handle complex data types.
-            ref accept if *accept == core::RpAccept::Json => return Ok(()),
+            ref accept if *accept == RpAccept::Json => return Ok(()),
             _ => {
-                if let core::RpType::String(..) = *response.ty() {
+                if let RpType::String(..) = *response.ty() {
                     return Ok(());
                 }
 

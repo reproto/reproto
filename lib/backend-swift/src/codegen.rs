@@ -1,4 +1,4 @@
-use crate::flavored::{Field, Name, RpEnumBody, RpInterfaceBody, RpPackage};
+use crate::flavored::*;
 use crate::Compiler;
 use core::Spanned;
 use genco::prelude::*;

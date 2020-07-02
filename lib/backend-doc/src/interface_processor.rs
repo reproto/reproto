@@ -4,7 +4,7 @@ use crate::doc_builder::DocBuilder;
 use crate::macros::FormatAttribute;
 use crate::processor::Processor;
 use core::errors::Result;
-use core::flavored::{RpInterfaceBody, RpSubType};
+use core::flavored::*;
 
 define_processor!(InterfaceProcessor, RpInterfaceBody, self,
     process => {

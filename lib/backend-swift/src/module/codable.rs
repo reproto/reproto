@@ -1,7 +1,7 @@
 //! gRPC module for Rust.
 
 use crate::codegen;
-use crate::flavored::{Field, Name, RpEnumBody, RpInterfaceBody, RpPackage, Type};
+use crate::flavored::*;
 use crate::Options;
 use backend::Initializer;
 use core::errors::Result;
@@ -462,13 +462,13 @@ impl codegen::enum_added::Codegen for Codegen {
 
                         switch try value.decode(#(&body.enum_type).self) {
                         #(match &body.variants {
-                            core::RpVariants::String { variants } => {
+                            RpVariants::String { variants } => {
                                 #(for v in variants join (#<push>) {
                                     case #(quoted(v.value.to_string())):
                                         self = .#(v.ident())
                                 })
                             }
-                            core::RpVariants::Number { variants } => {
+                            RpVariants::Number { variants } => {
                                 #(for v in variants join (#<push>) {
                                     case #(v.value.to_string()):
                                         self = .#(v.ident())
@@ -496,13 +496,13 @@ impl codegen::enum_added::Codegen for Codegen {
 
                         switch self {
                         #(match &body.variants {
-                            core::RpVariants::String { variants } => {
+                            RpVariants::String { variants } => {
                                 #(for v in variants join (#<push>) {
                                     case .#(v.ident()):
                                         try value.encode(#(quoted(v.value.to_string())))
                                 })
                             }
-                            core::RpVariants::Number { variants } => {
+                            RpVariants::Number { variants } => {
                                 #(for v in variants {
                                     case .#(v.ident()):
                                         try value.encode(#(v.value.to_string()))
@@ -554,10 +554,10 @@ impl codegen::interface_added::Codegen for Codegen {
             return quote_fn! {
                 extension #name: Decodable {
                     #(match &body.sub_type_strategy {
-                        core::RpSubTypeStrategy::Tagged { tag, .. } => {
+                        RpSubTypeStrategy::Tagged { tag, .. } => {
                             #(ref o => tagged_init(o, body, tag))
                         }
-                        core::RpSubTypeStrategy::Untagged => {
+                        RpSubTypeStrategy::Untagged => {
                             #(ref o => untagged_init(o, body))
                         }
                     })
@@ -617,10 +617,10 @@ impl codegen::interface_added::Codegen for Codegen {
             return quote_fn! {
                 extension #name: Encodable {
                     #(ref o => match body.sub_type_strategy {
-                        core::RpSubTypeStrategy::Tagged { .. } => {
+                        RpSubTypeStrategy::Tagged { .. } => {
                             encode_tagged(o, body);
                         }
-                        core::RpSubTypeStrategy::Untagged => {
+                        RpSubTypeStrategy::Untagged => {
                             encode_untagged(o, body);
                         }
                     })
@@ -666,14 +666,14 @@ impl codegen::interface_model_added::Codegen for Codegen {
         } = e;
 
         match &body.sub_type_strategy {
-            core::RpSubTypeStrategy::Tagged { tag, .. } => {
+            RpSubTypeStrategy::Tagged { tag, .. } => {
                 container.push(quote! {
                     enum CodingKeys: String, CodingKey {
                         case tag = #(quoted(tag.as_str()))
                     }
                 });
             }
-            core::RpSubTypeStrategy::Untagged => {
+            RpSubTypeStrategy::Untagged => {
                 let all = body
                     .sub_types
                     .iter()

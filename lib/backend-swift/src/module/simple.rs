@@ -2,11 +2,11 @@
 
 use crate::codegen;
 use crate::compiler::Comments;
-use crate::flavored::{Field, Name, RpEnumBody, RpInterfaceBody, RpPackage, RpSubType};
+use crate::flavored::*;
 use crate::Options;
 use backend::Initializer;
 use core::errors::Result;
-use core::{self, Spanned};
+use core::Spanned;
 use genco::prelude::*;
 use genco::tokens::ItemStr;
 use std::rc::Rc;
@@ -429,13 +429,13 @@ impl codegen::enum_added::Codegen for Codegen {
 
                     switch value {
                     #(match &body.variants {
-                        core::RpVariants::String { variants } => {
+                        RpVariants::String { variants } => {
                             #(for v in variants {
                                 case #(quoted(v.value.to_string())):
                                     return #name.#(v.ident())
                             })
                         }
-                        core::RpVariants::Number { variants } => {
+                        RpVariants::Number { variants } => {
                             #(for v in variants {
                                 case #(v.value.to_string()):
                                     return #name.#(v.ident())
@@ -454,13 +454,13 @@ impl codegen::enum_added::Codegen for Codegen {
                 func encode() throws -> #(&body.enum_type) {
                     switch self {
                     #(match &body.variants {
-                        core::RpVariants::String { variants } => {
+                        RpVariants::String { variants } => {
                             #(for v in variants join (#<push>) {
                                 case .#(v.ident()):
                                     return #(quoted(v.value.to_string()))
                             })
                         }
-                        core::RpVariants::Number { variants } => {
+                        RpVariants::Number { variants } => {
                             #(for v in variants join (#<push>) {
                                 case .#(v.ident()):
                                     return #(v.value.to_string())
@@ -487,11 +487,11 @@ impl codegen::interface_added::Codegen for Codegen {
             #(Comments(&body.comment))
             public extension #name {
                 #(match &body.sub_type_strategy {
-                    core::RpSubTypeStrategy::Tagged { tag, .. } => {
+                    RpSubTypeStrategy::Tagged { tag, .. } => {
                         #(decode_tag(name, tag.as_str(), &body.sub_types))
                         #(encode_tag(tag.as_str(), &body.sub_types))
                     }
-                    core::RpSubTypeStrategy::Untagged => {
+                    RpSubTypeStrategy::Untagged => {
                         #(decode_untagged(name, body))
                         #(encode_untagged(&body.sub_types))
                     }

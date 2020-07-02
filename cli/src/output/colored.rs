@@ -1,7 +1,7 @@
 use super::{LockableWrite, Output};
 use ansi_term::Colour::{self, Blue, Red};
 use core::errors::Result;
-use core::{self, Source, Span};
+use core::{Source, Span};
 use log;
 use std::io;
 

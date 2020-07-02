@@ -5,7 +5,7 @@ use crate::escape::Escape;
 use crate::macros::FormatAttribute;
 use crate::processor::Processor;
 use core::errors::Result;
-use core::flavored::{RpEnumBody, RpVariantRef};
+use core::flavored::*;
 
 define_processor!(EnumProcessor, RpEnumBody, self,
     process => {
@@ -57,11 +57,11 @@ impl<'p> EnumProcessor<'p> {
                 html!(self, span {class => "keyword"} ~ "as");
 
                 match variant.value {
-                    core::RpVariantValue::String(string) => {
+                    RpVariantValue::String(string) => {
                         html!(self, span {class => "variant-ordinal"} ~
                             Escape(format!("\"{}\"", string).as_str()));
                     }
-                    core::RpVariantValue::Number(number) => {
+                    RpVariantValue::Number(number) => {
                         html!(self, span {class => "variant-ordinal"} ~
                             Escape(number.to_string().as_str()));
                     }
@@ -97,11 +97,11 @@ impl<'p> EnumProcessor<'p> {
                 html!(self, span {class => "keyword"} ~ "as");
 
                 match variant.value {
-                    core::RpVariantValue::String(string) => {
+                    RpVariantValue::String(string) => {
                         html!(self, span {class => "variant-ordinal"} ~
                             Escape(format!("\"{}\"", string).as_str()));
                     }
-                    core::RpVariantValue::Number(number) => {
+                    RpVariantValue::Number(number) => {
                         html!(self, span {class => "variant-ordinal"} ~
                             Escape(number.to_string().as_str()));
                     }

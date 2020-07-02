@@ -282,7 +282,7 @@ impl FlavorTranslator for PythonFlavorTranslator {
         translator: &T,
         diag: &mut Diagnostics,
         reg: RpReg,
-        name: Spanned<core::RpName<CoreFlavor>>,
+        name: Spanned<RpName<CoreFlavor>>,
     ) -> Result<Name>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,

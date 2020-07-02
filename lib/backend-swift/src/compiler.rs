@@ -1,8 +1,6 @@
 //! Backend for Swift
 
-use crate::flavored::{
-    Field, Name, RpEnumBody, RpInterfaceBody, RpTupleBody, RpTypeBody, SwiftFlavor,
-};
+use crate::flavored::*;
 use crate::{Options, EXT};
 use backend::PackageProcessor;
 use core::errors::Result;

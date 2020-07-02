@@ -228,7 +228,7 @@ impl GrpcClient {
 
     /// Get the MethodType variant for the given endpoint.
     fn method_type(&self, e: &Spanned<JavaEndpoint>) -> Result<MethodType> {
-        use core::RpChannel::*;
+        use RpChannel::*;
 
         let request = e.request.as_ref().map(|v| Spanned::borrow(&v.channel));
         let response = e.response.as_ref().map(|v| Spanned::borrow(v));

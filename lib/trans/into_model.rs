@@ -6,7 +6,7 @@ use ast::*;
 use core::errors::Error;
 use core::flavored::*;
 use core::{
-    BigInt, Diagnostics, EnabledFeature, Import, Range, RpNumberKind, RpNumberType,
+    BigInt, Diagnostics, Import, Range, RpEnabledFeature, RpNumberKind, RpNumberType,
     RpNumberValidate, RpStringType, RpStringValidate, Span, Spanned, SymbolKind, WithSpan,
 };
 use linked_hash_map::LinkedHashMap;
@@ -59,7 +59,7 @@ macro_rules! check_conflict {
 macro_rules! check_field_tag {
     ($diag:ident, $field:expr, $strategy:expr) => {
         match $strategy {
-            core::RpSubTypeStrategy::Tagged { ref tag, .. } => {
+            RpSubTypeStrategy::Tagged { ref tag, .. } => {
                 if $field.name() == tag {
                     $diag.err(
                         &$field.span(),
@@ -273,46 +273,46 @@ impl<'input> IntoModel for (Option<&'input mut Attributes>, Spanned<Type<'input>
         let (ty, span) = Spanned::take_pair(ty);
 
         let out = match ty {
-            Double => core::RpType::Double,
-            Float => core::RpType::Float,
-            Unsigned { size: 32 } => core::RpType::Number(RpNumberType {
+            Double => RpType::Double,
+            Float => RpType::Float,
+            Unsigned { size: 32 } => RpType::Number(RpNumberType {
                 kind: RpNumberKind::U32,
                 validate: RpNumberValidate::default(),
             }),
-            Unsigned { size: 64 } => core::RpType::Number(RpNumberType {
+            Unsigned { size: 64 } => RpType::Number(RpNumberType {
                 kind: RpNumberKind::U64,
                 validate: RpNumberValidate::default(),
             }),
-            Signed { size: 32 } => core::RpType::Number(RpNumberType {
+            Signed { size: 32 } => RpType::Number(RpNumberType {
                 kind: RpNumberKind::I32,
                 validate: RpNumberValidate::default(),
             }),
-            Signed { size: 64 } => core::RpType::Number(RpNumberType {
+            Signed { size: 64 } => RpType::Number(RpNumberType {
                 kind: RpNumberKind::I64,
                 validate: RpNumberValidate::default(),
             }),
-            Boolean => core::RpType::Boolean,
+            Boolean => RpType::Boolean,
             String => {
                 let validate = match attributes {
                     Some(attributes) => attributes::string_validate(diag, attributes)?,
                     None => RpStringValidate::default(),
                 };
 
-                core::RpType::String(RpStringType { validate })
+                RpType::String(RpStringType { validate })
             }
-            DateTime => core::RpType::DateTime,
-            Name { name } => core::RpType::Name {
+            DateTime => RpType::DateTime,
+            Name { name } => RpType::Name {
                 name: name.into_model(diag, scope)?,
             },
-            Array { inner } => core::RpType::Array {
+            Array { inner } => RpType::Array {
                 inner: inner.into_model(diag, scope)?,
             },
-            Map { key, value } => core::RpType::Map {
+            Map { key, value } => RpType::Map {
                 key: key.into_model(diag, scope)?,
                 value: value.into_model(diag, scope)?,
             },
-            Any => core::RpType::Any,
-            Bytes => core::RpType::Bytes,
+            Any => RpType::Any,
+            Bytes => RpType::Bytes,
             Error { .. } => {
                 diag.err(span, "expected type, like: `string`, `u32`, or `MyType`");
                 return Err(());
@@ -339,11 +339,11 @@ impl<'input> IntoModel for Decl<'input> {
         scope.push(Spanned::take(self.name()));
 
         let out = match self {
-            Type(body) => body.into_model(diag, scope).map(core::RpDecl::Type),
-            Interface(body) => body.into_model(diag, scope).map(core::RpDecl::Interface),
-            Enum(body) => body.into_model(diag, scope).map(core::RpDecl::Enum),
-            Tuple(body) => body.into_model(diag, scope).map(core::RpDecl::Tuple),
-            Service(body) => body.into_model(diag, scope).map(core::RpDecl::Service),
+            Type(body) => body.into_model(diag, scope).map(RpDecl::Type),
+            Interface(body) => body.into_model(diag, scope).map(RpDecl::Interface),
+            Enum(body) => body.into_model(diag, scope).map(RpDecl::Enum),
+            Tuple(body) => body.into_model(diag, scope).map(RpDecl::Tuple),
+            Service(body) => body.into_model(diag, scope).map(RpDecl::Service),
         };
 
         scope.pop();
@@ -366,7 +366,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
             ) => {
             match $enum_type {
                 $(
-                core::RpEnumType::$ty(ref $type_field) => {
+                RpEnumType::$ty(ref $type_field) => {
                     let mut out = Vec::new();
 
                     let mut idents = HashMap::new();
@@ -386,7 +386,7 @@ impl<'input> IntoModel for Item<'input, EnumBody<'input>> {
                         return Err(());
                     }
 
-                    core::RpVariants::$out { variants: out }
+                    RpVariants::$out { variants: out }
                 }
                 )*
             }
@@ -871,7 +871,7 @@ impl<'input> IntoModel for File<'input> {
         for feature in attributes::features(scope, diag, &mut attributes)? {
             let (feature, span) = Spanned::borrow_pair(&feature);
 
-            if let Some(e) = features.insert(feature.name, EnabledFeature { span }) {
+            if let Some(e) = features.insert(feature.name, RpEnabledFeature { span }) {
                 diag.err(span, "feature already activated");
                 diag.info(e.span, "already activated here");
                 return Err(());
@@ -1035,7 +1035,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
 
         // check that we are not violating any constraints.
         match *&sub_type_strategy {
-            core::RpSubTypeStrategy::Untagged => {
+            RpSubTypeStrategy::Untagged => {
                 check_untagged(diag, &sub_types, &untagged)?;
 
                 // Check that - in the order sub-types appear, any the key for any give
@@ -1161,13 +1161,13 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
                             let (tag, span) = Spanned::take_pair(tag);
                             let tag = tag.as_string().with_span(diag, span)?;
 
-                            return Ok(core::RpSubTypeStrategy::Tagged {
+                            return Ok(RpSubTypeStrategy::Tagged {
                                 tag: tag.to_string(),
                             });
                         }
                     }
                     "untagged" => {
-                        return Ok(core::RpSubTypeStrategy::Untagged);
+                        return Ok(RpSubTypeStrategy::Untagged);
                     }
                     _ => {
                         diag.err(span, "bad strategy");
@@ -1443,10 +1443,10 @@ impl<'input> IntoModel for Channel<'input> {
         use self::Channel::*;
 
         let result = match self {
-            Unary { ty, .. } => core::RpChannel::Unary {
+            Unary { ty, .. } => RpChannel::Unary {
                 ty: ty.into_model(diag, scope)?,
             },
-            Streaming { ty, .. } => core::RpChannel::Streaming {
+            Streaming { ty, .. } => RpChannel::Streaming {
                 ty: ty.into_model(diag, scope)?,
             },
         };
@@ -1532,7 +1532,7 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
         let sub_type_name = sub_type_name(diag, item.alias, scope)?;
 
         match *sub_type_strategy {
-            core::RpSubTypeStrategy::Untagged => {
+            RpSubTypeStrategy::Untagged => {
                 let fields = fields
                     .iter()
                     .filter(|f| f.is_required())
@@ -1574,7 +1574,7 @@ impl<'input> IntoModel for (Item<'input, SubType<'input>>, SubTypeConstraint<'in
             let (alias, span) = Spanned::take_pair(alias.into_model(diag, scope)?);
 
             match alias {
-                core::RpValue::String(string) => Ok(Spanned::new(string, span)),
+                RpValue::String(string) => Ok(Spanned::new(string, span)),
                 _ => {
                     diag.err(span, "expected string");
                     return Err(());
@@ -1793,17 +1793,17 @@ impl<'input> IntoModel for Code<'input> {
             let (context, span) = Spanned::take_pair(context);
 
             match context.as_str() {
-                "csharp" => core::RpContext::Csharp {},
-                "go" => core::RpContext::Go {},
+                "csharp" => RpContext::Csharp {},
+                "go" => RpContext::Go {},
                 "java" => {
                     let imports = attributes::import(diag, &mut attributes)?;
-                    core::RpContext::Java { imports: imports }
+                    RpContext::Java { imports: imports }
                 }
-                "js" => core::RpContext::Js {},
-                "python" => core::RpContext::Python {},
-                "reproto" => core::RpContext::Reproto {},
-                "rust" => core::RpContext::Rust {},
-                "swift" => core::RpContext::Swift {},
+                "js" => RpContext::Js {},
+                "python" => RpContext::Python {},
+                "reproto" => RpContext::Reproto {},
+                "rust" => RpContext::Rust {},
+                "swift" => RpContext::Swift {},
                 context => {
                     diag.err(span, format!("context `{}` not recognized", context));
                     return Err(());
@@ -1830,11 +1830,11 @@ impl<'input> IntoModel for Value<'input> {
         use self::Value::*;
 
         let out = match self {
-            String(string) => core::RpValue::String(string),
-            Number(number) => core::RpValue::Number(number),
-            Identifier(identifier) => core::RpValue::Identifier(identifier.to_string()),
-            Array(inner) => core::RpValue::Array(inner.into_model(diag, scope)?),
-            Name(name) => core::RpValue::Name(name.into_model(diag, scope)?),
+            String(string) => RpValue::String(string),
+            Number(number) => RpValue::Number(number),
+            Identifier(identifier) => RpValue::Identifier(identifier.to_string()),
+            Array(inner) => RpValue::Array(inner.into_model(diag, scope)?),
+            Name(name) => RpValue::Name(name.into_model(diag, scope)?),
         };
 
         Ok(out)
@@ -1973,9 +1973,9 @@ impl<'input, 'a: 'input> IntoModel for (Span, &'input mut Variables<'a>, PathPar
                     }
                 };
 
-                core::RpPathPart::Variable(var)
+                RpPathPart::Variable(var)
             }
-            Segment(segment) => core::RpPathPart::Segment(segment),
+            Segment(segment) => RpPathPart::Segment(segment),
         };
 
         Ok(out)

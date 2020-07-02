@@ -271,7 +271,7 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
         _: &T,
         _: &mut Diagnostics,
         reg: RpReg,
-        name: Spanned<core::RpName<CoreFlavor>>,
+        name: Spanned<RpName<CoreFlavor>>,
     ) -> Result<Name>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
@@ -291,14 +291,14 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
         &self,
         _: &T,
         _: &mut Diagnostics,
-        enum_type: core::RpEnumType,
+        enum_type: RpEnumType,
     ) -> Result<Type>
     where
         T: Translator<Source = Self::Source, Target = Self::Target>,
     {
         match enum_type {
-            core::RpEnumType::String(string) => self.translate_string(string),
-            core::RpEnumType::Number(number) => self.translate_number(number),
+            RpEnumType::String(string) => self.translate_string(string),
+            RpEnumType::Number(number) => self.translate_number(number),
         }
     }
 }

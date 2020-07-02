@@ -100,7 +100,7 @@ pub trait Lang: fmt::Debug {
     /// Helper to convert into session.
     fn into_session<'a>(
         &self,
-        package_prefix: Option<core::RpPackage>,
+        package_prefix: Option<RpPackage>,
         reporter: &'a mut dyn core::Reporter,
         resolver: &'a mut dyn core::Resolver,
     ) -> Result<trans::Session<'a, CoreFlavor>> {

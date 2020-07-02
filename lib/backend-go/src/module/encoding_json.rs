@@ -1,6 +1,6 @@
 //! encoding/json module for Go
 
-use crate::flavored::{GoName, RpEnumBody, RpInterfaceBody, RpSubType, RpTupleBody};
+use crate::flavored::*;
 use crate::{
     EnumAdded, EnumCodegen, FieldAdded, FieldCodegen, InterfaceAdded, InterfaceCodegen, Options,
     TupleAdded, TupleCodegen,
@@ -91,13 +91,13 @@ impl EnumCodegen for Codegen {
 
                     switch s {
                     #(match &body.variants {
-                        core::RpVariants::String { variants } => {
+                        RpVariants::String { variants } => {
                             #(for v in variants {
                                 case #(quoted(v.value.as_str())):
                                     *this = #(name)_#(v.ident.as_str())
                             })
                         }
-                        core::RpVariants::Number { variants } => {
+                        RpVariants::Number { variants } => {
                             #(for v in variants {
                                 case #(v.value.to_string()):
                                     *this = #(name)_#(v.ident.as_str())
@@ -120,13 +120,13 @@ impl EnumCodegen for Codegen {
 
                     switch this {
                     #(match &body.variants {
-                        core::RpVariants::String { variants } => {
+                        RpVariants::String { variants } => {
                             #(for v in variants {
                                 case #(name)_#(v.ident.as_str()):
                                     s = #(quoted(v.value.as_str()))
                             })
                         }
-                        core::RpVariants::Number { variants } => {
+                        RpVariants::Number { variants } => {
                             #(for v in variants {
                                 case #(name)_#(v.ident.as_str()):
                                     s = #(v.value.to_string())
@@ -228,10 +228,10 @@ impl InterfaceCodegen for Codegen {
             quote_in! { *t =>
                 func (this *#name) UnmarshalJSON(b []byte) error {
                     #(match &body.sub_type_strategy {
-                        core::RpSubTypeStrategy::Tagged { tag } => {
+                        RpSubTypeStrategy::Tagged { tag } => {
                             #(ref t => unmarshal_tagged(t, c, body, tag))
                         }
-                        core::RpSubTypeStrategy::Untagged => {
+                        RpSubTypeStrategy::Untagged => {
                             #(ref t => unmarshal_untagged(t, c, body))
                         }
                     })
@@ -329,10 +329,10 @@ impl InterfaceCodegen for Codegen {
             quote_in! { *t =>
                 func (this #name) MarshalJSON() ([]byte, error) {
                     #(match body.sub_type_strategy {
-                        core::RpSubTypeStrategy::Tagged { ref tag } => {
+                        RpSubTypeStrategy::Tagged { ref tag } => {
                             #(ref t => marshal_tagged(t, c, body, tag))
                         }
-                        core::RpSubTypeStrategy::Untagged => {
+                        RpSubTypeStrategy::Untagged => {
                             #(ref t => marshal_untagged(t, c, body))
                         }
                     })

@@ -1,9 +1,7 @@
 use self::Component::*;
 use self::Violation::*;
 use core::errors::Result;
-use core::flavored::{
-    RpChannel, RpDecl, RpEndpoint, RpField, RpFile, RpName, RpNamed, RpType, RpVariantRef,
-};
+use core::flavored::*;
 use core::{Span, Spanned, Version};
 use std::collections::HashMap;
 
@@ -60,31 +58,25 @@ pub enum Violation {
 }
 
 fn fields<'a>(named: &RpNamed<'a>) -> Vec<&'a Spanned<RpField>> {
-    use core::RpNamed::*;
-
     match *named {
-        Type(target) => target.fields.iter().collect(),
-        Tuple(target) => target.fields.iter().collect(),
-        Interface(target) => target.fields.iter().collect(),
-        SubType(target) => target.fields.iter().collect(),
+        RpNamed::Type(target) => target.fields.iter().collect(),
+        RpNamed::Tuple(target) => target.fields.iter().collect(),
+        RpNamed::Interface(target) => target.fields.iter().collect(),
+        RpNamed::SubType(target) => target.fields.iter().collect(),
         _ => vec![],
     }
 }
 
 fn enum_variants<'a>(named: &'a RpNamed) -> Vec<RpVariantRef<'a>> {
-    use core::RpNamed::*;
-
     match *named {
-        Enum(target) => target.variants.iter().collect(),
+        RpNamed::Enum(target) => target.variants.iter().collect(),
         _ => vec![],
     }
 }
 
 fn endpoints_to_map<'a>(named: &RpNamed<'a>) -> HashMap<&'a str, &'a Spanned<RpEndpoint>> {
-    use core::RpNamed::*;
-
     match *named {
-        Service(target) => target.endpoints.iter().map(|e| (e.ident(), e)).collect(),
+        RpNamed::Service(target) => target.endpoints.iter().map(|e| (e.ident(), e)).collect(),
         _ => HashMap::new(),
     }
 }
@@ -98,7 +90,7 @@ where
     for decl in decls {
         for named in decl.to_named() {
             // Checked separately for each Enum.
-            if let core::RpNamed::EnumVariant(_) = named {
+            if let RpNamed::EnumVariant(_) = named {
                 continue;
             }
 

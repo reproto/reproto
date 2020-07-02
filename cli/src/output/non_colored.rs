@@ -1,6 +1,6 @@
 use super::{LockableWrite, Output};
 use core::errors::Result;
-use core::{self, Source, Span};
+use core::{Source, Span};
 use std::io;
 
 pub struct NonColored<T> {

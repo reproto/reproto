@@ -6,8 +6,8 @@ mod module;
 mod utils;
 
 use crate::compiler::Compiler;
-use crate::flavored::{RpPackage, Type};
-use core::errors::*;
+use crate::flavored::*;
+use core::errors::Result;
 use core::{CoreFlavor, Handle};
 use genco::prelude::*;
 use genco::tokens::ItemStr;

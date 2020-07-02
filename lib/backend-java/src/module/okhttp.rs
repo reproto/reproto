@@ -1,7 +1,7 @@
 //! Module that adds fasterxml annotations to generated classes.
 
 use crate::codegen::{Configure, ServiceAdded, ServiceCodegen};
-use crate::flavored::{JavaEndpoint, RpEndpointHttp1, RpPathStep};
+use crate::flavored::*;
 use crate::serialization::Serialization;
 use crate::utils::Override;
 use core::errors::Result;
@@ -410,7 +410,7 @@ impl OkHttpServiceCodegen {
 
             for part in &step.parts {
                 match *part {
-                    core::RpPathPart::Variable(ref arg) => {
+                    RpPathPart::Variable(ref arg) => {
                         let ty = arg.channel.ty();
 
                         if ty.is_primitive() {
@@ -419,7 +419,7 @@ impl OkHttpServiceCodegen {
                             args.append(arg.safe_ident());
                         }
                     }
-                    core::RpPathPart::Segment(ref s) => {
+                    RpPathPart::Segment(ref s) => {
                         args.append(s.to_string().quoted());
                     }
                 }
