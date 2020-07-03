@@ -11,7 +11,6 @@ use self::ContentType::*;
 use core::errors::Result;
 use core::{Diagnostic, Encoding, Filesystem, RealFilesystem, Reported, Rope, Source};
 use serde::Deserialize;
-use std::cell::RefCell;
 use std::collections::{BTreeSet, Bound, HashMap};
 use std::fmt;
 use std::io::{self, BufRead, BufReader, Read, Write};
@@ -361,7 +360,7 @@ fn trim(data: &[u8]) -> &[u8] {
 
 /// Server abstraction
 struct Server<R, W> {
-    workspace: Option<RefCell<Workspace>>,
+    workspace: Option<Workspace>,
     headers: Headers,
     reader: InputReader<BufReader<R>>,
     channel: Channel<W>,
@@ -484,8 +483,7 @@ where
         // in case we need it to report errors.
         let id = request.id.clone();
 
-        log::trace!("received: {:#?}", request);
-        log::debug!("received: {}", request.method);
+        log::debug!("received: {:#?}", request);
 
         if let Err(e) = self.try_handle_request(request) {
             self.channel.send_error(
@@ -643,16 +641,12 @@ where
             None => return Ok(()),
         };
 
-        if let Some(workspace) = self.workspace.as_ref() {
-            let mut workspace = workspace
-                .try_borrow_mut()
-                .map_err(|_| "failed to access mutable workspace")?;
-
+        if let Some(workspace) = &mut self.workspace {
             let handle = self.fs.open_root(Some(&workspace.root_path))?;
 
             if response.title == "Initialize project" {
                 log::info!("Initializing Project!");
-                workspace.initialize(handle.as_ref())?;
+                workspace.initialize(&*handle)?;
 
                 let manifest_url = workspace.manifest_url()?;
 
@@ -673,11 +667,7 @@ where
             None => return Ok(()),
         };
 
-        if let Some(workspace) = self.workspace.as_ref() {
-            let workspace = workspace
-                .try_borrow()
-                .map_err(|_| "failed to access mutable workspace")?;
-
+        if let Some(workspace) = &mut self.workspace {
             if response.title == "Open project manifest" {
                 let manifest_url = workspace.manifest_url()?;
 
@@ -699,16 +689,15 @@ where
         params: ty::InitializeParams,
     ) -> Result<()> {
         // TODO: make use of root_uri instead.
-        #[allow(deprecated)]
-        if let Some(path) = params.root_path.as_ref() {
-            let path = Path::new(path.as_str());
+        if let Some(path) = &params.root_path {
+            let path = Path::new(path);
 
             let path = path
                 .canonicalize()
                 .map_err(|_| format!("could not canonicalize root path: {}", path.display()))?;
 
             let workspace = Workspace::new(Box::new(self.fs.clone()), path);
-            self.workspace = Some(RefCell::new(workspace));
+            self.workspace = Some(workspace);
         }
 
         let result = ty::InitializeResult {
@@ -739,11 +728,7 @@ where
 
     /// Handler for `initialized`.
     fn initialized(&mut self, _params: ty::InitializedParams) -> Result<()> {
-        if let Some(workspace) = self.workspace.as_ref() {
-            let mut workspace = workspace
-                .try_borrow_mut()
-                .map_err(|_| "failed to access mutable workspace")?;
-
+        if let Some(workspace) = &mut self.workspace {
             log::debug!("loading project: {}", workspace.root_path.display());
             workspace.reload()?;
         }
@@ -762,13 +747,9 @@ where
 
         let mut symbols = Vec::new();
 
-        if let Some(workspace) = self.workspace.as_ref() {
-            let workspace = workspace
-                .try_borrow()
-                .map_err(|_| "failed to access workspace immutably")?;
-
+        if let Some(workspace) = &mut self.workspace {
             for file in workspace.files() {
-                self.populate_symbols(&mut symbols, file, Some(query.as_str()))?;
+                Self::populate_symbols(&mut symbols, file, Some(query.as_str()))?;
             }
         }
 
@@ -778,7 +759,6 @@ where
 
     /// Populate symbol information from file.
     fn populate_symbols(
-        &self,
         symbols: &mut Vec<ty::SymbolInformation>,
         file: &LoadedFile,
         query: Option<&str>,
@@ -847,13 +827,9 @@ where
 
         let mut symbols = Vec::new();
 
-        if let Some(workspace) = self.workspace.as_ref() {
-            let workspace = workspace
-                .try_borrow()
-                .map_err(|_| "failed to access workspace immutably")?;
-
+        if let Some(workspace) = &mut self.workspace {
             if let Some(file) = workspace.file(&url) {
-                self.populate_symbols(&mut symbols, file, None)?;
+                Self::populate_symbols(&mut symbols, file, None)?;
             }
         }
 
@@ -871,11 +847,7 @@ where
 
         let mut locations: Vec<ty::Location> = Vec::new();
 
-        if let Some(workspace) = self.workspace.as_ref() {
-            let workspace = workspace
-                .try_borrow()
-                .map_err(|_| "failed to access workspace immutably")?;
-
+        if let Some(workspace) = &mut self.workspace {
             if let Some(references) =
                 workspace.find_reference(&url, params.text_document_position.position)
             {
@@ -905,12 +877,8 @@ where
 
     /// Send all diagnostics for a workspace.
     fn send_workspace_diagnostics(&self) -> Result<()> {
-        if let Some(workspace) = self.workspace.as_ref() {
-            let workspace = workspace
-                .try_borrow()
-                .map_err(|_| "failed to access workspace immutably")?;
-
-            self.send_manifest_diagnostics(&workspace)?;
+        if let Some(workspace) = &self.workspace {
+            self.send_manifest_diagnostics(workspace)?;
 
             let mut by_url: HashMap<Url, Vec<(&Source, &Diagnostic)>> = HashMap::new();
 
@@ -1042,12 +1010,8 @@ where
     }
 
     /// Handler for `textDocument/didSave`.
-    fn text_document_did_save(&self, _: ty::DidSaveTextDocumentParams) -> Result<()> {
-        if let Some(workspace) = self.workspace.as_ref() {
-            let mut workspace = workspace
-                .try_borrow_mut()
-                .map_err(|_| "failed to access mutable workspace")?;
-
+    fn text_document_did_save(&mut self, _: ty::DidSaveTextDocumentParams) -> Result<()> {
+        if let Some(workspace) = &mut self.workspace {
             workspace.reload()?;
         }
 
@@ -1056,19 +1020,15 @@ where
     }
 
     /// Handler for `textDocument/didChange`.
-    fn text_document_did_change(&self, params: ty::DidChangeTextDocumentParams) -> Result<()> {
+    fn text_document_did_change(&mut self, params: ty::DidChangeTextDocumentParams) -> Result<()> {
         let text_document = params.text_document;
         let url = text_document.uri;
 
         {
-            let workspace = match self.workspace.as_ref() {
+            let workspace = match &mut self.workspace {
                 Some(workspace) => workspace,
                 None => return Ok(()),
             };
-
-            let mut workspace = workspace
-                .try_borrow_mut()
-                .map_err(|_| "failed to access mutable workspace")?;
 
             if params.content_changes.is_empty() {
                 return Ok(());
@@ -1218,11 +1178,7 @@ where
         let url = text_document.uri;
         let text = text_document.text;
 
-        if let Some(workspace) = self.workspace.as_ref() {
-            let mut workspace = workspace
-                .try_borrow_mut()
-                .map_err(|_| "failed to access mutable workspace")?;
-
+        if let Some(workspace) = &mut self.workspace {
             // NOTE: access workspace.files is intentional to only access files which are not
             // already open.
             let (source, built) = match workspace.files.get(&url) {
@@ -1242,6 +1198,12 @@ where
             };
 
             if !built {
+                log::debug!(
+                    "url: {:?}, manifest_url: {:?}",
+                    url,
+                    workspace.manifest_url()?
+                );
+
                 if url != workspace.manifest_url()? {
                     handle_manifest_error!(workspace);
                 }
@@ -1256,16 +1218,11 @@ where
     }
 
     /// Handler for `textDocument/didClose`.
-    fn text_document_did_close(&self, params: ty::DidCloseTextDocumentParams) -> Result<()> {
+    fn text_document_did_close(&mut self, params: ty::DidCloseTextDocumentParams) -> Result<()> {
         let text_document = params.text_document;
 
-        if let Some(workspace) = self.workspace.as_ref() {
+        if let Some(workspace) = &mut self.workspace {
             let url = text_document.uri;
-
-            let mut workspace = workspace
-                .try_borrow_mut()
-                .map_err(|_| "failed to access mutable workspace")?;
-
             workspace.open_files.remove(&url);
             workspace.reload()?;
         }
@@ -1276,7 +1233,7 @@ where
 
     /// Handler for `textDocument/completion`.
     fn text_document_completion(
-        &self,
+        &mut self,
         request_id: Option<envelope::RequestId>,
         params: ty::CompletionParams,
     ) -> Result<()> {
@@ -1291,20 +1248,16 @@ where
 
     /// Populate completion items for the given request.
     fn completion_items(
-        &self,
+        &mut self,
         params: ty::CompletionParams,
         list: &mut ty::CompletionList,
     ) -> Result<()> {
         let url = params.text_document_position.text_document.uri;
 
-        let workspace = match self.workspace.as_ref() {
+        let workspace = match &mut self.workspace {
             Some(workspace) => workspace,
             None => return Ok(()),
         };
-
-        let workspace = workspace
-            .try_borrow()
-            .map_err(|_| "failed to access immutable workspace")?;
 
         let (file, value) =
             match workspace.find_completion(&url, params.text_document_position.position) {
@@ -1408,13 +1361,13 @@ where
         }
     }
 
-    fn completion_item_resolve(&self, _: ty::CompletionItem) -> Result<()> {
+    fn completion_item_resolve(&mut self, _: ty::CompletionItem) -> Result<()> {
         Ok(())
     }
 
     /// Handler for `textDocument/definition`.
     fn text_document_definition(
-        &self,
+        &mut self,
         request_id: Option<envelope::RequestId>,
         params: ty::TextDocumentPositionParams,
     ) -> Result<()> {
@@ -1426,18 +1379,14 @@ where
 
     /// Handler for renaming
     fn text_document_rename(
-        &self,
+        &mut self,
         request_id: Option<envelope::RequestId>,
         params: ty::RenameParams,
     ) -> Result<()> {
-        let workspace = match self.workspace.as_ref() {
+        let workspace = match &mut self.workspace {
             Some(workspace) => workspace,
             None => return Err("no workspace".into()),
         };
-
-        let workspace = workspace
-            .try_borrow()
-            .map_err(|_| "failed to access immutable workspace")?;
 
         let url = params.text_document_position.text_document.uri;
         let new_name = params.new_name;
@@ -1525,20 +1474,16 @@ where
 
     /// Populate the goto definition response.
     fn definition(
-        &self,
+        &mut self,
         params: ty::TextDocumentPositionParams,
         response: &mut Option<ty::GotoDefinitionResponse>,
     ) -> Result<()> {
         let url = params.text_document.uri;
 
-        let workspace = match self.workspace.as_ref() {
+        let workspace = match &mut self.workspace {
             Some(workspace) => workspace,
             None => return Ok(()),
         };
-
-        let workspace = workspace
-            .try_borrow()
-            .map_err(|_| "failed to access immutable workspace")?;
 
         let (file, value) = match workspace.find_jump(&url, params.position) {
             Some(v) => v,
