@@ -116,9 +116,9 @@ where
     }
 
     /// Setup a new path hook for this session.
-    pub fn with_path_hook<H: 'static>(self, path_hook: H) -> Self
+    pub fn with_path_hook<H>(self, path_hook: H) -> Self
     where
-        H: Fn(&Path) -> Result<()>,
+        H: 'static + Fn(&Path) -> Result<()>,
     {
         Self {
             path_hook: Some(Box::new(path_hook)),
@@ -231,7 +231,7 @@ impl<'a> Session<'a, CoreFlavor> {
     /// Translate the current session into another flavor.
     ///
     /// This is the final step of the compilation, the session is consumed by this.
-    pub fn translate<T: 'static>(self, flavor: T) -> Result<Translated<T::Target>>
+    pub fn translate<T>(self, flavor: T) -> Result<Translated<T::Target>>
     where
         T: FlavorTranslator<Source = CoreFlavor>,
     {
@@ -599,7 +599,7 @@ impl<'e> Import for Session<'e, CoreFlavor> {
 }
 
 /// Forward implementation for a mutable reference to the session.
-impl<'a, 'e: 'a> Import for &'a mut Session<'e, CoreFlavor> {
+impl<'a, 'e> Import for &'a mut Session<'e, CoreFlavor> {
     fn import(&mut self, required: &RpRequiredPackage) -> Result<Option<RpVersionedPackage>> {
         (*self).import(required)
     }

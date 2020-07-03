@@ -296,16 +296,11 @@ where
     fn flush(&self) {}
 }
 
-pub fn server<L: 'static, R, W: 'static>(
-    log: Option<L>,
-    reader: R,
-    writer: W,
-    level: log::LevelFilter,
-) -> Result<()>
+pub fn server<L, R, W>(log: Option<L>, reader: R, writer: W, level: log::LevelFilter) -> Result<()>
 where
-    L: Send + Write,
+    L: 'static + Send + Write,
     R: Read,
-    W: Send + Write,
+    W: 'static + Send + Write,
 {
     let channel = Channel::new(writer);
 
@@ -335,7 +330,7 @@ where
     }
 }
 
-fn try_server<R, W: 'static>(reader: R, channel: Channel<W>) -> Result<()>
+fn try_server<R, W>(reader: R, channel: Channel<W>) -> Result<()>
 where
     R: Read,
     W: Send + Write,

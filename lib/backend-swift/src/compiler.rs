@@ -149,7 +149,7 @@ impl<'a> PackageProcessor<'a, SwiftFlavor> for Compiler<'a> {
         self.env.decl_iter()
     }
 
-    fn handle(&self) -> &'a dyn Handle {
+    fn handle(&self) -> &dyn Handle {
         self.handle
     }
 

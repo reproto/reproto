@@ -136,8 +136,8 @@ pub(crate) trait RootCodegen {
     fn generate(&self, root: Root) -> Result<()>;
 }
 
-pub(crate) struct Service<'a, 'el: 'a> {
-    body: &'el flavored::RpServiceBody,
+pub(crate) struct Service<'a> {
+    body: &'a flavored::RpServiceBody,
     container: &'a mut Tokens<Rust>,
     name: ItemStr,
     attributes: &'a Tokens<Rust>,
@@ -145,7 +145,7 @@ pub(crate) struct Service<'a, 'el: 'a> {
 
 pub(crate) trait ServiceCodegen {
     /// Generate service code.
-    fn generate(&self, service: Service) -> Result<()>;
+    fn generate(&self, service: Service<'_>) -> Result<()>;
 }
 
 fn options(modules: Vec<Module>, packages: Rc<Packages>) -> Result<Options> {

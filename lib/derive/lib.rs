@@ -135,13 +135,13 @@ impl<T> ops::DerefMut for Opaque<T> {
     }
 }
 
-struct FieldInit<'a, 'input: 'a> {
+struct FieldInit<'a, 'input> {
     span: &'a Span,
     ctx: Context,
     types: &'a mut TypesCache<'input>,
 }
 
-impl<'a, 'input: 'a> FieldInit<'a, 'input> {
+impl<'a, 'input> FieldInit<'a, 'input> {
     fn new(
         span: &'a Span,
         ctx: Context,
@@ -275,13 +275,13 @@ impl<'a, 'input: 'a> FieldInit<'a, 'input> {
     }
 }
 
-struct DeclDeriver<'a, 'input: 'a> {
+struct DeclDeriver<'a, 'input> {
     span: &'a Span,
     ctx: Context,
     types: &'a mut TypesCache<'input>,
 }
 
-impl<'a, 'input: 'a> DeclDeriver<'a, 'input> {
+impl<'a, 'input> DeclDeriver<'a, 'input> {
     /// Derive a declaration from the given JSON.
     fn derive<'s>(self, sir: &'s Sir) -> Result<Decl<'input>> {
         let decl = match *sir {
@@ -324,13 +324,13 @@ impl<'a, 'input: 'a> DeclDeriver<'a, 'input> {
     }
 }
 
-struct TypeRefiner<'a, 'input: 'a> {
+struct TypeRefiner<'a, 'input> {
     span: &'a Span,
     ctx: Context,
     types: &'a mut TypesCache<'input>,
 }
 
-impl<'a, 'input: 'a> TypeRefiner<'a, 'input> {
+impl<'a, 'input> TypeRefiner<'a, 'input> {
     /// Derive an struct body from the given input array.
     fn derive(
         &mut self,
@@ -369,13 +369,13 @@ impl<'a, 'input: 'a> TypeRefiner<'a, 'input> {
     }
 }
 
-struct SubTypeRefiner<'a, 'input: 'a> {
+struct SubTypeRefiner<'a, 'input> {
     span: &'a Span,
     ctx: Context,
     types: &'a mut TypesCache<'input>,
 }
 
-impl<'a, 'input: 'a> SubTypeRefiner<'a, 'input> {
+impl<'a, 'input> SubTypeRefiner<'a, 'input> {
     /// Derive an struct body from the given input array.
     fn derive(&mut self, sub_type: &SubTypeSir) -> Result<Item<'input, SubType<'input>>> {
         let mut body = SubType {
@@ -415,13 +415,13 @@ impl<'a, 'input: 'a> SubTypeRefiner<'a, 'input> {
     }
 }
 
-struct InterfaceRefiner<'a, 'input: 'a> {
+struct InterfaceRefiner<'a, 'input> {
     span: &'a Span,
     ctx: Context,
     types: &'a mut TypesCache<'input>,
 }
 
-impl<'a, 'input: 'a> InterfaceRefiner<'a, 'input> {
+impl<'a, 'input> InterfaceRefiner<'a, 'input> {
     /// Derive an struct body from the given input array.
     fn derive(
         &mut self,
@@ -478,13 +478,13 @@ impl<'a, 'input: 'a> InterfaceRefiner<'a, 'input> {
     }
 }
 
-struct TupleRefiner<'a, 'input: 'a> {
+struct TupleRefiner<'a, 'input> {
     span: &'a Span,
     ctx: Context,
     types: &'a mut TypesCache<'input>,
 }
 
-impl<'a, 'input: 'a> TupleRefiner<'a, 'input> {
+impl<'a, 'input> TupleRefiner<'a, 'input> {
     /// Derive an tuple body from the given input array.
     fn derive(&mut self, array: &[FieldSir]) -> Result<Item<'input, TupleBody<'input>>> {
         let mut body = TupleBody {

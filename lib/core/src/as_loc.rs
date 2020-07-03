@@ -17,7 +17,7 @@ impl<T> AsLoc for Spanned<T> {
     }
 }
 
-impl<'a, T: 'a> AsLoc for &'a Spanned<T> {
+impl<'a, T> AsLoc for &'a Spanned<T> {
     type Output = &'a T;
 
     fn as_loc(self) -> Spanned<Self::Output> {
@@ -25,7 +25,7 @@ impl<'a, T: 'a> AsLoc for &'a Spanned<T> {
     }
 }
 
-impl<'a, T: 'a> AsLoc for &'a Rc<Spanned<T>> {
+impl<'a, T> AsLoc for &'a Rc<Spanned<T>> {
     type Output = &'a T;
 
     fn as_loc(self) -> Spanned<Self::Output> {

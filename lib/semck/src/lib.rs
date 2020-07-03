@@ -81,7 +81,7 @@ fn endpoints_to_map<'a>(named: &RpNamed<'a>) -> HashMap<&'a str, &'a Spanned<RpE
     }
 }
 
-fn decls_to_map<'a, I: 'a>(decls: I) -> HashMap<RpName, RpNamed<'a>>
+fn decls_to_map<'a, I>(decls: I) -> HashMap<RpName, RpNamed<'a>>
 where
     I: IntoIterator<Item = &'a RpDecl>,
 {
@@ -101,7 +101,7 @@ where
     storage
 }
 
-fn variants_to_map<'a, I: 'a>(variants: I) -> HashMap<RpName, RpVariantRef<'a>>
+fn variants_to_map<'a, I>(variants: I) -> HashMap<RpName, RpVariantRef<'a>>
 where
     I: IntoIterator<Item = RpVariantRef<'a>>,
 {
@@ -114,7 +114,7 @@ where
     storage
 }
 
-fn fields_to_map<'a, I: 'a>(fields: I) -> HashMap<String, &'a Spanned<RpField>>
+fn fields_to_map<'a, I>(fields: I) -> HashMap<String, &'a Spanned<RpField>>
 where
     I: IntoIterator<Item = &'a Spanned<RpField>>,
 {

@@ -25,14 +25,14 @@ where
     }
 }
 
-pub trait PackageProcessor<'el, F>
+pub trait PackageProcessor<'a, F>
 where
-    Self: 'el + Sized,
+    Self: 'a,
     F: Flavor<Package = RpPackage>,
     F::Name: Name<F>,
 {
     type Out: Default;
-    type DeclIter: Iterator<Item = &'el RpDecl<F>>;
+    type DeclIter: Iterator<Item = &'a RpDecl<F>>;
 
     /// Access the extension for processing.
     fn ext(&self) -> &str;
@@ -40,30 +40,30 @@ where
     /// Iterate over all existing declarations.
     fn decl_iter(&self) -> Self::DeclIter;
 
-    fn handle(&self) -> &'el dyn Handle;
+    fn handle(&self) -> &dyn Handle;
 
-    fn default_process(&self, _: &mut Self::Out, name: &'el F::Name) -> Result<()> {
+    fn default_process(&self, _: &mut Self::Out, name: &F::Name) -> Result<()> {
         log::warn!("not supported: {:?}", name);
         Ok(())
     }
 
-    fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody<F>) -> Result<()> {
+    fn process_interface(&self, out: &mut Self::Out, body: &RpInterfaceBody<F>) -> Result<()> {
         self.default_process(out, &body.name)
     }
 
-    fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody<F>) -> Result<()> {
+    fn process_type(&self, out: &mut Self::Out, body: &RpTypeBody<F>) -> Result<()> {
         self.default_process(out, &body.name)
     }
 
-    fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody<F>) -> Result<()> {
+    fn process_tuple(&self, out: &mut Self::Out, body: &RpTupleBody<F>) -> Result<()> {
         self.default_process(out, &body.name)
     }
 
-    fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody<F>) -> Result<()> {
+    fn process_enum(&self, out: &mut Self::Out, body: &RpEnumBody<F>) -> Result<()> {
         self.default_process(out, &body.name)
     }
 
-    fn process_service(&self, out: &mut Self::Out, body: &'el RpServiceBody<F>) -> Result<()> {
+    fn process_service(&self, out: &mut Self::Out, body: &RpServiceBody<F>) -> Result<()> {
         self.default_process(out, &body.name)
     }
 
@@ -73,7 +73,7 @@ where
 
     fn do_populate_files<C>(&self, mut callback: C) -> Result<BTreeMap<F::Package, Self::Out>>
     where
-        C: FnMut(&'el RpDecl<F>, bool, &mut Self::Out) -> Result<()>,
+        C: FnMut(&'a RpDecl<F>, bool, &mut Self::Out) -> Result<()>,
     {
         use self::RpDecl::*;
 

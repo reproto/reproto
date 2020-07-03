@@ -63,7 +63,7 @@ where
 
 impl<T> Output for NonColored<T>
 where
-    T: 'static + LockableWrite,
+    T: LockableWrite,
 {
     fn lock<'a>(&'a self) -> Box<dyn io::Write + 'a> {
         self.out.lock()

@@ -24,8 +24,8 @@ impl<'a> Compiler<'a> {
         env: &'a Translated<JavaScriptFlavor>,
         _: Options,
         handle: &'a dyn Handle,
-    ) -> Compiler<'a> {
-        Compiler {
+    ) -> Self {
+        Self {
             env,
             handle,
             to_lower_snake: naming::to_lower_snake(),
@@ -289,7 +289,7 @@ impl<'a> PackageProcessor<'a, JavaScriptFlavor> for Compiler<'a> {
         self.env.decl_iter()
     }
 
-    fn handle(&self) -> &'a dyn Handle {
+    fn handle(&self) -> &dyn Handle {
         self.handle
     }
 

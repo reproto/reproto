@@ -49,7 +49,7 @@ where
 
 impl<T> Output for Colored<T>
 where
-    T: 'static + LockableWrite,
+    T: LockableWrite,
 {
     fn lock<'a>(&'a self) -> Box<dyn io::Write + 'a> {
         self.out.lock()
@@ -59,7 +59,7 @@ where
         Ok(format!("{}", Red.paint(m)))
     }
 
-    fn logger(&self) -> Box<dyn log::Log + 'static> {
+    fn logger(&self) -> Box<dyn log::Log> {
         Box::new(ColoredLogger {
             out: self.out.open_new(),
         })

@@ -10,19 +10,19 @@ use genco::prelude::*;
 use genco::tokens::ItemStr;
 use trans::Translated;
 
-pub struct Compiler<'el> {
-    pub env: &'el Translated<DartFlavor>,
-    handle: &'el dyn Handle,
+pub struct Compiler<'a> {
+    pub env: &'a Translated<DartFlavor>,
+    handle: &'a dyn Handle,
     map_of_strings: Type,
     list_of_dynamic: Type,
 }
 
-impl<'el> Compiler<'el> {
-    pub fn new(env: &'el Translated<DartFlavor>, handle: &'el dyn Handle) -> Compiler<'el> {
+impl<'a> Compiler<'a> {
+    pub fn new(env: &'a Translated<DartFlavor>, handle: &'a dyn Handle) -> Self {
         let map_of_strings = Type::map(Type::String, Type::Dynamic);
         let list_of_dynamic = Type::list(Type::Dynamic);
 
-        Compiler {
+        Self {
             env,
             handle,
             map_of_strings,
@@ -293,7 +293,7 @@ impl<'el> PackageProcessor<'el, DartFlavor> for Compiler<'el> {
         self.env.decl_iter()
     }
 
-    fn handle(&self) -> &'el dyn Handle {
+    fn handle(&self) -> &dyn Handle {
         self.handle
     }
 

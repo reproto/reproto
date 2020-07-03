@@ -21,7 +21,7 @@ pub enum OutputFormat {
 
 pub trait LockableWrite
 where
-    Self: Sync + Send,
+    Self: 'static + Sync + Send,
 {
     fn open_new(&self) -> Self;
 

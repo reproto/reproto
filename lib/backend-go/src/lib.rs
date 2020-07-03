@@ -237,5 +237,5 @@ fn compile(handle: &dyn Handle, session: Session<CoreFlavor>, manifest: Manifest
 
     let modules = manifest::checked_modules(manifest.modules)?;
     let options = options(modules)?;
-    Compiler::new(&session, options, handle)?.compile()
+    Compiler::new(&session, options, handle).compile()
 }

@@ -251,7 +251,7 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
         self.env.decl_iter()
     }
 
-    fn handle(&self) -> &'el dyn Handle {
+    fn handle(&self) -> &dyn Handle {
         self.handle
     }
 
@@ -259,7 +259,7 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
         Ok(())
     }
 
-    fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
+    fn process_tuple(&self, out: &mut Self::Out, body: &RpTupleBody) -> Result<()> {
         let (name, attributes) = self.convert_type_name(&body.name);
 
         quote_in! { *out =>
@@ -273,7 +273,7 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
         Ok(())
     }
 
-    fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
+    fn process_enum(&self, out: &mut Self::Out, body: &RpEnumBody) -> Result<()> {
         let (name, mut attributes) = self.convert_type_name(&body.name);
         let name = &name;
 
@@ -489,7 +489,7 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
         }
     }
 
-    fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
+    fn process_type(&self, out: &mut Self::Out, body: &RpTypeBody) -> Result<()> {
         let (name, attributes) = self.convert_type_name(&body.name);
         let name = &name;
 
@@ -515,7 +515,7 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
         Ok(())
     }
 
-    fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
+    fn process_interface(&self, out: &mut Self::Out, body: &RpInterfaceBody) -> Result<()> {
         let (name, attributes) = self.convert_type_name(&body.name);
 
         quote_in! { *out =>
@@ -568,7 +568,7 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
         Ok(())
     }
 
-    fn process_service(&self, out: &mut Self::Out, body: &'el RpServiceBody) -> Result<()> {
+    fn process_service(&self, out: &mut Self::Out, body: &RpServiceBody) -> Result<()> {
         let (name, attributes) = self.convert_type_name(&body.name);
 
         for s in &self.options.service {

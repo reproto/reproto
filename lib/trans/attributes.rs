@@ -198,11 +198,11 @@ where
     return Ok(http);
 
     /// Parse a path specification.
-    fn parse_path<'a, 'b: 'a, I>(
+    fn parse_path<'a, I>(
         diag: &mut Diagnostics,
         scope: &mut Scope<I>,
         path: Spanned<RpValue>,
-        args: &'a mut HashMap<&'b str, &'b RpEndpointArgument>,
+        args: &mut HashMap<&'a str, &'a RpEndpointArgument>,
     ) -> Result<RpPathSpec, ()>
     where
         I: Import,

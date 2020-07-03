@@ -1102,7 +1102,7 @@ impl<'input> IntoModel for Item<'input, InterfaceBody<'input>> {
         ));
 
         /// Check invariants that need to be enforced with unique fields
-        fn check_untagged<'a, I: 'a>(
+        fn check_untagged<'a, I>(
             diag: &mut Diagnostics,
             sub_types: &Vec<Spanned<RpSubType>>,
             untagged: I,

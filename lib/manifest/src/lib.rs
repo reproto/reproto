@@ -324,20 +324,18 @@ pub struct Package {
 /// Parse a single specification where the string key is a package.
 ///
 /// The behavior for the value is determined by `TryFromToml`.
-pub fn parse_spec<T: 'static>(base: &Path, id: &str, value: toml::Value) -> Result<T>
+pub fn parse_spec<T>(base: &Path, id: &str, value: toml::Value) -> Result<T>
 where
     T: TryFromToml,
 {
-    use toml::Value::*;
-
     match value {
-        String(value) => T::try_from_string(base, id, value),
+        toml::Value::String(value) => T::try_from_string(base, id, value),
         value => T::try_from_value(base, id, value),
     }
 }
 
 /// Parse multiple speicifcations where the keys are packages.
-pub fn parse_specs<T: 'static>(base: &Path, value: toml::Value) -> Result<Option<Vec<T>>>
+pub fn parse_specs<T>(base: &Path, value: toml::Value) -> Result<Option<Vec<T>>>
 where
     T: TryFromToml,
 {
@@ -355,7 +353,7 @@ where
 }
 
 /// Parse optional specs.
-fn parse_section<T: 'static>(base: &Path, value: Option<toml::Value>) -> Result<Option<Vec<T>>>
+fn parse_section<T>(base: &Path, value: Option<toml::Value>) -> Result<Option<Vec<T>>>
 where
     T: TryFromToml,
 {
@@ -367,12 +365,12 @@ where
 }
 
 /// Parsing modules into Any.
-pub fn parse_section_any<T: 'static>(
+pub fn parse_section_any<'a, T>(
     base: &Path,
     value: Option<toml::Value>,
-) -> Result<Option<Vec<Box<dyn Any>>>>
+) -> Result<Option<Vec<Box<dyn Any + 'a>>>>
 where
-    T: TryFromToml,
+    T: 'a + TryFromToml,
 {
     if let Some(values) = parse_section::<T>(base, value)? {
         Ok(Some(
@@ -387,9 +385,9 @@ where
 }
 
 /// Parse the given string as a module.
-pub fn parse_string_any<T: 'static>(base: &Path, name: &str) -> Result<Box<dyn Any>>
+pub fn parse_string_any<'a, T>(base: &Path, name: &str) -> Result<Box<dyn Any + 'a>>
 where
-    T: TryFromToml,
+    T: 'a + TryFromToml,
 {
     let value = toml::Value::Table(toml::value::Table::default());
     Ok(Box::new(parse_spec::<T>(base, name, value)?) as Box<dyn Any>)

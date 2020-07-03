@@ -14,12 +14,18 @@ use std::hash;
 use std::rc::Rc;
 
 /// Method for translating package.
-pub trait PackageTranslator<K, V> {
+pub trait PackageTranslator<K, V>
+where
+    Self: 'static,
+{
     /// Translate the given package.
     fn translate_package(&self, source: K) -> Result<V>;
 }
 
-pub trait FlavorTranslator {
+pub trait FlavorTranslator
+where
+    Self: 'static,
+{
     type Source: Flavor;
     type Target: Flavor;
 
@@ -126,7 +132,7 @@ impl<P, F> CoreFlavorTranslator<P, F> {
     }
 }
 
-impl<P: 'static, F> FlavorTranslator for CoreFlavorTranslator<P, F>
+impl<P, F> FlavorTranslator for CoreFlavorTranslator<P, F>
 where
     P: PackageTranslator<RpVersionedPackage, F::Package>,
     F: Flavor<
@@ -333,7 +339,7 @@ where
 }
 
 /// Context used when translating.
-pub struct Context<'a, T: 'static>
+pub struct Context<'a, T>
 where
     T: FlavorTranslator<Source = CoreFlavor>,
 {
@@ -346,7 +352,7 @@ where
     pub decls: Option<Rc<RefCell<LinkedHashMap<RpName<T::Source>, RpReg>>>>,
 }
 
-impl<'a, T: 'static> Context<'a, T>
+impl<'a, T> Context<'a, T>
 where
     T: FlavorTranslator<Source = CoreFlavor>,
 {
@@ -375,7 +381,7 @@ where
     }
 }
 
-impl<'a, T: 'static> Translator for Context<'a, T>
+impl<'a, T> Translator for Context<'a, T>
 where
     T: FlavorTranslator<Source = CoreFlavor>,
 {

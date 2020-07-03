@@ -27,23 +27,23 @@ where
     }
 }
 
-pub(crate) struct Compiler<'el> {
-    pub(crate) env: &'el Translated<GoFlavor>,
+pub(crate) struct Compiler<'a> {
+    pub(crate) env: &'a Translated<GoFlavor>,
     options: Options,
-    handle: &'el dyn Handle,
+    handle: &'a dyn Handle,
 }
 
-impl<'el> Compiler<'el> {
+impl<'a> Compiler<'a> {
     pub(crate) fn new(
-        env: &'el Translated<GoFlavor>,
+        env: &'a Translated<GoFlavor>,
         options: Options,
-        handle: &'el dyn Handle,
-    ) -> Result<Self> {
-        Ok(Self {
+        handle: &'a dyn Handle,
+    ) -> Self {
+        Self {
             env,
             options,
             handle,
-        })
+        }
     }
 
     fn process_struct(
@@ -124,7 +124,7 @@ impl<'el> PackageProcessor<'el, GoFlavor> for Compiler<'el> {
         self.env.decl_iter()
     }
 
-    fn handle(&self) -> &'el dyn Handle {
+    fn handle(&self) -> &dyn Handle {
         self.handle
     }
 
@@ -138,13 +138,13 @@ impl<'el> PackageProcessor<'el, GoFlavor> for Compiler<'el> {
         Ok(full_path)
     }
 
-    fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
+    fn process_type(&self, out: &mut Self::Out, body: &RpTypeBody) -> Result<()> {
         self.process_struct(&mut out.0, &body.name, &body.comment, &body.fields)?;
 
         Ok(())
     }
 
-    fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
+    fn process_tuple(&self, out: &mut Self::Out, body: &RpTupleBody) -> Result<()> {
         quote_in! { out.0 =>
             #(Comments(&body.comment))
             type #(&body.name) struct {
@@ -170,7 +170,7 @@ impl<'el> PackageProcessor<'el, GoFlavor> for Compiler<'el> {
         Ok(())
     }
 
-    fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
+    fn process_enum(&self, out: &mut Self::Out, body: &RpEnumBody) -> Result<()> {
         quote_in! { out.0 =>
             #(Comments(&body.comment))
             type #(&body.name) int
@@ -202,7 +202,7 @@ impl<'el> PackageProcessor<'el, GoFlavor> for Compiler<'el> {
         Ok(())
     }
 
-    fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
+    fn process_interface(&self, out: &mut Self::Out, body: &RpInterfaceBody) -> Result<()> {
         quote_in! { out.0 =>
             #(Comments(&body.comment))
             type #(&body.name) struct {

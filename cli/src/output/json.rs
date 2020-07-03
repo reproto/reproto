@@ -105,7 +105,7 @@ where
 
 impl<T> Output for Json<T>
 where
-    T: 'static + LockableWrite,
+    T: LockableWrite,
 {
     fn lock<'a>(&'a self) -> Box<dyn io::Write + 'a> {
         self.out.lock()

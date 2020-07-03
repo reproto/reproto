@@ -13,23 +13,23 @@ use std::collections::BTreeMap;
 use std::slice;
 use trans::{self, Translated};
 
-pub(crate) struct Compiler<'el> {
-    pub(crate) env: &'el Translated<PythonFlavor>,
+pub(crate) struct Compiler<'a> {
+    pub(crate) env: &'a Translated<PythonFlavor>,
     variant_field: Spanned<RpField>,
     to_lower_snake: naming::ToLowerSnake,
     enum_enum: python::Import,
     service_generators: Vec<Box<dyn ServiceCodegen>>,
-    handle: &'el dyn Handle,
+    handle: &'a dyn Handle,
 }
 
-impl<'el> Compiler<'el> {
+impl<'a> Compiler<'a> {
     pub(crate) fn new(
-        env: &'el Translated<PythonFlavor>,
+        env: &'a Translated<PythonFlavor>,
         variant_field: Spanned<RpField>,
         options: Options,
-        handle: &'el dyn Handle,
-    ) -> Compiler<'el> {
-        Compiler {
+        handle: &'a dyn Handle,
+    ) -> Self {
+        Self {
             env,
             variant_field,
             to_lower_snake: naming::to_lower_snake(),
@@ -102,9 +102,9 @@ impl<'el> Compiler<'el> {
         }
     }
 
-    fn encode_tuple_method<'a, I>(&self, t: &mut python::Tokens, fields: I)
+    fn encode_tuple_method<'el, I>(&self, t: &mut python::Tokens, fields: I)
     where
-        I: IntoIterator<Item = &'a Spanned<RpField>>,
+        I: IntoIterator<Item = &'el Spanned<RpField>>,
     {
         let mut args = Vec::new();
 
@@ -158,10 +158,10 @@ impl<'el> Compiler<'el> {
         };
     }
 
-    fn decode_method<F, I>(
+    fn decode_method<'el, F, I>(
         &self,
         out: &mut python::Tokens,
-        name: &'el Name,
+        name: &Name,
         fields: I,
         variable_fn: F,
     ) where
@@ -274,9 +274,9 @@ impl<'el> Compiler<'el> {
     }
 }
 
-impl<'el> PackageProcessor<'el, PythonFlavor> for Compiler<'el> {
+impl<'a> PackageProcessor<'a, PythonFlavor> for Compiler<'a> {
     type Out = python::Tokens;
-    type DeclIter = trans::translated::DeclIter<'el, PythonFlavor>;
+    type DeclIter = trans::translated::DeclIter<'a, PythonFlavor>;
 
     fn ext(&self) -> &str {
         EXT
@@ -286,11 +286,11 @@ impl<'el> PackageProcessor<'el, PythonFlavor> for Compiler<'el> {
         self.env.decl_iter()
     }
 
-    fn handle(&self) -> &'el dyn Handle {
+    fn handle(&self) -> &dyn Handle {
         self.handle
     }
 
-    fn process_tuple(&self, out: &mut Self::Out, body: &'el RpTupleBody) -> Result<()> {
+    fn process_tuple(&self, out: &mut Self::Out, body: &RpTupleBody) -> Result<()> {
         quote_in! { *out =>
             class #(&body.name):
                 #(ref t => self.build_constructor(t, &body.fields))
@@ -311,7 +311,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor> for Compiler<'el> {
         Ok(())
     }
 
-    fn process_enum(&self, out: &mut Self::Out, body: &'el RpEnumBody) -> Result<()> {
+    fn process_enum(&self, out: &mut Self::Out, body: &RpEnumBody) -> Result<()> {
         quote_in! { *out =>
             class #(&body.name):
                 #(ref t => self.build_constructor(t, slice::from_ref(&self.variant_field)))
@@ -351,7 +351,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor> for Compiler<'el> {
         }
     }
 
-    fn process_type(&self, out: &mut Self::Out, body: &'el RpTypeBody) -> Result<()> {
+    fn process_type(&self, out: &mut Self::Out, body: &RpTypeBody) -> Result<()> {
         quote_in! { *out =>
             class #(&body.name):
                 #(ref t => self.build_constructor(t, &body.fields))
@@ -374,7 +374,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor> for Compiler<'el> {
         Ok(())
     }
 
-    fn process_interface(&self, out: &mut Self::Out, body: &'el RpInterfaceBody) -> Result<()> {
+    fn process_interface(&self, out: &mut Self::Out, body: &RpInterfaceBody) -> Result<()> {
         quote_in! { *out =>
             class #(&body.name):
                 #(match &body.sub_type_strategy {
@@ -499,7 +499,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor> for Compiler<'el> {
         }
     }
 
-    fn process_service(&self, out: &mut Self::Out, body: &'el RpServiceBody) -> Result<()> {
+    fn process_service(&self, out: &mut Self::Out, body: &RpServiceBody) -> Result<()> {
         for g in &self.service_generators {
             g.generate(ServiceAdded {
                 body,
@@ -518,7 +518,7 @@ impl<'el> PackageProcessor<'el, PythonFlavor> for Compiler<'el> {
                 out.line();
             }
 
-            if let RpDecl::Enum(ref body) = *decl {
+            if let RpDecl::Enum(body) = decl {
                 enums.push(body);
             }
 
