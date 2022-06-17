@@ -17,7 +17,7 @@ core = {package = "reproto-core", path = "../core", version = "0.4"}
 repository = {package = "reproto-repository", path = "../repository", version = "0.4"}
 
 ring = "0.16.14"
-hyper = "0.13.6"
+hyper = "0.14.12"
 hyper-rustls = "0.20.0"
 futures = "0.3.5"
 url = "2.1.1"
