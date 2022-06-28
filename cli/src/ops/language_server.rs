@@ -1,12 +1,12 @@
 //! Update action that synchronizes all repositories.
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::errors::Result;
 use log;
+use reproto_core::errors::Result;
 use std::fs;
 use std::io;
 
-pub fn options<'a, 'b>() -> App<'a, 'b> {
+pub fn options<'a>() -> App<'a> {
     let out = SubCommand::with_name("language-server").about("Run the language server for reproto");
 
     let out = out.arg(
@@ -32,15 +32,15 @@ pub fn entry(matches: &ArgMatches) -> Result<()> {
         let input = io::stdin();
         let output = io::stdout();
 
-        let level = if matches.is_present("debug") {
+        let level = if matches.try_contains_id("debug").unwrap_or_default() {
             log::LevelFilter::Debug
         } else {
             log::LevelFilter::Info
         };
 
-        let log = match matches.value_of("log") {
-            Some(log) => Some(fs::File::create(log)?),
-            None => None,
+        let log = match matches.try_get_one::<String>("log") {
+            Ok(Some(log)) => Some(fs::File::create(log)?),
+            _ => None,
         };
 
         languageserver::server(log, input, output, level)?;

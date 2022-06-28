@@ -1,4 +1,4 @@
-name: Rust
+name: CI
 
 on: [push, pull_request]
 
@@ -8,9 +8,9 @@ jobs:
     strategy:
       matrix:
         os:
-          - windows-latest
           - ubuntu-latest
-          - macos-latest
+    env:
+      RUSTFLAGS: "--cfg genco_nightly"
     steps:
     - uses: actions/checkout@v1
     - uses: actions-rs/toolchain@v1

@@ -42,7 +42,7 @@ use std::fmt;
 use std::str;
 
 macro_rules! scan_while {
-    ($slf:expr, $start:expr, $first:pat $(| $rest:pat)*) => {{
+    ($slf:expr, $start:expr, $first:pat_param $(| $rest:pat_param)*) => {{
         let mut __end = $start;
 
         loop {

@@ -6,8 +6,8 @@ use crate::{
     TupleAdded, TupleCodegen,
 };
 use backend::Initializer;
-use core::errors::Result;
 use genco::prelude::*;
+use reproto_core::errors::Result;
 use std::rc::Rc;
 
 pub(crate) struct Module {}

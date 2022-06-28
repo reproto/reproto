@@ -1,6 +1,6 @@
-use core::errors::Result;
-use core::{CoreFlavor, Handle, RelativePathBuf};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
+use reproto_core::errors::Result;
+use reproto_core::{CoreFlavor, Handle, RelativePathBuf};
 use std::any::Any;
 use std::path::Path;
 use trans::Session;

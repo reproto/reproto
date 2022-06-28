@@ -1,5 +1,5 @@
 // vim: ft=rust
-use core::regex::*;
+use reproto_core::regex::*;
 use regex_lexer::{self, RegexToken};
 
 grammar();

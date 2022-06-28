@@ -3,8 +3,8 @@
 use super::Objects;
 use crate::checksum::Checksum;
 use crate::hex_slice::HexSlice;
-use core::errors::Result;
-use core::Source;
+use reproto_core::errors::Result;
+use reproto_core::Source;
 use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};

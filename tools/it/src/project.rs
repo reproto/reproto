@@ -117,6 +117,7 @@ struct Vars<'a> {
 struct ProjectRunner {
     foreground: bool,
     /// Root directory.
+    #[allow(unused)]
     root: PathBuf,
     /// Builder used with project.
     build_yaml: build_yaml::BuildYaml,
@@ -129,6 +130,7 @@ struct ProjectRunner {
     /// Reproto command wrapper.
     reproto: Reproto,
     /// Shared target directory for projects.
+    #[allow(unused)]
     shared_target: PathBuf,
     /// Source directory from where to build project.
     source_languages: PathBuf,
@@ -210,11 +212,11 @@ impl ProjectRunner {
 
             if timed_out {
                 log::warn!("{name} - timed out, killing", name = name);
-                child.kill()?;
+                child.kill().await?;
             }
 
             log::trace!("{name}: waiting for process to exit...", name = name);
-            let status = child.await?;
+            let status = child.wait().await?;
             log::trace!("{name}: exited with {status}", name = name, status = status);
 
             if !status.success() {
@@ -375,7 +377,8 @@ impl ProjectRunner {
         let read_stderr = read_stderr(stderr, stderr_buf);
         tokio::pin!(read_stderr);
 
-        let mut timeout = time::delay_until(deadline);
+        let timeout = time::sleep_until(deadline);
+        tokio::pin!(timeout);
 
         let mut stdout_ended = false;
         let mut stderr_ended = false;

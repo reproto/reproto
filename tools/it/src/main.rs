@@ -4,7 +4,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::stream::StreamExt as _;
+use tokio_stream::StreamExt as _;
 
 /// Print the differences between the two provided paths.
 fn write_differences<W>(
@@ -293,7 +293,7 @@ async fn try_main() -> Result<()> {
     }
 
     let it_root = root.join("it");
-    let reproto = it::reproto::from_project(root.join("cli"), debug).await?;
+    let reproto = it::reproto::from_package("reproto", debug).await?;
 
     let reg = Arc::new(handlebars::Handlebars::new());
 

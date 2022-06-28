@@ -1,4 +1,4 @@
-use core::RpNumber;
+use reproto_core::RpNumber;
 use std::borrow::Cow;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

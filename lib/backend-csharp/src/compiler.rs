@@ -3,11 +3,11 @@
 use crate::flavored::*;
 use crate::processor::Processor;
 use crate::Options;
-use core::errors::Result;
-use core::{Handle, RelativePathBuf, Spanned};
 use genco::prelude::*;
 use genco::tokens::from_fn;
 use naming::Naming as _;
+use reproto_core::errors::Result;
+use reproto_core::{Handle, RelativePathBuf, Spanned};
 use std::rc::Rc;
 use trans::Translated;
 

@@ -1,30 +1,9 @@
-extern crate inflector;
-extern crate linked_hash_map;
-extern crate reproto_ast as ast;
-extern crate reproto_core as core;
-extern crate serde;
-extern crate serde_json;
-extern crate serde_yaml;
-
 mod format;
 mod json;
 mod sir;
 mod utils;
 mod yaml;
 
-pub use self::format::Format;
-pub use self::json::Json;
-pub use self::yaml::Yaml;
-use crate::ast::{
-    Attribute, AttributeItem, Decl, Field, InterfaceBody, Item, Name, SubType, TupleBody, Type,
-    TypeBody, TypeMember, Value,
-};
-use crate::core::errors::Result;
-use crate::core::{RpPackage, Source, Span, Spanned, DEFAULT_TAG};
-use crate::sir::{FieldSir, Sir, SubTypeSir};
-use inflector::cases::pascalcase::to_pascal_case;
-use inflector::cases::snakecase::to_snake_case;
-use linked_hash_map::LinkedHashMap;
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
@@ -32,6 +11,21 @@ use std::fmt;
 use std::hash;
 use std::ops;
 use std::rc::Rc;
+
+use inflector::cases::pascalcase::to_pascal_case;
+use inflector::cases::snakecase::to_snake_case;
+use linked_hash_map::LinkedHashMap;
+use reproto_ast::{
+    Attribute, AttributeItem, Decl, Field, InterfaceBody, Item, Name, SubType, TupleBody, Type,
+    TypeBody, TypeMember, Value,
+};
+use reproto_core::errors::Result;
+use reproto_core::{RpPackage, Source, Span, Spanned, DEFAULT_TAG};
+
+pub use crate::format::Format;
+pub use crate::json::Json;
+use crate::sir::{FieldSir, Sir, SubTypeSir};
+pub use crate::yaml::Yaml;
 
 #[derive(Debug)]
 pub struct Derive {
@@ -547,9 +541,10 @@ pub fn derive<'input>(derive: Derive, object: &'input Source) -> Result<Decl<'in
 
 #[cfg(test)]
 mod tests {
-    use super::{derive, Derive, Json};
-    use crate::ast::Decl;
-    use crate::core::Source;
+    use crate::{derive, Derive, Json};
+
+    use reproto_ast::Decl;
+    use reproto_core::Source;
 
     fn input<T>(input: &str, test: T)
     where

@@ -1,8 +1,8 @@
 use crate::checksum::Checksum;
 use crate::index::{Deployment, Index};
 use crate::objects::{FileObjects, Objects};
-use core::errors::Result;
-use core::{Range, RelativePath, RpPackage, Version};
+use reproto_core::errors::Result;
+use reproto_core::{Range, RelativePath, RpPackage, Version};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::VecDeque;

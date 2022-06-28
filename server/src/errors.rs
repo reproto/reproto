@@ -1,4 +1,4 @@
-use crate::core::errors as core;
+use reproto_core::errors as core;
 use std::borrow::Cow;
 
 /// Service errors.

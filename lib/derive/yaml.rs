@@ -1,17 +1,16 @@
-use crate::core;
-use crate::core::errors::Result;
 use crate::format;
 use crate::sir::{FieldSir, Sir};
 use crate::utils::is_datetime;
 use crate::Opaque;
 use linked_hash_map::LinkedHashMap;
+use reproto_core::errors::Result;
 use serde_yaml as yaml;
 
 #[derive(Debug)]
 pub struct Yaml;
 
 impl format::Format for Yaml {
-    fn decode(&self, object: &core::Source) -> Result<Sir> {
+    fn decode(&self, object: &reproto_core::Source) -> Result<Sir> {
         let value = yaml::from_reader(object.read()?).map_err(|e| format!("Bad YAML: {}", e))?;
         Ok(from_yaml(&value)?)
     }

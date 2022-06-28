@@ -1,7 +1,7 @@
 //! Multiple resolvers with combined result.
 
-use core::errors::Result;
-use core::{Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage};
+use reproto_core::errors::Result;
+use reproto_core::{Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage};
 
 pub struct Resolvers {
     resolvers: Vec<Box<dyn Resolver>>,

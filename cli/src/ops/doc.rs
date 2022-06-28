@@ -2,10 +2,10 @@
 
 use crate::utils::{load_manifest, simple_config};
 use clap::{App, ArgMatches, SubCommand};
-use core::errors::Result;
-use core::Reporter;
+use reproto_core::errors::Result;
+use reproto_core::Reporter;
 
-pub fn options<'a, 'b>() -> App<'a, 'b> {
+pub fn options<'a>() -> App<'a> {
     doc::shared_options(SubCommand::with_name("doc").about("Generate documentation"))
 }
 

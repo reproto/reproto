@@ -1,12 +1,11 @@
-use crate::core;
-use crate::core::errors::Result;
 use crate::sir::Sir;
+use reproto_core::errors::Result;
 use std::fmt;
 
 ///
 /// Decoder to use.
 pub trait Format: fmt::Debug {
-    fn decode(&self, object: &core::Source) -> Result<Sir>;
+    fn decode(&self, object: &reproto_core::Source) -> Result<Sir>;
 }
 
 /// Object accessor

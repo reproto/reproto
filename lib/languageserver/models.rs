@@ -1,6 +1,6 @@
 //! Data models that are shared for the language server.
 
-use core::{Position, RpVersionedPackage};
+use reproto_core::{Position, RpVersionedPackage};
 use std::collections::BTreeSet;
 use url::Url;
 

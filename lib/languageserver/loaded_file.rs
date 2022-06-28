@@ -2,8 +2,8 @@
 
 use crate::models::{Completion, Jump, Prefix, Range, Reference, Rename, Symbol};
 use crate::triggers::Triggers;
-use core::errors::Result;
-use core::{Diagnostics, Encoding, Position, RpVersionedPackage, Source, Span};
+use reproto_core::errors::Result;
+use reproto_core::{Diagnostics, Encoding, Position, RpVersionedPackage, Source, Span};
 use std::collections::HashMap;
 use url::Url;
 

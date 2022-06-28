@@ -3,14 +3,14 @@
 #![allow(unused)]
 
 use backend::package_processor;
-use core::errors::Result;
-use core::{
-    CoreFlavor, Diagnostics, Flavor, FlavorField, FlavorTranslator, PackageTranslator,
-    RpNumberKind, RpNumberType, RpStringType, Spanned, Translate, Translator,
-};
 use genco::prelude::*;
 use genco::tokens::{from_fn, FormatInto};
 use naming::Naming;
+use reproto_core::errors::Result;
+use reproto_core::{
+    CoreFlavor, Diagnostics, Flavor, FlavorField, FlavorTranslator, PackageTranslator,
+    RpNumberKind, RpNumberType, RpStringType, Spanned, Translate, Translator,
+};
 use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
@@ -321,12 +321,12 @@ impl FlavorTranslator for JavaFlavorTranslator {
     type Source = CoreFlavor;
     type Target = JavaFlavor;
 
-    core::translator_defaults!(Self, endpoint);
+    reproto_core::translator_defaults!(Self, endpoint);
 
     fn translate_field<T>(
         &self,
         translator: &T,
-        diag: &mut core::Diagnostics,
+        diag: &mut reproto_core::Diagnostics,
         field: RpField<Self::Source>,
     ) -> Result<Field>
     where
@@ -453,4 +453,4 @@ impl FlavorTranslator for JavaFlavorTranslator {
     }
 }
 
-core::decl_flavor!(pub(crate) JavaFlavor);
+reproto_core::decl_flavor!(pub(crate) JavaFlavor);

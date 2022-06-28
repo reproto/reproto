@@ -3,7 +3,7 @@ name = "reproto-path-parser"
 version = "0.4.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 repository = "https://github.com/reproto/reproto"
 homepage = "https://github.com/reproto/reproto"
@@ -13,12 +13,12 @@ reproto path parser
 """
 
 [dependencies]
-core = {package = "reproto-core", path = "../core", version = "0.4"}
+reproto-core = {path = "../core", version = "0.4"}
 ast = {package = "reproto-ast", path = "../ast", version = "0.4"}
 path-lexer = {package = "reproto-path-lexer", path = "../path-lexer", version = "0.4"}
 
-lalrpop-util = "0.19.0"
-error-chain = "0.12.2"
+lalrpop-util = "0.19.8"
+error-chain = "0.12.4"
 
 [build-dependencies]
-lalrpop = "0.19.0"
+lalrpop = "0.19.8"

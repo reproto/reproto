@@ -2,11 +2,11 @@
 
 use crate::utils::load_manifest;
 use clap::{App, ArgMatches, SubCommand};
-use core::errors::Result;
 use repository::Update;
+use reproto_core::errors::Result;
 use std::collections::HashSet;
 
-pub fn options<'a, 'b>() -> App<'a, 'b> {
+pub fn options<'a>() -> App<'a> {
     let out = SubCommand::with_name("update").about("Update local repository");
     out
 }

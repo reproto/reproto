@@ -4,13 +4,13 @@
 
 use crate::TYPE_SEP;
 use backend::package_processor;
-use core::errors::Result;
-use core::{
+use genco::prelude::*;
+use genco::tokens::{FormatInto, Item, ItemStr};
+use reproto_core::errors::Result;
+use reproto_core::{
     CoreFlavor, Diagnostics, Flavor, FlavorTranslator, PackageTranslator, RpNumberKind,
     RpNumberType, RpStringType, Spanned, Translate, Translator,
 };
-use genco::prelude::*;
-use genco::tokens::{FormatInto, Item, ItemStr};
 use std::collections::HashMap;
 use std::fmt;
 use std::ops::Deref;
@@ -146,7 +146,7 @@ impl FlavorTranslator for GoFlavorTranslator {
     type Source = CoreFlavor;
     type Target = GoFlavor;
 
-    core::translator_defaults!(Self, field, endpoint);
+    reproto_core::translator_defaults!(Self, field, endpoint);
 
     fn translate_number(&self, number: RpNumberType) -> Result<Type> {
         Ok(match number.kind {
@@ -269,4 +269,4 @@ impl FlavorTranslator for GoFlavorTranslator {
     }
 }
 
-core::decl_flavor!(pub(crate) GoFlavor);
+reproto_core::decl_flavor!(pub(crate) GoFlavor);

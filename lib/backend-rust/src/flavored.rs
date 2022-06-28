@@ -1,13 +1,13 @@
 //! Rust flavor.
 
 use crate::{SCOPE_SEP, TYPE_SEP};
-use core::errors::Result;
-use core::{
+use genco::prelude::*;
+use genco::tokens;
+use reproto_core::errors::Result;
+use reproto_core::{
     CoreFlavor, Diagnostics, Flavor, FlavorTranslator, PackageTranslator, RpNumberKind,
     RpNumberType, RpStringType, Spanned, Translate, Translator,
 };
-use genco::prelude::*;
-use genco::tokens;
 use std::ops::Deref;
 use std::rc::Rc;
 use trans::Packages;
@@ -150,7 +150,7 @@ impl FlavorTranslator for RustFlavorTranslator {
     type Source = CoreFlavor;
     type Target = RustFlavor;
 
-    core::translator_defaults!(Self, local_name, field);
+    reproto_core::translator_defaults!(Self, local_name, field);
 
     fn translate_number(&self, number: RpNumberType) -> Result<Type> {
         let out = match number.kind {
@@ -252,4 +252,4 @@ impl FlavorTranslator for RustFlavorTranslator {
     }
 }
 
-core::decl_flavor!(pub(crate) RustFlavor);
+reproto_core::decl_flavor!(pub(crate) RustFlavor);

@@ -1,9 +1,9 @@
 use crate::utils::{load_manifest, matches, publish_matches, semck_check, simple_config, Match};
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::errors::{Error, Result};
-use core::{Reporter, RpRequiredPackage, RpVersionedPackage, Version};
+use reproto_core::errors::{Error, Result};
+use reproto_core::{Reporter, RpRequiredPackage, RpVersionedPackage, Version};
 
-pub fn options<'a, 'b>() -> App<'a, 'b> {
+pub fn options<'a>() -> App<'a> {
     let out = SubCommand::with_name("check").about("Check specifications");
 
     let out = out.arg(
@@ -26,17 +26,19 @@ pub fn entry(reporter: &mut dyn Reporter, m: &ArgMatches) -> Result<()> {
     let mut manifest_resolver =
         env::path_resolver(&manifest)?.ok_or_else(|| "could not setup manifest resolver")?;
 
-    let version_override = if let Some(version) = m.value_of("version") {
+    let version_override = if let Ok(Some(version)) = m.try_get_one::<String>("version") {
         Some(Version::parse(version).map_err(|e| format!("bad version: {}: {}", version, e))?)
     } else {
         None
     };
 
     let packages: Vec<RpRequiredPackage> = m
-        .values_of("package")
+        .try_get_many::<String>("package")
+        .ok()
+        .flatten()
         .into_iter()
-        .flat_map(|it| it)
-        .map(|p| RpRequiredPackage::parse(p).map_err(Into::into))
+        .flatten()
+        .map(|p| RpRequiredPackage::parse(p))
         .collect::<Result<_>>()?;
 
     let mut results = Vec::new();

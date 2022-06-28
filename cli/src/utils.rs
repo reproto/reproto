@@ -1,30 +1,31 @@
+use std::fmt;
+use std::fs::File;
+use std::path::{Path, PathBuf};
+
 use clap::ArgMatches;
-use core::errors::{Error, Result, ResultExt};
-use core::{
+use manifest::{self, Lang, Language, Manifest, Publish};
+use repository::Repository;
+use reproto_core::errors::{Error, Result, ResultExt};
+use reproto_core::{
     CoreFlavor, Flavor, Reporter, Resolved, ResolvedByPrefix, Resolver, RpChannel, RpFile,
     RpPackage, RpPackageFormat, RpRequiredPackage, RpVersionedPackage, Source, SourceDiagnostics,
     Version,
 };
-use manifest::{self, Lang, Language, Manifest, Publish};
-use repository::Repository;
-use semck;
-use std::fmt;
-use std::fs::File;
-use std::path::Path;
 use trans::Session;
 
 /// Load the manifest based on commandline arguments.
-pub fn load_manifest<'a>(m: &ArgMatches<'a>) -> Result<Manifest> {
+pub fn load_manifest(m: &ArgMatches) -> Result<Manifest> {
     let mut manifest = manifest::Manifest::default();
 
     let path = m
-        .value_of("manifest-path")
-        .map::<Result<&Path>, _>(|p| Ok(Path::new(p)))
-        .unwrap_or_else(|| Ok(Path::new(env::MANIFEST_NAME)))?;
+        .try_get_one::<String>("manifest-path")
+        .ok()
+        .and_then(|p| Some(Path::new(p?)))
+        .unwrap_or_else(|| Path::new(env::MANIFEST_NAME));
 
     manifest.path = Some(path.to_owned());
 
-    if let Some(lang) = m.value_of("lang") {
+    if let Ok(Some(lang)) = m.try_get_one::<String>("lang") {
         let lang =
             Language::parse(lang).ok_or_else(|| format!("not a valid language: {}", lang))?;
         manifest.lang = Some(env::convert_lang(lang));
@@ -40,17 +41,15 @@ pub fn load_manifest<'a>(m: &ArgMatches<'a>) -> Result<Manifest> {
 
     /// Populate manifest with overrides and extensions from the command line.
     fn matches_to_manifest(manifest: &mut Manifest, m: &ArgMatches) -> Result<()> {
-        manifest.paths.extend(
-            m.values_of("path")
-                .into_iter()
-                .flat_map(|it| it)
-                .map(Path::new)
-                .map(ToOwned::to_owned),
-        );
+        if let Ok(Some(paths)) = m.try_get_many::<String>("path") {
+            manifest
+                .paths
+                .extend(paths.into_iter().map(|s| PathBuf::from(s.as_str())))
+        }
 
-        if let Some(files) = m.values_of("file") {
+        if let Ok(Some(files)) = m.try_get_many::<String>("file") {
             for file in files {
-                match file {
+                match file.as_str() {
                     // read from stdin
                     "-" => manifest.stdin = true,
                     // read from file
@@ -65,33 +64,37 @@ pub fn load_manifest<'a>(m: &ArgMatches<'a>) -> Result<Manifest> {
         // TODO: we want to be able to load modules, even when we don't have a path.
         if let Some(path) = manifest.path.as_ref() {
             if let Some(lang) = manifest.lang.as_ref() {
-                for module in m.values_of("module").into_iter().flat_map(|it| it) {
-                    let module = lang.string_spec(path, module)?;
-                    manifest.modules.get_or_insert_with(Vec::new).push(module);
+                if let Ok(Some(modules)) = m.try_get_many::<String>("module") {
+                    for module in modules {
+                        let module = lang.string_spec(path, module)?;
+                        manifest.modules.get_or_insert_with(Vec::new).push(module);
+                    }
                 }
             }
         }
 
-        for package in m.values_of("package").into_iter().flat_map(|it| it) {
-            let parsed = RpRequiredPackage::parse(package);
+        if let Ok(Some(packages)) = m.try_get_many::<String>("package") {
+            for package in packages {
+                let parsed = RpRequiredPackage::parse(package);
 
-            let parsed =
-                parsed.chain_err(|| format!("failed to parse --package argument: {}", package))?;
+                let parsed = parsed
+                    .chain_err(|| format!("failed to parse --package argument: {}", package))?;
 
-            manifest.packages.get_or_insert_with(Vec::new).push(parsed);
+                manifest.packages.get_or_insert_with(Vec::new).push(parsed);
+            }
         }
 
-        if let Some(package_prefix) = m.value_of("package-prefix").map(RpPackage::parse) {
-            manifest.package_prefix = Some(package_prefix);
+        if let Ok(Some(package_prefix)) = m.try_get_one::<String>("package-prefix") {
+            manifest.package_prefix = Some(RpPackage::parse(package_prefix));
         }
 
-        if let Some(id_converter) = m.value_of("id-converter") {
+        if let Ok(Some(id_converter)) = m.try_get_one::<String>("id-converter") {
             manifest.id_converter = Some(id_converter.to_string());
         }
 
         // override output path
-        if let Some(out) = m.value_of("out").map(Path::new) {
-            manifest.output = Some(out.to_owned());
+        if let Ok(Some(out)) = m.try_get_one::<String>("out") {
+            manifest.output = Some(PathBuf::from(out));
         }
 
         matches_to_repository(&mut manifest.repository, m)?;
@@ -102,14 +105,15 @@ pub fn load_manifest<'a>(m: &ArgMatches<'a>) -> Result<Manifest> {
     ///
     /// CLI arguments take precedence.
     fn matches_to_repository(repository: &mut manifest::Repository, m: &ArgMatches) -> Result<()> {
-        repository.no_repository = repository.no_repository || m.is_present("no-repository");
+        repository.no_repository =
+            repository.no_repository || m.try_contains_id("no-repository").unwrap_or_default();
 
-        if let Some(objects) = m.value_of("objects").map(ToOwned::to_owned) {
-            repository.objects = Some(objects);
+        if let Ok(Some(objects)) = m.try_get_one::<String>("objects") {
+            repository.objects = Some(objects.clone());
         }
 
-        if let Some(index) = m.value_of("index").map(ToOwned::to_owned) {
-            repository.index = Some(index);
+        if let Ok(Some(index)) = m.try_get_one::<String>("index") {
+            repository.index = Some(index.clone());
         }
 
         Ok(())

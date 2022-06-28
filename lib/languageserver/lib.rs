@@ -4,13 +4,6 @@ mod models;
 mod triggers;
 mod workspace;
 
-use self::loaded_file::LoadedFile;
-use self::models::{Completion, Jump, Range, RenameResult};
-use self::workspace::Workspace;
-use self::ContentType::*;
-use core::errors::Result;
-use core::{Diagnostic, Encoding, Filesystem, RealFilesystem, Reported, Rope, Source};
-use serde::Deserialize;
 use std::collections::{BTreeSet, Bound, HashMap};
 use std::fmt;
 use std::io::{self, BufRead, BufReader, Read, Write};
@@ -19,6 +12,16 @@ use std::path::Path;
 use std::result;
 use std::sync::{Arc, Mutex};
 use url::Url;
+
+use envelope::RequestId;
+use reproto_core::errors::Result;
+use reproto_core::{Diagnostic, Encoding, Filesystem, RealFilesystem, Reported, Rope, Source};
+use serde::Deserialize;
+
+use crate::loaded_file::LoadedFile;
+use crate::models::{Completion, Jump, Range, RenameResult};
+use crate::workspace::Workspace;
+use crate::ContentType::*;
 
 #[derive(Debug)]
 enum ContentType {
@@ -91,7 +94,7 @@ struct Channel<W> {
     output: Arc<Mutex<(Vec<u8>, W)>>,
 }
 
-impl<W> ::std::clone::Clone for Channel<W> {
+impl<W> Clone for Channel<W> {
     fn clone(&self) -> Self {
         Channel {
             next_id: Arc::clone(&self.next_id),
@@ -137,7 +140,7 @@ where
     fn notification<N>(&self, params: N::Params) -> Result<()>
     where
         N: ty::notification::Notification,
-        N::Params: fmt::Debug + serde::Serialize,
+        N::Params: fmt::Debug,
     {
         let envelope = envelope::NotificationMessage::<N::Params> {
             jsonrpc: envelope::V2,
@@ -149,16 +152,16 @@ where
     }
 
     /// Send a request.
-    fn request<R>(&self, params: R::Params) -> Result<envelope::RequestId>
+    fn request<R>(&self, params: R::Params) -> Result<RequestId>
     where
         R: ty::request::Request,
-        R::Params: fmt::Debug + serde::Serialize,
+        R::Params: fmt::Debug,
     {
         let id = {
             let mut next_id = self.next_id.lock().map_err(|_| "id allocation poisoned")?;
             let id = *next_id;
             *next_id = id + 1;
-            envelope::RequestId::Number(id)
+            RequestId::Number(id)
         };
 
         let envelope = envelope::RequestMessage::<R::Params> {
@@ -173,7 +176,7 @@ where
     }
 
     /// Send a response message.
-    fn send<T>(&self, request_id: Option<envelope::RequestId>, message: T) -> Result<()>
+    fn send<T>(&self, request_id: Option<RequestId>, message: T) -> Result<()>
     where
         T: fmt::Debug + serde::Serialize,
     {
@@ -190,7 +193,7 @@ where
     /// Send an error.
     fn send_error<D>(
         &self,
-        request_id: Option<envelope::RequestId>,
+        request_id: Option<RequestId>,
         error: envelope::ResponseError<D>,
     ) -> Result<()>
     where
@@ -276,10 +279,10 @@ where
         }
 
         let typ = match record.level() {
-            Error => ty::MessageType::Error,
-            Warn => ty::MessageType::Warning,
-            Info => ty::MessageType::Info,
-            _ => ty::MessageType::Log,
+            Error => ty::MessageType::ERROR,
+            Warn => ty::MessageType::WARNING,
+            Info => ty::MessageType::INFO,
+            _ => ty::MessageType::LOG,
         };
 
         let notification = ty::LogMessageParams {
@@ -367,7 +370,7 @@ struct Server<R, W> {
     /// Filesystem abstraction.
     fs: RealFilesystem,
     /// Expected responses.
-    expected: HashMap<envelope::RequestId, Expected>,
+    expected: HashMap<RequestId, Expected>,
     /// Built-in types.
     built_ins: Vec<&'static str>,
 }
@@ -685,11 +688,11 @@ where
     /// Handler for `initialize`.
     fn initialize(
         &mut self,
-        request_id: Option<envelope::RequestId>,
+        request_id: Option<RequestId>,
         params: ty::InitializeParams,
     ) -> Result<()> {
         // TODO: make use of root_uri instead.
-        if let Some(path) = &params.root_path {
+        if let Some(path) = params.root_uri.as_ref().map(|uri| uri.path()) {
             let path = Path::new(path);
 
             let path = path
@@ -703,17 +706,17 @@ where
         let result = ty::InitializeResult {
             capabilities: ty::ServerCapabilities {
                 text_document_sync: Some(ty::TextDocumentSyncCapability::Kind(
-                    ty::TextDocumentSyncKind::Incremental,
+                    ty::TextDocumentSyncKind::INCREMENTAL,
                 )),
                 completion_provider: Some(ty::CompletionOptions {
                     trigger_characters: Some(vec![":".into(), ".".into()]),
                     ..ty::CompletionOptions::default()
                 }),
-                definition_provider: Some(true),
-                rename_provider: Some(ty::RenameProviderCapability::Simple(true)),
-                document_symbol_provider: Some(true),
-                workspace_symbol_provider: Some(true),
-                references_provider: Some(true),
+                definition_provider: Some(ty::OneOf::Left(true)),
+                rename_provider: Some(ty::OneOf::Left(true)),
+                document_symbol_provider: Some(ty::OneOf::Left(true)),
+                workspace_symbol_provider: Some(ty::OneOf::Left(true)),
+                references_provider: Some(ty::OneOf::Left(true)),
                 ..ty::ServerCapabilities::default()
             },
             server_info: Some(ty::ServerInfo {
@@ -740,7 +743,7 @@ where
     /// Handler for `workspace/symbol`.
     fn workspace_symbol(
         &mut self,
-        request_id: Option<envelope::RequestId>,
+        request_id: Option<RequestId>,
         params: ty::WorkspaceSymbolParams,
     ) -> Result<()> {
         let query = params.query;
@@ -795,7 +798,7 @@ where
                 }
 
                 let mut path = key.clone();
-                path.push(s.name.to_string());
+                path.push(s.name.clone());
 
                 let range = convert_range(s.range);
 
@@ -804,12 +807,14 @@ where
                     range,
                 };
 
+                #[allow(deprecated)]
                 symbols.push(ty::SymbolInformation {
                     name: path.join("::"),
-                    kind: ty::SymbolKind::Class,
+                    kind: ty::SymbolKind::CLASS,
                     location: location,
                     container_name: Some(file.package.to_string()),
                     deprecated: None,
+                    tags: None,
                 });
             }
         }
@@ -820,7 +825,7 @@ where
     /// Handler for `textDocument/documentSymbol`.
     fn text_document_document_symbol(
         &mut self,
-        request_id: Option<envelope::RequestId>,
+        request_id: Option<RequestId>,
         params: ty::DocumentSymbolParams,
     ) -> Result<()> {
         let url = params.text_document.uri;
@@ -840,7 +845,7 @@ where
     /// Handler for `textDocument/references`.
     fn text_document_references(
         &mut self,
-        request_id: Option<envelope::RequestId>,
+        request_id: Option<RequestId>,
         params: ty::ReferenceParams,
     ) -> Result<()> {
         let url = params.text_document_position.text_document.uri;
@@ -869,7 +874,7 @@ where
     /// Handler for `workspace/didChangeConfiguration`.
     fn workspace_did_change_configuration(
         &mut self,
-        _: Option<envelope::RequestId>,
+        _: Option<RequestId>,
         _: ty::DidChangeConfigurationParams,
     ) -> Result<()> {
         Ok(())
@@ -935,7 +940,7 @@ where
         if let Some(e) = workspace.manifest_error.as_ref() {
             let d = ty::Diagnostic {
                 message: e.display().to_string(),
-                severity: Some(ty::DiagnosticSeverity::Error),
+                severity: Some(ty::DiagnosticSeverity::ERROR),
                 ..ty::Diagnostic::default()
             };
 
@@ -963,7 +968,7 @@ where
 
         for d in diagnostics.into_iter() {
             match *d {
-                core::Diagnostic::Error {
+                reproto_core::Diagnostic::Error {
                     ref span,
                     ref message,
                 } => {
@@ -973,13 +978,13 @@ where
                     let d = ty::Diagnostic {
                         range: range,
                         message: message.to_string(),
-                        severity: Some(ty::DiagnosticSeverity::Error),
+                        severity: Some(ty::DiagnosticSeverity::ERROR),
                         ..ty::Diagnostic::default()
                     };
 
                     out.push(d);
                 }
-                core::Diagnostic::Info {
+                reproto_core::Diagnostic::Info {
                     ref span,
                     ref message,
                 } => {
@@ -989,7 +994,7 @@ where
                     let d = ty::Diagnostic {
                         range: range,
                         message: message.to_string(),
-                        severity: Some(ty::DiagnosticSeverity::Information),
+                        severity: Some(ty::DiagnosticSeverity::INFORMATION),
                         ..ty::Diagnostic::default()
                     };
 
@@ -1112,68 +1117,76 @@ where
         }
     }
 
-    /// Handler for `textDocument/didOpen`.
-    fn text_document_did_open(&mut self, params: ty::DidOpenTextDocumentParams) -> Result<()> {
-        /// Raise an error indicating that the current file does not belong to a manifest, or that
-        /// a manifest _does not_ exist.
-        macro_rules! handle_manifest_error {
-            ($workspace:expr) => {
-                // warn if the currently opened file is not part of workspace.
-                let manifest_url = $workspace.manifest_url()?;
+    /// Raise an error indicating that the current file does not belong to a manifest, or that
+    /// a manifest _does not_ exist.
+    fn handle_manifest_error(
+        workspace: &mut Workspace,
+        channel: &mut Channel<W>,
+        expected: &mut HashMap<RequestId, Expected>,
+    ) -> Result<()> {
+        // warn if the currently opened file is not part of workspace.
+        let manifest_url = workspace.manifest_url()?;
 
-                if $workspace.manifest_path.is_file() {
-                    let mut actions = Vec::new();
+        if workspace.manifest_path.is_file() {
+            let mut actions = Vec::new();
 
-                    actions.push(ty::MessageActionItem {
-                        title: "Ignore".to_string(),
-                    });
+            actions.push(ty::MessageActionItem {
+                title: "Ignore".to_string(),
+                properties: Default::default(),
+            });
 
-                    actions.push(ty::MessageActionItem {
-                        title: "Open project manifest".to_string(),
-                    });
+            actions.push(ty::MessageActionItem {
+                title: "Open project manifest".to_string(),
+                properties: Default::default(),
+            });
 
-                    let message = format!(
-                        "This file is not part of project, consider updating the [packages] \
-             section in reproto.toml"
-                    );
+            let message = format!(
+                "This file is not part of project, consider updating the [packages] section in \
+                 reproto.toml"
+            );
 
-                    let id = self.channel.request::<ty::request::ShowMessageRequest>(
-                        ty::ShowMessageRequestParams {
-                            typ: ty::MessageType::Warning,
-                            message: message,
-                            actions: Some(actions),
-                        },
-                    )?;
+            let id = channel.request::<ty::request::ShowMessageRequest>(
+                ty::ShowMessageRequestParams {
+                    typ: ty::MessageType::WARNING,
+                    message,
+                    actions: Some(actions),
+                },
+            )?;
 
-                    self.expected.insert(id, Expected::ProjectAddMissing);
-                } else {
-                    let mut actions = Vec::new();
+            expected.insert(id, Expected::ProjectAddMissing);
+        } else {
+            let mut actions = Vec::new();
 
-                    log::warn!("missing reproto manifest: {}", manifest_url);
+            log::warn!("missing reproto manifest: {}", manifest_url);
 
-                    actions.push(ty::MessageActionItem {
-                        title: "Ignore".to_string(),
-                    });
+            actions.push(ty::MessageActionItem {
+                title: "Ignore".to_string(),
+                properties: Default::default(),
+            });
 
-                    actions.push(ty::MessageActionItem {
-                        title: "Initialize project".to_string(),
-                    });
+            actions.push(ty::MessageActionItem {
+                title: "Initialize project".to_string(),
+                properties: Default::default(),
+            });
 
-                    let message = format!("Workspace does not have a reproto manifest!");
+            let message = format!("Workspace does not have a reproto manifest!");
 
-                    let id = self.channel.request::<ty::request::ShowMessageRequest>(
-                        ty::ShowMessageRequestParams {
-                            typ: ty::MessageType::Warning,
-                            message: message,
-                            actions: Some(actions),
-                        },
-                    )?;
-
-                    self.expected.insert(id, Expected::ProjectInit);
-                }
+            let params = ty::ShowMessageRequestParams {
+                typ: ty::MessageType::WARNING,
+                message: message,
+                actions: Some(actions),
             };
+
+            let id = channel.request::<ty::request::ShowMessageRequest>(params)?;
+
+            expected.insert(id, Expected::ProjectInit);
         }
 
+        Ok(())
+    }
+
+    /// Handler for `textDocument/didOpen`.
+    fn text_document_did_open(&mut self, params: ty::DidOpenTextDocumentParams) -> Result<()> {
         let text_document = params.text_document;
         let url = text_document.uri;
         let text = text_document.text;
@@ -1205,7 +1218,7 @@ where
                 );
 
                 if url != workspace.manifest_url()? {
-                    handle_manifest_error!(workspace);
+                    Self::handle_manifest_error(workspace, &mut self.channel, &mut self.expected)?;
                 }
             }
 
@@ -1234,7 +1247,7 @@ where
     /// Handler for `textDocument/completion`.
     fn text_document_completion(
         &mut self,
-        request_id: Option<envelope::RequestId>,
+        request_id: Option<RequestId>,
         params: ty::CompletionParams,
     ) -> Result<()> {
         let mut response = ty::CompletionList {
@@ -1272,7 +1285,7 @@ where
                 for r in results {
                     list.items.push(ty::CompletionItem {
                         label: r.to_string(),
-                        kind: Some(ty::CompletionItemKind::Module),
+                        kind: Some(ty::CompletionItemKind::MODULE),
                         ..ty::CompletionItem::default()
                     });
                 }
@@ -1281,7 +1294,7 @@ where
                 for (prefix, value) in &file.prefixes {
                     list.items.push(ty::CompletionItem {
                         label: format!("{}::", prefix),
-                        kind: Some(ty::CompletionItemKind::Module),
+                        kind: Some(ty::CompletionItemKind::MODULE),
                         detail: Some(value.package.to_string()),
                         ..ty::CompletionItem::default()
                     });
@@ -1290,7 +1303,7 @@ where
                 for c in &self.built_ins {
                     list.items.push(ty::CompletionItem {
                         label: c.to_string(),
-                        kind: Some(ty::CompletionItemKind::Keyword),
+                        kind: Some(ty::CompletionItemKind::KEYWORD),
                         ..ty::CompletionItem::default()
                     });
                 }
@@ -1338,7 +1351,7 @@ where
                     for s in symbols {
                         items.push(ty::CompletionItem {
                             label: format!("{}::{}", suffix.to_string(), s.name),
-                            kind: Some(ty::CompletionItemKind::Class),
+                            kind: Some(ty::CompletionItemKind::CLASS),
                             documentation: s.to_documentation(),
                             ..ty::CompletionItem::default()
                         });
@@ -1350,7 +1363,7 @@ where
                 for s in symbols {
                     items.push(ty::CompletionItem {
                         label: s.name.to_string(),
-                        kind: Some(ty::CompletionItemKind::Class),
+                        kind: Some(ty::CompletionItemKind::CLASS),
                         documentation: s.to_documentation(),
                         ..ty::CompletionItem::default()
                     });
@@ -1368,7 +1381,7 @@ where
     /// Handler for `textDocument/definition`.
     fn text_document_definition(
         &mut self,
-        request_id: Option<envelope::RequestId>,
+        request_id: Option<RequestId>,
         params: ty::TextDocumentPositionParams,
     ) -> Result<()> {
         let mut response = None::<ty::GotoDefinitionResponse>;
@@ -1380,7 +1393,7 @@ where
     /// Handler for renaming
     fn text_document_rename(
         &mut self,
-        request_id: Option<envelope::RequestId>,
+        request_id: Option<RequestId>,
         params: ty::RenameParams,
     ) -> Result<()> {
         let workspace = match &mut self.workspace {
@@ -1408,11 +1421,11 @@ where
                         let edits = setup_edits(ranges, new_name.as_str());
 
                         changes.push(ty::TextDocumentEdit {
-                            text_document: ty::VersionedTextDocumentIdentifier {
+                            text_document: ty::OptionalVersionedTextDocumentIdentifier {
                                 uri: url.clone(),
                                 version: None,
                             },
-                            edits: edits,
+                            edits,
                         });
                     }
 
@@ -1426,10 +1439,10 @@ where
                 RenameResult::ImplicitPackage { ranges, position } => {
                     let mut edits = setup_edits(ranges, new_name.as_str());
 
-                    edits.push(ty::TextEdit {
+                    edits.push(ty::OneOf::Left(ty::TextEdit {
                         range: convert_range((position, position)),
                         new_text: format!(" as {}", new_name),
-                    });
+                    }));
 
                     edit = Some(local_edits(&url, edits));
                 }
@@ -1442,23 +1455,29 @@ where
         self.channel.send(request_id, edit)?;
         return Ok(());
 
-        fn setup_edits(ranges: &Vec<Range>, new_text: &str) -> Vec<ty::TextEdit> {
+        fn setup_edits(
+            ranges: &Vec<Range>,
+            new_text: &str,
+        ) -> Vec<ty::OneOf<ty::TextEdit, ty::AnnotatedTextEdit>> {
             let mut edits = Vec::new();
 
             for range in ranges {
-                edits.push(ty::TextEdit {
+                edits.push(ty::OneOf::Left(ty::TextEdit {
                     range: convert_range(range),
                     new_text: new_text.to_string(),
-                });
+                }));
             }
 
             edits
         }
 
         // Setup a workspace edit which is only local to the specified URL.
-        fn local_edits(url: &Url, edits: Vec<ty::TextEdit>) -> ty::WorkspaceEdit {
+        fn local_edits(
+            url: &Url,
+            edits: Vec<ty::OneOf<ty::TextEdit, ty::AnnotatedTextEdit>>,
+        ) -> ty::WorkspaceEdit {
             let changes = vec![ty::TextDocumentEdit {
-                text_document: ty::VersionedTextDocumentIdentifier {
+                text_document: ty::OptionalVersionedTextDocumentIdentifier {
                     uri: url.clone(),
                     version: None,
                 },
@@ -1561,13 +1580,13 @@ fn convert_range<R: Into<Range>>(range: R) -> ty::Range {
     let end = range.end;
 
     let start = ty::Position {
-        line: start.line as u64,
-        character: start.col as u64,
+        line: start.line as u32,
+        character: start.col as u32,
     };
 
     let end = ty::Position {
-        line: end.line as u64,
-        character: end.col as u64,
+        line: end.line as u32,
+        character: end.col as u32,
     };
 
     ty::Range { start, end }

@@ -3,7 +3,7 @@ name = "reproto-languageserver"
 version = "0.4.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 repository = "https://github.com/reproto/reproto"
 homepage = "https://github.com/reproto/reproto"
@@ -13,7 +13,7 @@ Language Server for Reproto
 """
 
 [dependencies]
-core = {package = "reproto-core", path = "../core", version = "0.4"}
+reproto-core = {path = "../core", version = "0.4"}
 manifest = {package = "reproto-manifest", path = "../manifest", version = "0.4"}
 ast = {package = "reproto-ast", path = "../ast", version = "0.4"}
 env = {package = "reproto-env", path = "../env", version = "0.4"}
@@ -21,13 +21,13 @@ repository = {package = "reproto-repository", path = "../repository", version = 
 parser = {package = "reproto-parser", path = "../parser", version = "0.4"}
 lexer = {package = "reproto-lexer", path = "../lexer", version = "0.4"}
 
-ty = {package = "lsp-types", version = "0.74.0"}
-json = {package = "serde_json", version = "1.0.53"}
-serde = { version = "1.0.111", features = ["derive"] }
-serde_derive = "1.0.111"
-url = { version = "2.0.0", features = ["serde"] }
-log = { version = "0.4.8", features = ["std"] }
-linked-hash-map = { version = "0.5.3", features = ["serde"] }
+ty = { package = "lsp-types", version = "0.93.0" }
+json = { package = "serde_json", version = "1.0.81" }
+serde = { version = "1.0.137", features = ["derive"] }
+serde_derive = "1.0.137"
+url = { version = "2.2.2", features = ["serde"] }
+log = { version = "0.4.17", features = ["std"] }
+linked-hash-map = { version = "0.5.6", features = ["serde"] }
 
 [lib]
 path = "lib.rs"

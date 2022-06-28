@@ -1,8 +1,8 @@
 //! Encapsulate home environment
 
 use crate::config::read_config;
-use core::errors::Result;
 use dirs;
+use reproto_core::errors::Result;
 use std::path::PathBuf;
 
 pub struct ConfigEnvironment {

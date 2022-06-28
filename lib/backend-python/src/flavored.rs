@@ -5,14 +5,14 @@
 use crate::utils::VersionHelper;
 use crate::{Options, TYPE_SEP};
 use backend::package_processor;
-use core::errors::Result;
-use core::{
-    CoreFlavor, Diagnostics, Flavor, FlavorTranslator, PackageTranslator, RpNumberType,
-    RpStringType, Spanned, Translate, Translator,
-};
 use genco::prelude::*;
 use genco::tokens::{FormatInto, Item, ItemStr};
 use naming::Naming;
+use reproto_core::errors::Result;
+use reproto_core::{
+    CoreFlavor, Diagnostics, Flavor, FlavorTranslator, PackageTranslator, RpNumberType,
+    RpStringType, Spanned, Translate, Translator,
+};
 use std::cmp;
 use std::collections::HashMap;
 use std::fmt;
@@ -202,7 +202,7 @@ impl FlavorTranslator for PythonFlavorTranslator {
     type Source = CoreFlavor;
     type Target = PythonFlavor;
 
-    core::translator_defaults!(Self, endpoint, enum_type, field);
+    reproto_core::translator_defaults!(Self, endpoint, enum_type, field);
 
     fn translate_number(&self, _: RpNumberType) -> Result<Type> {
         Ok(Type::Integer)
@@ -299,4 +299,4 @@ impl FlavorTranslator for PythonFlavorTranslator {
     }
 }
 
-core::decl_flavor!(pub(crate) PythonFlavor);
+reproto_core::decl_flavor!(pub(crate) PythonFlavor);

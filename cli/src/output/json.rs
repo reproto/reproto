@@ -1,7 +1,7 @@
 use super::{LockableWrite, Output};
-use core::errors::Result;
-use core::flavored::*;
-use core::{Encoding, Source, Span, SymbolKind};
+use reproto_core::errors::Result;
+use reproto_core::flavored::*;
+use reproto_core::{Encoding, Source, Span, SymbolKind};
 use serde::Serialize;
 use std::io;
 use std::path::PathBuf;

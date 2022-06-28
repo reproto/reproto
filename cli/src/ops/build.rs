@@ -2,10 +2,10 @@
 
 use crate::utils::{load_manifest, session};
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::errors::Result;
-use core::{Filesystem, Reporter};
+use reproto_core::errors::Result;
+use reproto_core::{Filesystem, Reporter};
 
-pub fn options<'a, 'b>() -> App<'a, 'b> {
+pub fn options<'a>() -> App<'a> {
     let out = SubCommand::with_name("build").about("Build specifications");
 
     let out = out.arg(

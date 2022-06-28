@@ -4,10 +4,10 @@ use crate::flavored::*;
 use crate::utils::Comments;
 use crate::{EXT, TYPE_SEP};
 use backend::PackageProcessor;
-use core::errors::Result;
-use core::{Handle, Spanned};
 use genco::prelude::*;
 use genco::tokens::ItemStr;
+use reproto_core::errors::Result;
+use reproto_core::{Handle, Spanned};
 use trans::Translated;
 
 pub struct Compiler<'a> {

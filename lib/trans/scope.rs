@@ -1,12 +1,12 @@
 //! Propagates scope-specific information to `into_model` transformations.
 
 use crate::features::{Feature, Features};
-use core::errors::Error;
-use core::{
+use naming::Naming;
+use reproto_core::errors::Error;
+use reproto_core::{
     CoreFlavor, Diagnostics, Import, RpName, RpRequiredPackage, RpVersionedPackage, Span, Spanned,
     Version,
 };
-use naming::Naming;
 use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
@@ -206,7 +206,7 @@ where
 mod tests {
     use crate::features::Features;
     use crate::scope::Scope;
-    use core::{RpPackage, RpVersionedPackage, Version};
+    use reproto_core::{RpPackage, RpVersionedPackage, Version};
     use std::collections::HashMap;
     use std::rc::Rc;
 

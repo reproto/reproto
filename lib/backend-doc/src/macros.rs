@@ -40,14 +40,14 @@ macro_rules! define_processor {
     ($name:ident, $body:ty, $slf:ident, $($tail:tt)*) => (
         pub struct $name<'session> {
             pub out: ::std::cell::RefCell<DocBuilder<'session>>,
-            pub session: &'session trans::Translated<core::CoreFlavor>,
+            pub session: &'session trans::Translated<reproto_core::CoreFlavor>,
             pub syntax: (&'session ::syntect::highlighting::Theme, &'session ::syntect::parsing::SyntaxSet),
             pub root: &'session str,
             pub body: &'session $body,
         }
 
         impl<'session> Processor<'session> for $name<'session> {
-            fn session(&self) -> &'session trans::Translated<core::CoreFlavor> {
+            fn session(&self) -> &'session trans::Translated<reproto_core::CoreFlavor> {
                 self.session
             }
 
@@ -77,13 +77,13 @@ macro_rules! define_processor {
     );
 
     (@tail $slf:ident current_package => $body:block; $($tail:tt)*) => (
-        fn current_package(&$slf) -> Option<&'session core::RpVersionedPackage> $body
+        fn current_package(&$slf) -> Option<&'session reproto_core::RpVersionedPackage> $body
 
         define_processor!(@tail $slf $($tail)*);
     );
 
     (@tail $slf:ident current_package => $expr:expr; $($tail:tt)*) => (
-        fn current_package(&$slf) -> Option<&'session core::RpVersionedPackage> { Some($expr) }
+        fn current_package(&$slf) -> Option<&'session reproto_core::RpVersionedPackage> { Some($expr) }
 
         define_processor!(@tail $slf $($tail)*);
     );

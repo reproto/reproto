@@ -3,10 +3,10 @@
 use crate::flavored::*;
 use crate::{EnumAdded, FieldAdded, FileSpec, InterfaceAdded, Options, Tags, TupleAdded, EXT};
 use backend::PackageProcessor;
-use core::errors::Result;
-use core::{Handle, RelativePathBuf, Spanned};
 use genco::prelude::*;
 use genco::tokens::{FormatInto, ItemStr};
+use reproto_core::errors::Result;
+use reproto_core::{Handle, RelativePathBuf, Spanned};
 use trans::{self, Translated};
 
 /// Documentation comments.

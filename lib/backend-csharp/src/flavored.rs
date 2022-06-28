@@ -2,14 +2,14 @@
 
 #![allow(unused)]
 
-use core::errors::Result;
-use core::{
-    CoreFlavor, Diagnostics, Flavor, FlavorField, FlavorTranslator, PackageTranslator,
-    RpNumberKind, RpNumberType, RpNumberValidate, RpStringType, Spanned, Translate, Translator,
-};
 use genco::prelude::*;
 use genco::tokens::from_fn;
 use naming::Naming;
+use reproto_core::errors::Result;
+use reproto_core::{
+    CoreFlavor, Diagnostics, Flavor, FlavorField, FlavorTranslator, PackageTranslator,
+    RpNumberKind, RpNumberType, RpNumberValidate, RpStringType, Spanned, Translate, Translator,
+};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -215,12 +215,12 @@ impl FlavorTranslator for CsharpFlavorTranslator {
     type Source = CoreFlavor;
     type Target = CsharpFlavor;
 
-    core::translator_defaults!(Self, local_name, endpoint);
+    reproto_core::translator_defaults!(Self, local_name, endpoint);
 
     fn translate_field<T>(
         &self,
         translator: &T,
-        diag: &mut core::Diagnostics,
+        diag: &mut reproto_core::Diagnostics,
         field: RpField<Self::Source>,
     ) -> Result<Field>
     where
@@ -325,4 +325,4 @@ impl FlavorTranslator for CsharpFlavorTranslator {
     }
 }
 
-core::decl_flavor!(pub(crate) CsharpFlavor);
+reproto_core::decl_flavor!(pub(crate) CsharpFlavor);

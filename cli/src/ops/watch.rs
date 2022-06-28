@@ -2,11 +2,11 @@
 
 use crate::output::Output;
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::errors::Result;
-use core::{Filesystem, Reporter};
+use reproto_core::errors::Result;
+use reproto_core::{Filesystem, Reporter};
 use std::rc::Rc;
 
-pub fn options<'a, 'b>() -> App<'a, 'b> {
+pub fn options<'a>() -> App<'a> {
     let out = SubCommand::with_name("watch")
         .about("Setup a file watcher that automatically builds specifications");
 
@@ -57,7 +57,7 @@ pub fn entry(fs: &dyn Filesystem, matches: &ArgMatches, output: &dyn Output) -> 
     // current set of known files
     let mut files = HashSet::new();
 
-    let delete = matches.is_present("delete");
+    let delete = matches.try_contains_id("delete").unwrap_or_default();
 
     let mut reporter = Vec::new();
 
@@ -299,8 +299,8 @@ pub fn entry(fs: &dyn Filesystem, matches: &ArgMatches, output: &dyn Output) -> 
 
 #[cfg(feature = "notify")]
 mod stalker {
-    use core::errors::Result;
-    use core::{Filesystem, Handle, RelativePath};
+    use reproto_core::errors::Result;
+    use reproto_core::{Filesystem, Handle, RelativePath};
     use std::cell::RefCell;
     use std::collections::HashSet;
     use std::io;

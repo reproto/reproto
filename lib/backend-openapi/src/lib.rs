@@ -17,13 +17,13 @@ macro_rules! number_rule {
 }
 
 use self::spec::*;
-use core::errors::Result;
-use core::flavored::*;
-use core::{
-    CoreFlavor, Handle, RelativePath, RelativePathBuf, RpHttpMethod, RpNumberKind, Spanned,
-};
 use linked_hash_map::LinkedHashMap;
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
+use reproto_core::errors::Result;
+use reproto_core::flavored::*;
+use reproto_core::{
+    CoreFlavor, Handle, RelativePath, RelativePathBuf, RpHttpMethod, RpNumberKind, Spanned,
+};
 use std::any::Any;
 use std::cell::RefCell;
 use std::collections::{hash_map, HashMap, HashSet, VecDeque};

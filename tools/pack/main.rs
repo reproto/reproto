@@ -37,7 +37,11 @@ fn main() -> Result<()> {
         panic!("no such directory: {}", syntaxes.display());
     }
 
-    if let Some(path) = matches.value_of("build-syntax").map(Path::new) {
+    if let Some(path) = matches
+        .try_get_one::<String>("build-syntax")
+        .ok()
+        .and_then(|p| Some(Path::new(p?)))
+    {
         let mut ss = SyntaxSetBuilder::new();
         ss.add_plain_text_syntax();
         ss.add_from_folder(syntaxes, true)
@@ -49,7 +53,11 @@ fn main() -> Result<()> {
         dump_to_file(&ss, path).with_context(|| format_err!("syntaxes to pack"))?;
     }
 
-    if let Some(path) = matches.value_of("build-themes").map(Path::new) {
+    if let Some(path) = matches
+        .try_get_one::<String>("build-themes")
+        .ok()
+        .and_then(|p| Some(Path::new(p?)))
+    {
         println!("loading themes from: {}", themes.display());
         let ts = ThemeSet::load_from_folder(themes)
             .map_err(|e| format_err!("{}", e))

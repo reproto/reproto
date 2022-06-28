@@ -1,9 +1,9 @@
 use crate::errors::{Error, Result};
 use crate::token::{Keyword, Token};
-/// Lexer for reproto IDL.
-use core::RpNumber;
 use num_bigint::BigInt;
 use num_traits::Zero;
+/// Lexer for reproto IDL.
+use reproto_core::RpNumber;
 use std::borrow::Cow;
 use std::result;
 use std::str::CharIndices;

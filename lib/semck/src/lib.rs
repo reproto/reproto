@@ -1,8 +1,8 @@
 use self::Component::*;
 use self::Violation::*;
-use core::errors::Result;
-use core::flavored::*;
-use core::{Span, Spanned, Version};
+use reproto_core::errors::Result;
+use reproto_core::flavored::*;
+use reproto_core::{Span, Spanned, Version};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]

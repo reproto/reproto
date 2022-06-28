@@ -1,5 +1,5 @@
-use core::errors::Result;
-use core::{
+use reproto_core::errors::Result;
+use reproto_core::{
     Flavor, Handle, RelativePath, RelativePathBuf, RpDecl, RpEnumBody, RpInterfaceBody, RpName,
     RpPackage, RpServiceBody, RpTupleBody, RpTypeBody, Spanned,
 };

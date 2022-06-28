@@ -3,13 +3,13 @@
 //! Project manifests can be loaded as a convenient method for setting up language or
 //! project-specific configuration for reproto.
 
-use core::errors::Result;
-use core::{
+use naming::Naming;
+use relative_path::{RelativePath, RelativePathBuf};
+use reproto_core::errors::Result;
+use reproto_core::{
     CoreFlavor, Range, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage,
     RpVersionedPackage, Version,
 };
-use naming::Naming;
-use relative_path::{RelativePath, RelativePathBuf};
 use serde::Deserialize;
 use std::any::Any;
 use std::collections::{HashMap, HashSet};
@@ -39,8 +39,8 @@ macro_rules! lang_base {
 
         fn compile(
             &self,
-            handle: &dyn core::Handle,
-            env: trans::Session<core::CoreFlavor>,
+            handle: &dyn reproto_core::Handle,
+            env: trans::Session<reproto_core::CoreFlavor>,
             manifest: $crate::Manifest,
         ) -> Result<()> {
             $compile(handle, env, manifest)
@@ -77,7 +77,7 @@ pub trait Lang: fmt::Debug {
     /// Implemented through `lang_base!` macro.
     fn compile(
         &self,
-        handle: &dyn core::Handle,
+        handle: &dyn reproto_core::Handle,
         env: trans::Session<CoreFlavor>,
         manifest: Manifest,
     ) -> Result<()>;
@@ -101,8 +101,8 @@ pub trait Lang: fmt::Debug {
     fn into_session<'a>(
         &self,
         package_prefix: Option<RpPackage>,
-        reporter: &'a mut dyn core::Reporter,
-        resolver: &'a mut dyn core::Resolver,
+        reporter: &'a mut dyn reproto_core::Reporter,
+        resolver: &'a mut dyn reproto_core::Resolver,
     ) -> Result<trans::Session<'a, CoreFlavor>> {
         let keywords = self
             .keywords()
@@ -179,7 +179,7 @@ impl Lang for NoLang {
 }
 
 fn no_compile(
-    _handle: &dyn core::Handle,
+    _handle: &dyn reproto_core::Handle,
     _env: trans::Session<CoreFlavor>,
     _manifest: Manifest,
 ) -> Result<()> {
@@ -487,7 +487,7 @@ pub struct Repository {
 #[derive(Debug)]
 pub struct Source {
     pub package: RpVersionedPackage,
-    pub source: core::Source,
+    pub source: reproto_core::Source,
 }
 
 /// The realized project manifest.
@@ -609,7 +609,7 @@ impl Manifest {
         for file in self.files.as_ref().iter().flat_map(|f| f.iter()) {
             let package = file.package.clone().unwrap_or_else(RpPackage::empty);
             let package = RpVersionedPackage::new(package, file.version.clone());
-            let source = core::Source::from_path(&file.path);
+            let source = reproto_core::Source::from_path(&file.path);
             sources.push(Source { package, source });
         }
 

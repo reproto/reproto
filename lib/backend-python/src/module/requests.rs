@@ -5,8 +5,8 @@ use crate::flavored::*;
 use crate::utils::BlockComment;
 use crate::Options;
 use backend::Initializer;
-use core::errors::Result;
 use genco::prelude::*;
+use reproto_core::errors::Result;
 use serde::Deserialize;
 
 #[derive(Debug, Default, Deserialize)]

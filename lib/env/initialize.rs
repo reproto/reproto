@@ -1,7 +1,7 @@
 //! Function to initialize a new project.
 
-use core::errors::Result;
-use core::{Handle, RelativePath};
+use reproto_core::errors::Result;
+use reproto_core::{Handle, RelativePath};
 
 const EXAMPLE: &'static [u8] = include_bytes!("example.reproto");
 

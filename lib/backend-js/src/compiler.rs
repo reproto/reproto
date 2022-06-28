@@ -2,12 +2,12 @@ use crate::flavored::*;
 use crate::utils::{is_defined, is_not_defined};
 use crate::{FileSpec, Options, EXT};
 use backend::PackageProcessor;
-use core::errors::Result;
-use core::{Handle, Span, Spanned};
 use genco::prelude::*;
 use genco::tokens::FormatInto;
 use naming::Naming;
 use relative_path::RelativePathBuf;
+use reproto_core::errors::Result;
+use reproto_core::{Handle, Span, Spanned};
 use std::rc::Rc;
 use trans::Translated;
 

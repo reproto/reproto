@@ -11,15 +11,15 @@ use tokio::io;
 use tokio::io::AsyncBufReadExt as _;
 use tokio::process::Command;
 
-pub async fn from_project(cli: PathBuf, debug: bool) -> Result<Reproto> {
+pub async fn from_package(package: &str, debug: bool) -> Result<Reproto> {
     let mut cmd = Command::new("cargo");
 
     cmd.kill_on_drop(true);
+
+    cmd.arg("+nightly");
     cmd.arg("build");
-    cmd.arg("--manifest-path");
-    cmd.arg(cli.join("Cargo.toml").display().to_string());
-    cmd.arg("--message-format");
-    cmd.arg("json");
+    cmd.args(&["--package", package]);
+    cmd.args(&["--message-format", "json"]);
 
     let mut child = cmd
         .stdout(Stdio::piped())
@@ -143,6 +143,7 @@ pub struct Reproto {
     /// Path to binary.
     binary: PathBuf,
     /// Print debug output.
+    #[allow(unused)]
     debug: bool,
 }
 

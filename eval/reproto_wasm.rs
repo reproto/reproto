@@ -231,11 +231,11 @@ pub struct Marker {
 impl Marker {
     /// Convert an error into a marker.
     fn try_from_error(
-        source: &core::Source,
-        p: &core::Span,
+        source: &reproto_core::Source,
+        p: &reproto_core::Span,
         message: &str,
-    ) -> core::errors::Result<Marker> {
-        let (_, line, (s, e)) = core::utils::find_line(source.read()?, (p.start, p.end))?;
+    ) -> reproto_core::errors::Result<Marker> {
+        let (_, line, (s, e)) = reproto_core::utils::find_line(source.read()?, (p.start, p.end))?;
 
         let marker = Marker {
             message: message.to_string(),
@@ -249,7 +249,7 @@ impl Marker {
     }
 
     /// Safe building of markers with fallback.
-    fn try_from_error_fb(source: &core::Source, p: &core::Span, message: &str) -> Marker {
+    fn try_from_error_fb(source: &reproto_core::Source, p: &reproto_core::Span, message: &str) -> Marker {
         if let Ok(m) = Self::try_from_error(source, p, message) {
             return m;
         }
@@ -287,7 +287,7 @@ pub struct DeriveResult {
 #[derive(Debug, Clone)]
 pub struct ParsedFile {
     package: RpPackage,
-    version: Option<core::Version>,
+    version: Option<reproto_core::Version>,
     content: String,
 }
 
@@ -305,7 +305,7 @@ pub fn derive(derive: &JsValue) -> JsValue {
     fn try_derive(derive: &JsValue) -> Result<DeriveResult, String> {
         let derive: Derive = derive.into_serde().map_err(|e| e.to_string())?;
 
-        let mut reporter: Vec<core::Reported> = Vec::new();
+        let mut reporter: Vec<reproto_core::Reported> = Vec::new();
 
         let (source, package) = content_source(&derive).map_err(|e| e.display().to_string())?;
 
@@ -323,14 +323,14 @@ pub fn derive(derive: &JsValue) -> JsValue {
                 for r in reporter {
                     for (source, d) in r.diagnostics_with_sources() {
                         match *d {
-                            core::Diagnostic::Error {ref span, ref message } => {
+                            reproto_core::Diagnostic::Error {ref span, ref message } => {
                                 error_markers.push(Marker::try_from_error_fb(
                                     source,
                                     span,
                                     message.as_str(),
                                 ));
                             }
-                            core::Diagnostic::Info { ref span, ref message } => {
+                            reproto_core::Diagnostic::Info { ref span, ref message } => {
                                 info_markers.push(Marker::try_from_error_fb(
                                     source,
                                     span,
@@ -357,11 +357,11 @@ pub fn derive(derive: &JsValue) -> JsValue {
     /// Construct content source information.
     fn content_source(
         derive: &Derive,
-    ) -> core::errors::Result<(core::Source, Option<RpVersionedPackage>)> {
+    ) -> reproto_core::errors::Result<(reproto_core::Source, Option<RpVersionedPackage>)> {
         let out = match derive.content {
             Content::Content { ref content } => {
                 let bytes = content.as_bytes().to_vec();
-                let source = core::Source::bytes("web", bytes);
+                let source = reproto_core::Source::bytes("web", bytes);
 
                 (source, None)
             }
@@ -372,7 +372,7 @@ pub fn derive(derive: &JsValue) -> JsValue {
                     .ok_or_else(|| format!("No file for index: {}", index))?;
 
                 let bytes = file.content.as_bytes().to_vec();
-                let source = core::Source::bytes(file.package.to_string(), bytes);
+                let source = reproto_core::Source::bytes(file.package.to_string(), bytes);
 
                 let package = parse_package(&file)?;
 
@@ -385,10 +385,10 @@ pub fn derive(derive: &JsValue) -> JsValue {
 
     fn inner_derive(
         derive: Derive,
-        source: &core::Source,
+        source: &reproto_core::Source,
         package: Option<RpVersionedPackage>,
-        reporter: &mut dyn core::Reporter,
-    ) -> core::errors::Result<Vec<DeriveFile>> {
+        reporter: &mut dyn reproto_core::Reporter,
+    ) -> reproto_core::errors::Result<Vec<DeriveFile>> {
         let package_prefix = derive
             .package_prefix
             .as_ref()
@@ -433,7 +433,7 @@ pub fn derive(derive: &JsValue) -> JsValue {
         Ok(files)
     }
 
-    fn parse_files(files: Vec<File>) -> core::errors::Result<Vec<ParsedFile>> {
+    fn parse_files(files: Vec<File>) -> reproto_core::errors::Result<Vec<ParsedFile>> {
         let mut out: Vec<ParsedFile> = Vec::new();
 
         for f in files {
@@ -449,12 +449,12 @@ pub fn derive(derive: &JsValue) -> JsValue {
         Ok(out)
     }
 
-    fn parse_package(file: &File) -> core::errors::Result<RpVersionedPackage> {
+    fn parse_package(file: &File) -> reproto_core::errors::Result<RpVersionedPackage> {
         let package = RpPackage::parse(file.package.as_str());
 
         let version =
             if let Some(ref version) = file.version {
-                Some(core::Version::parse(version.as_str()).map_err(|e| {
+                Some(reproto_core::Version::parse(version.as_str()).map_err(|e| {
                     format!("{}: failed to parse version `{}`: {}", package, version, e)
                 })?)
             } else {
@@ -467,9 +467,9 @@ pub fn derive(derive: &JsValue) -> JsValue {
     fn derive_file<'input>(
         derive: &Derive,
         package_prefix: &RpPackage,
-        source: &'input core::Source,
+        source: &'input reproto_core::Source,
         format: Box<dyn derive::Format>,
-    ) -> core::errors::Result<compile::Input<'input>> {
+    ) -> reproto_core::errors::Result<compile::Input<'input>> {
         let decl = derive::derive(
             derive::Derive::new(
                 derive.root_name.to_string(),
@@ -498,11 +498,11 @@ pub fn derive(derive: &JsValue) -> JsValue {
 /// Resolver using provided files.
 struct MapResolver(Vec<ParsedFile>);
 
-impl core::Resolver for MapResolver {
+impl reproto_core::Resolver for MapResolver {
     fn resolve(
         &mut self,
         required: &RpRequiredPackage,
-    ) -> core::errors::Result<Option<core::Resolved>> {
+    ) -> reproto_core::errors::Result<Option<reproto_core::Resolved>> {
         let mut matches = BTreeMap::new();
 
         let package = &required.package;
@@ -519,11 +519,11 @@ impl core::Resolver for MapResolver {
                 .unwrap_or_else(|| required.range.matches_any())
             {
                 let bytes = file.content.as_bytes().to_vec();
-                let source = core::Source::bytes(package.to_string(), bytes);
+                let source = reproto_core::Source::bytes(package.to_string(), bytes);
 
                 matches.insert(
                     file.version.clone(),
-                    core::Resolved {
+                    reproto_core::Resolved {
                         version: file.version.clone(),
                         source,
                     },
@@ -537,24 +537,24 @@ impl core::Resolver for MapResolver {
     fn resolve_by_prefix(
         &mut self,
         prefix: &RpPackage,
-    ) -> core::errors::Result<Vec<core::ResolvedByPrefix>> {
+    ) -> reproto_core::errors::Result<Vec<reproto_core::ResolvedByPrefix>> {
         let mut out = Vec::new();
 
         for file in self.0.iter() {
             if file.package.starts_with(prefix) {
                 let bytes = file.content.as_bytes().to_vec();
-                let source = core::Source::bytes(file.package.to_string(), bytes);
+                let source = reproto_core::Source::bytes(file.package.to_string(), bytes);
                 let package =
                     RpVersionedPackage::new(file.package.clone(), file.version.clone());
 
-                out.push(core::ResolvedByPrefix { package, source })
+                out.push(reproto_core::ResolvedByPrefix { package, source })
             }
         }
 
         Ok(out)
     }
 
-    fn resolve_packages(&mut self) -> core::errors::Result<Vec<core::ResolvedByPrefix>> {
+    fn resolve_packages(&mut self) -> reproto_core::errors::Result<Vec<reproto_core::ResolvedByPrefix>> {
         self.resolve_by_prefix(&RpPackage::empty())
     }
 }

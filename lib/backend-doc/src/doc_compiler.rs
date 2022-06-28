@@ -1,6 +1,19 @@
 //! Compiler for generating documentation.
 
-use super::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
+use std::cell::RefCell;
+use std::fs;
+use std::fs::File;
+use std::io::Write;
+use std::path::PathBuf;
+
+use genco::fmt::IoWriter;
+use reproto_core::errors::Result;
+use reproto_core::flavored::*;
+use reproto_core::{AsPackage, CoreFlavor};
+use syntect::highlighting::Theme;
+use syntect::parsing::SyntaxSet;
+use trans::Translated;
+
 use crate::doc_builder::DocBuilder;
 use crate::enum_processor::EnumProcessor;
 use crate::index_processor::{Data as IndexData, IndexProcessor};
@@ -10,18 +23,7 @@ use crate::processor::Processor;
 use crate::service_processor::ServiceProcessor;
 use crate::tuple_processor::TupleProcessor;
 use crate::type_processor::TypeProcessor;
-use core::errors::Result;
-use core::flavored::*;
-use core::{AsPackage, CoreFlavor};
-use genco::IoFmt;
-use std::cell::RefCell;
-use std::fs;
-use std::fs::File;
-use std::io::Write;
-use std::path::PathBuf;
-use syntect::highlighting::Theme;
-use syntect::parsing::SyntaxSet;
-use trans::Translated;
+use crate::{DOC_CSS_NAME, NORMALIZE_CSS_NAME};
 
 const NORMALIZE_CSS: &[u8] = include_bytes!("static/normalize.css");
 
@@ -82,7 +84,7 @@ impl<'a> DocCompiler<'a> {
         let out = path.join(format!("{}.{}.html", decl.kind(), name));
         log::debug!("+file: {}", out.display());
         let mut f = File::create(&out)?;
-        let mut fmt = IoFmt(&mut f);
+        let mut fmt = IoWriter::new(&mut f);
         let out = RefCell::new(DocBuilder::new(&mut fmt));
 
         match *decl {
@@ -166,7 +168,7 @@ impl<'a> DocCompiler<'a> {
         let mut f = File::create(&index_html)?;
 
         PackageProcessor {
-            out: RefCell::new(DocBuilder::new(&mut IoFmt(&mut f))),
+            out: RefCell::new(DocBuilder::new(&mut IoWriter::new(&mut f))),
             session: &self.session,
             syntax: (self.syntax_theme, self.syntax_set),
             root: &root.join("/"),
@@ -192,7 +194,7 @@ impl<'a> DocCompiler<'a> {
         let entries = entries.into_iter().collect();
 
         IndexProcessor {
-            out: RefCell::new(DocBuilder::new(&mut IoFmt(&mut f))),
+            out: RefCell::new(DocBuilder::new(&mut IoWriter::new(&mut f))),
             session: &self.session,
             syntax: (self.syntax_theme, self.syntax_set),
             root: &".",

@@ -2,8 +2,8 @@ use super::Objects;
 use crate::index::{Deployment, Index};
 use crate::sha256::to_sha256;
 use crate::update::Update;
-use core::errors::Result;
-use core::{
+use reproto_core::errors::Result;
+use reproto_core::{
     Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage, Source,
     Version,
 };
@@ -68,7 +68,10 @@ impl Repository {
 }
 
 impl Resolver for Repository {
-    fn resolve(&mut self, package: &RpRequiredPackage) -> core::errors::Result<Option<Resolved>> {
+    fn resolve(
+        &mut self,
+        package: &RpRequiredPackage,
+    ) -> reproto_core::errors::Result<Option<Resolved>> {
         let deployments = self.index.resolve(&package.package, &package.range)?;
 
         if let Some(deployment) = deployments.into_iter().next_back() {
@@ -88,7 +91,7 @@ impl Resolver for Repository {
     fn resolve_by_prefix(
         &mut self,
         package: &RpPackage,
-    ) -> core::errors::Result<Vec<ResolvedByPrefix>> {
+    ) -> reproto_core::errors::Result<Vec<ResolvedByPrefix>> {
         let mut out = Vec::new();
 
         let deployments = self.index.resolve_by_prefix(&package)?;

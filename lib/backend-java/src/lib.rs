@@ -6,10 +6,10 @@ mod options;
 
 use crate::compiler::Compiler;
 use crate::options::Options;
-use core::errors::Result;
-use core::{CoreFlavor, Handle};
 use manifest::{checked_modules, Lang, Manifest, NoModule, TryFromToml};
 use naming::Naming;
+use reproto_core::errors::Result;
+use reproto_core::{CoreFlavor, Handle};
 use std::any::Any;
 use std::path::Path;
 use std::rc::Rc;

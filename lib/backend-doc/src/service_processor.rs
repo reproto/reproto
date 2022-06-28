@@ -4,9 +4,9 @@ use crate::doc_builder::DocBuilder;
 use crate::escape::Escape;
 use crate::macros::FormatAttribute;
 use crate::processor::Processor;
-use core::errors::Result;
-use core::flavored::*;
-use core::Spanned;
+use reproto_core::errors::Result;
+use reproto_core::flavored::*;
+use reproto_core::Spanned;
 
 define_processor!(ServiceProcessor, RpServiceBody, self,
     process => {

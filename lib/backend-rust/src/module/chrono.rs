@@ -2,8 +2,8 @@
 
 use crate::flavored::Type;
 use crate::Options;
-use core::errors::Result;
 use genco::lang::rust;
+use reproto_core::errors::Result;
 
 pub(crate) fn initialize(options: &mut Options) -> Result<()> {
     options.datetime = Some(Type::generic(

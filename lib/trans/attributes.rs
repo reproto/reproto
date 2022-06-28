@@ -3,9 +3,9 @@
 use crate::features::Feature;
 use crate::into_model::IntoModel;
 use crate::scope::Scope;
-use core::errors::Error;
-use core::flavored::*;
-use core::{Diagnostics, Import, RpStringValidate, Span, Spanned, Version, WithSpan};
+use reproto_core::errors::Error;
+use reproto_core::flavored::*;
+use reproto_core::{Diagnostics, Import, RpStringValidate, Span, Spanned, Version, WithSpan};
 use std::collections::HashMap;
 
 /// `#![feature(..)]` attributes.

@@ -1,7 +1,6 @@
 use crate::flavored::*;
-use crate::Compiler;
-use core::Spanned;
 use genco::prelude::*;
+use reproto_core::Spanned;
 use std::rc::Rc;
 
 macro_rules! decl_codegen {
@@ -82,7 +81,6 @@ decl_codegen! {
     /// Event emitted when an interface has been added.
     interface_added<'a> {
         pub container: &'a mut Vec<swift::Tokens>,
-        pub compiler: &'a Compiler<'a>,
         pub name: &'a Name,
         pub body: &'a RpInterfaceBody,
     }

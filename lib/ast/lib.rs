@@ -1,4 +1,4 @@
-use core::{RpNumber, Span, Spanned};
+use reproto_core::{RpNumber, Span, Spanned};
 use std::borrow::Cow;
 use std::ops;
 

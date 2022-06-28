@@ -1,8 +1,8 @@
-use crate::core::errors::Result;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use toml;
+
+use reproto_core::errors::Result;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {

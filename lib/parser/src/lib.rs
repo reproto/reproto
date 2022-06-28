@@ -1,11 +1,15 @@
 #![recursion_limit = "1000"]
 
-#[allow(unused)]
-mod parser;
+use lalrpop_util::lalrpop_mod;
+lalrpop_mod!(
+    #[allow(unused)]
+    grammar
+);
+
 mod utils;
 
-use core::errors::Result;
-use core::Diagnostics;
+use reproto_core::errors::Result;
+use reproto_core::Diagnostics;
 use std::io::Read;
 use std::result;
 
@@ -28,9 +32,9 @@ pub fn parse<'input>(
     use lexer::errors::Error::*;
 
     let lexer = lexer::lex(input);
-    let parser = parser::FileParser::new();
+    let grammar = grammar::FileParser::new();
 
-    match parser.parse(lexer) {
+    match grammar.parse(lexer) {
         Ok(file) => Ok(file),
         Err(e) => match e {
             InvalidToken { location } => {
@@ -99,21 +103,21 @@ pub fn parse<'input>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::*;
     use ast::*;
-    use core::*;
+    use reproto_core::*;
 
     /// Check that a parsed value equals expected.
     macro_rules! assert_value_eq {
         ($expected:expr, $input:expr) => {{
-            let v = parser::ValueParser::new().parse(parse($input)).unwrap();
+            let v = grammar::ValueParser::new().parse(parse($input)).unwrap();
             assert_eq!($expected, v);
         }};
     }
 
     macro_rules! assert_type {
         ($expected:expr, $input:expr) => {{
-            let v = parser::TypeParser::new().parse(parse($input)).unwrap();
+            let v = grammar::TypeParser::new().parse(parse($input)).unwrap();
             assert_eq!($expected, v);
         }};
     }
@@ -128,19 +132,19 @@ mod tests {
     }
 
     fn parse_file(input: &'static str) -> File {
-        parser::FileParser::new()
+        grammar::FileParser::new()
             .parse(parse(input))
             .expect("bad file")
     }
 
     fn parse_member(input: &'static str) -> TypeMember {
-        parser::TypeMemberParser::new()
+        grammar::TypeMemberParser::new()
             .parse(parse(input))
             .expect("bad type member")
     }
 
     fn parse_type(input: &'static str) -> Type {
-        parser::TypeParser::new()
+        grammar::TypeParser::new()
             .parse(parse(input))
             .expect("bad type")
     }
