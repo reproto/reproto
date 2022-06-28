@@ -1,6 +1,6 @@
 use crate::flavored::*;
-use core::Spanned;
 use genco::prelude::*;
+use reproto_core::Spanned;
 use std::rc::Rc;
 
 macro_rules! decl_codegen {

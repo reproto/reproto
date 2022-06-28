@@ -1,14 +1,11 @@
 #[macro_use]
 extern crate log;
-extern crate reproto_core as core;
-extern crate reproto_repository as repository;
-extern crate reproto_server as server;
 
-use core::errors::Result;
 use hyper::server::Server;
 use hyper::service::make_service_fn;
-use repository::{index_from_path, objects_from_path};
-use server::reproto_service;
+use reproto_core::errors::Result;
+use reproto_repository::{index_from_path, objects_from_path};
+use reproto_server::reproto_service;
 use std::env;
 use std::path::Path;
 use std::path::PathBuf;
@@ -29,12 +26,12 @@ async fn entry() -> Result<()> {
     pretty_env_logger::init();
 
     let config = if let Some(path) = config_path()? {
-        server::config::read_config(path)?
+        reproto_server::config::read_config(path)?
     } else {
-        server::config::Config::default()
+        reproto_server::config::Config::default()
     };
 
-    let server::config::Config {
+    let reproto_server::config::Config {
         listen_address,
         objects,
         index,

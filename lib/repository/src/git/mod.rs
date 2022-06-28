@@ -2,7 +2,7 @@ mod git_repo;
 
 pub use self::git_repo::GitRepo;
 use crate::sha256;
-use core::errors::Result;
+use reproto_core::errors::Result;
 use std::path::Path;
 use url::Url;
 

@@ -3,8 +3,8 @@ use crate::git::GitRepo;
 use crate::index::{file_index, Deployment, Index};
 use crate::objects::{FileObjects, GitObjects, Objects};
 use crate::update::Update;
-use core::errors::Result;
-use core::{Range, RelativePath, RpPackage, Version};
+use reproto_core::errors::Result;
+use reproto_core::{Range, RelativePath, RpPackage, Version};
 use std::sync::Arc;
 use url::Url;
 

@@ -1,21 +1,25 @@
-use crate::errors::Error;
-use flate2::read::GzDecoder;
-use futures::{Future, StreamExt};
-use hyper::header::{self, HeaderMap, HeaderValue};
-use hyper::service::Service;
-use hyper::{self, Body, Method, Request, Response, StatusCode};
-use reproto_repository::{to_checksum, Checksum, Index, Objects};
+use std::future::Future;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
+
+use flate2::read::GzDecoder;
+use hyper::header::{self, HeaderMap, HeaderValue};
+use hyper::service::Service;
+use hyper::{self, Body, Method, Request, Response, StatusCode};
+use reproto_repository::{to_checksum, Checksum, Index, Objects};
 use tokio::io::AsyncReadExt;
+use tokio_stream::StreamExt;
+
+use crate::errors::Error;
 
 const CHECKSUM_MISMATCH: &'static str = "checksum mismatch";
 
 struct Inner {
     pub max_file_size: u64,
     pub objects: Mutex<Box<dyn Objects>>,
+    #[allow(unused)]
     pub index: Mutex<Box<dyn Index>>,
 }
 

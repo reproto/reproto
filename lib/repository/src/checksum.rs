@@ -1,8 +1,8 @@
 //! Represents a calculated checksum.
 
 use crate::hex_slice::HexSlice;
-use core::errors::Result;
 use hex::FromHex;
+use reproto_core::errors::Result;
 use serde::{de, ser};
 use std::fmt;
 use std::ops::{Index, Range};

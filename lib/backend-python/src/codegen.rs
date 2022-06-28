@@ -1,7 +1,7 @@
 use crate::flavored::RpServiceBody;
-use core::errors::Result;
 use genco::lang::Python;
 use genco::Tokens;
+use reproto_core::errors::Result;
 use std::rc::Rc;
 
 pub(crate) struct ServiceAdded<'a> {

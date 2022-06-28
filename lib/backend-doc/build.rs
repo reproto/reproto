@@ -1,7 +1,3 @@
-extern crate handlebars;
-extern crate serde_json;
-extern crate toml;
-
 use serde_json::value::Map;
 use std::env;
 use std::fmt::Write as FmtWrite;

@@ -1,5 +1,5 @@
-use core::{RelativePath, Reporter, Resolver, RpPackage, RpVersionedPackage, Source};
 use manifest::Lang;
+use reproto_core::{RelativePath, Reporter, Resolver, RpPackage, RpVersionedPackage, Source};
 use std::any::Any;
 use std::str;
 
@@ -54,9 +54,9 @@ pub fn simple_compile<'a, 'input, O>(
     config: SimpleCompile<'a, 'input>,
     modules: Vec<Box<dyn Any>>,
     lang: &dyn Lang,
-) -> core::errors::Result<()>
+) -> reproto_core::errors::Result<()>
 where
-    O: FnMut(&RelativePath, &str) -> core::errors::Result<()>,
+    O: FnMut(&RelativePath, &str) -> reproto_core::errors::Result<()>,
 {
     let SimpleCompile {
         input,
@@ -65,10 +65,10 @@ where
         resolver,
     } = config;
 
-    let mut empty_resolver = core::EmptyResolver;
+    let mut empty_resolver = reproto_core::EmptyResolver;
     let resolver = resolver.unwrap_or_else(|| &mut empty_resolver);
 
-    let capturing = core::CapturingFilesystem::new();
+    let capturing = reproto_core::CapturingFilesystem::new();
     let fs = capturing.filesystem();
 
     let mut manifest = manifest::Manifest::default();

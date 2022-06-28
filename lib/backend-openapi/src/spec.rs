@@ -1,5 +1,5 @@
-use core::Version;
 use linked_hash_map::LinkedHashMap;
+use reproto_core::Version;
 use serde::Serialize;
 use std::collections::BTreeMap;
 
@@ -130,8 +130,8 @@ impl<'a> From<SchemaArray<'a>> for Schema<'a> {
     }
 }
 
-#[serde(untagged, rename_all = "camelCase")]
 #[derive(Debug, Serialize)]
+#[serde(untagged, rename_all = "camelCase")]
 pub enum Properties<'a> {
     String(LinkedHashMap<&'a str, Schema<'a>>),
     Usize(BTreeMap<usize, Schema<'a>>),
@@ -156,8 +156,8 @@ impl<'a> Properties<'a> {
     }
 }
 
-#[serde(untagged, rename_all = "camelCase")]
 #[derive(Debug, Serialize)]
+#[serde(untagged, rename_all = "camelCase")]
 pub enum Required<'a> {
     String(Vec<&'a str>),
     Usize(Vec<usize>),
@@ -182,8 +182,8 @@ impl<'a> Required<'a> {
     }
 }
 
-#[serde(untagged, rename_all = "camelCase")]
 #[derive(Debug, Serialize)]
+#[serde(untagged, rename_all = "camelCase")]
 pub enum Enum<'a> {
     String(Vec<&'a str>),
     U32(Vec<u32>),
@@ -218,22 +218,22 @@ impl<'a> Enum<'a> {
     }
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Default, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Info<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<&'a Version>,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ParameterIn {
     #[serde(rename = "path")]
     Path,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Parameter<'a> {
     pub in_: ParameterIn,
     pub name: &'a str,
@@ -244,8 +244,8 @@ pub struct Parameter<'a> {
     pub description: Option<String>,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Discriminator<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub property_name: Option<&'a str>,
@@ -276,8 +276,8 @@ pub enum Format {
     Tuple,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Schema<'a> {
     #[serde(rename = "$ref", skip_serializing_if = "Option::is_none")]
     pub reference: Option<String>,
@@ -323,14 +323,14 @@ pub struct Schema<'a> {
     pub additional_properties: Option<Box<Schema<'a>>>,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Content<'a> {
     pub schema: Schema<'a>,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Default, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Payload<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
@@ -342,8 +342,8 @@ pub struct Payload<'a> {
     pub content: LinkedHashMap<&'a str, Content<'a>>,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Default, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Method<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub operation_id: Option<&'a str>,
@@ -360,8 +360,8 @@ pub struct Method<'a> {
     pub responses: LinkedHashMap<&'a str, Payload<'a>>,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Default, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SpecPath<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub get: Option<Method<'a>>,
@@ -379,21 +379,21 @@ pub struct SpecPath<'a> {
     pub patch: Option<Method<'a>>,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Components<'a> {
     #[serde(skip_serializing_if = "LinkedHashMap::is_empty")]
     pub schemas: LinkedHashMap<String, Schema<'a>>,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Server<'a> {
     pub url: &'a str,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Spec<'a> {
     pub openapi: &'static str,
     pub info: Info<'a>,

@@ -1,6 +1,6 @@
 use super::{LockableWrite, Output};
-use core::errors::Result;
-use core::{Source, Span};
+use reproto_core::errors::Result;
+use reproto_core::{Source, Span};
 use std::io;
 
 pub struct NonColored<T> {
@@ -26,7 +26,7 @@ where
         let mut o = self.out.lock();
 
         let (line_str, line, (s, e)) =
-            core::utils::find_line(source.read()?, (span.start, span.end))?;
+            reproto_core::utils::find_line(source.read()?, (span.start, span.end))?;
 
         let line_no = format!("{:>3}:", line + 1);
 

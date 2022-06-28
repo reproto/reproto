@@ -2,7 +2,7 @@
 /// This will return content up-until the pattern matches, and consume the pattern itself.
 #[macro_export]
 macro_rules! take_until {
-    ($slf:expr, $start:expr, $first:pat $(| $rest:pat)*) => {{
+    ($slf:expr, $start:expr, $first:pat_param $(| $rest:pat_param)*) => {{
         let mut __end = $start;
         let mut __content_end = $start;
 
@@ -34,7 +34,7 @@ macro_rules! take_until {
 /// Take while pattern matches.
 #[macro_export]
 macro_rules! take {
-    ($slf:expr, $start:expr, $first:pat $(| $rest:pat)*) => {{
+    ($slf:expr, $start:expr, $first:pat_param $(| $rest:pat_param)*) => {{
         let mut __end: usize = $start;
 
         loop {

@@ -1,20 +1,22 @@
 use clap::{App, Arg, ArgMatches};
-use core::errors::Result;
-use core::RealFilesystem;
 use reproto::{ops, output, VERSION};
+use reproto_core::errors::Result;
+use reproto_core::RealFilesystem;
 use std::io;
 
-fn setup_opts() -> App<'static, 'static> {
+fn setup_opts() -> App<'static> {
     App::new("reproto")
         .version(VERSION)
         .arg(
             Arg::with_name("color")
                 .long("color")
+                .takes_value(false)
                 .help("Force colored output."),
         )
         .arg(
             Arg::with_name("no-color")
                 .long("no-color")
+                .takes_value(false)
                 .help("Disable colored output."),
         )
         .arg(
@@ -49,10 +51,15 @@ async fn main() {
     let opts = ops::options(opts);
     let matches = opts.get_matches();
 
-    let colored = matches.is_present("color")
-        || !matches.is_present("no-color") && atty::is(atty::Stream::Stdout);
+    let colored = (matches.try_contains_id("color").unwrap_or_default()
+        && !matches.try_contains_id("no-color").unwrap_or_default())
+        || atty::is(atty::Stream::Stdout);
 
-    let output_format = match matches.value_of("output-format") {
+    let output_format = match matches
+        .try_get_one::<String>("output-format")
+        .ok()
+        .and_then(|output| Some(output?.as_str()))
+    {
         Some("json") => output::OutputFormat::Json,
         _ => output::OutputFormat::Human,
     };

@@ -1,7 +1,7 @@
 //! Deployment metadata
 
 use crate::checksum::Checksum;
-use core::Version;
+use reproto_core::Version;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]

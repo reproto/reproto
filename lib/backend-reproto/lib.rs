@@ -1,10 +1,10 @@
-use core::errors::Result;
-use core::flavored::*;
-use core::{CoreFlavor, Handle, RelativePathBuf, Spanned, DEFAULT_TAG};
 use genco::fmt;
 use genco::prelude::*;
 use genco::tokens::{FormatInto, ItemStr};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
+use reproto_core::errors::Result;
+use reproto_core::flavored::*;
+use reproto_core::{CoreFlavor, Handle, RelativePathBuf, Spanned, DEFAULT_TAG};
 use std::any::Any;
 use std::fmt::Write as _;
 use std::path::Path;

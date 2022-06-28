@@ -1,6 +1,6 @@
-use core::errors::Result;
-use core::{Flavor, RpDecl, RpFile, RpName, RpReg};
 use linked_hash_map::LinkedHashMap;
+use reproto_core::errors::Result;
+use reproto_core::{Flavor, RpDecl, RpFile, RpName, RpReg};
 use std::collections::{BTreeMap, LinkedList};
 
 /// An environment that has been translated into a target environment.

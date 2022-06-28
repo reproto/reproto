@@ -1,7 +1,7 @@
 use self::cmark::{CodeBlockKind, Event, Options, Parser, Tag};
 use crate::doc_builder::DocBuilder;
-use core::errors::Result;
 use pulldown_cmark as cmark;
+use reproto_core::errors::Result;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::Theme;
 use syntect::html::{
@@ -24,9 +24,16 @@ pub fn markdown_to_html(
     let parser = Parser::new_ext(content, opts).map(|event| match event {
         Event::Text(text) => {
             if let Some(ref mut highlighter) = highlighter {
-                let highlighted = &highlighter.highlight(&text, syntax_set);
-                let html = styled_line_to_highlighted_html(highlighted, IncludeBackground::Yes);
-                return Event::Html(html.into());
+                let highlighted = highlighter.highlight_line(&text, syntax_set);
+
+                match highlighted
+                    .and_then(|h| styled_line_to_highlighted_html(&h, IncludeBackground::Yes))
+                {
+                    Ok(html) => return Event::Html(html.into()),
+                    Err(e) => {
+                        log::error!("failed to highlight: {e}");
+                    }
+                }
             }
 
             Event::Text(text)

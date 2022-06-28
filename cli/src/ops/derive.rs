@@ -1,21 +1,21 @@
 //! Derive a schema from the given input.
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::errors::Result;
-use core::{Reporter, RpPackage, RpVersionedPackage, Source};
 use manifest::{Lang, Language};
+use reproto_core::errors::Result;
+use reproto_core::{Reporter, RpPackage, RpVersionedPackage, Source};
 use std::any::Any;
 use std::io;
 use std::io::Write;
 use std::path::Path;
 
-pub fn options<'a, 'b>() -> App<'a, 'b> {
+pub fn options<'a>() -> App<'a> {
     let out = SubCommand::with_name("derive").about("Derive a schema from the given input");
 
     let out = out.arg(
         Arg::with_name("file")
             .long("file")
-            .short("i")
+            .short('i')
             .takes_value(true)
             .help("File to read from, otherwise will read from stdin"),
     );
@@ -37,7 +37,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = out.arg(
         Arg::with_name("format")
             .long("format")
-            .short("F")
+            .short('F')
             .takes_value(true)
             .help("Format to decode, valid values: json, yaml"),
     );
@@ -52,7 +52,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
     let out = out.arg(
         Arg::with_name("module")
             .long("module")
-            .short("m")
+            .short('m')
             .takes_value(true)
             .help("Modules to enable"),
     );
@@ -61,25 +61,29 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 }
 
 pub fn entry(reporter: &mut dyn Reporter, matches: &ArgMatches) -> Result<()> {
-    let root_name = match matches.value_of("root-name") {
-        None => "Generated".to_string(),
-        Some(name) => name.to_string(),
+    let root_name = match matches.try_get_one::<String>("root-name") {
+        Ok(Some(name)) => name.to_string(),
+        _ => "Generated".to_string(),
     };
 
-    let package_prefix = match matches.value_of("package-prefix") {
-        None => RpPackage::parse("io.github.reproto"),
-        Some(name) => RpPackage::parse(name),
+    let package_prefix = match matches.try_get_one::<String>("package-prefix") {
+        Ok(Some(name)) => RpPackage::parse(name),
+        _ => RpPackage::parse("io.github.reproto"),
     };
 
-    let format: Box<dyn derive::Format> = match matches.value_of("format") {
-        None | Some("json") => Box::new(derive::Json),
+    let format: Box<dyn derive::Format> = match matches
+        .try_get_one::<String>("format")
+        .ok()
+        .and_then(|f| Some(f?.as_str()))
+    {
         Some("yaml") => Box::new(derive::Yaml),
+        None | Some("json") => Box::new(derive::Json),
         Some(value) => return Err(format!("Unsupported format: {}", value).into()),
     };
 
-    let source = match matches.value_of("file") {
-        Some(file) => Source::from_path(file),
-        None => Source::stdin(),
+    let source = match matches.try_get_one::<String>("file") {
+        Ok(Some(file)) => Source::from_path(file),
+        _ => Source::stdin(),
     };
 
     let derive = derive::Derive::new(root_name, format, Some(package_prefix.clone()));
@@ -104,13 +108,17 @@ pub fn entry(reporter: &mut dyn Reporter, matches: &ArgMatches) -> Result<()> {
         compile::SimpleCompile::new(input, reporter).package_prefix(package_prefix);
 
     let modules: Vec<String> = matches
-        .values_of("module")
+        .try_get_many::<String>("module")
         .into_iter()
-        .flat_map(|s| s.map(|s| s.to_string()))
+        .flatten()
+        .flatten()
+        .cloned()
         .collect();
 
     let language = matches
-        .value_of("lang")
+        .try_get_one::<String>("lang")
+        .ok()
+        .and_then(|lang| Some(lang?.as_str()))
         .and_then(Language::parse)
         .ok_or_else(|| "no language specified, use `--lang`")?;
 

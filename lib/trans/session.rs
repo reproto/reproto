@@ -2,15 +2,15 @@ use crate::features::Features;
 use crate::into_model::IntoModel;
 use crate::scope::Scope;
 use crate::translated::Translated;
-use core::errors::{Error, Result};
-use core::{
+use linked_hash_map::LinkedHashMap;
+use naming::Naming;
+use parser;
+use reproto_core::errors::{Error, Result};
+use reproto_core::{
     translator, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, Import, PackageTranslator,
     Reporter, Resolved, Resolver, RpFile, RpName, RpPackage, RpReg, RpRequiredPackage,
     RpVersionedPackage, Source, Spanned, Translate, Version,
 };
-use linked_hash_map::LinkedHashMap;
-use naming::Naming;
-use parser;
 use std::cell::RefCell;
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet};
 use std::path::Path;

@@ -3,13 +3,13 @@
 #![allow(unused)]
 
 use crate::{EXT, TYPE_SEP};
-use core::errors::Result;
-use core::{
+use genco::prelude::*;
+use genco::tokens::{FormatInto, ItemStr};
+use reproto_core::errors::Result;
+use reproto_core::{
     self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, PackageTranslator, RpNumberKind,
     RpNumberType, RpStringType, Spanned, Translate, Translator,
 };
-use genco::prelude::*;
-use genco::tokens::{FormatInto, ItemStr};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -204,7 +204,7 @@ impl FlavorTranslator for DartFlavorTranslator {
     type Source = CoreFlavor;
     type Target = DartFlavor;
 
-    core::translator_defaults!(Self, local_name, field);
+    reproto_core::translator_defaults!(Self, local_name, field);
 
     fn translate_number(&self, number: RpNumberType) -> Result<Type> {
         Ok(Type::Int)
@@ -305,7 +305,7 @@ impl FlavorTranslator for DartFlavorTranslator {
     }
 }
 
-core::decl_flavor!(pub(crate) DartFlavor);
+reproto_core::decl_flavor!(pub(crate) DartFlavor);
 
 /// Takes two iterators as a path, strips common prefix, and makes the two paths relative to each
 /// other.

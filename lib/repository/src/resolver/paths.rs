@@ -9,8 +9,8 @@
 //!
 //! The second form is only used when a version requirement is present.
 
-use core::errors::{Error, Result};
-use core::{
+use reproto_core::errors::{Error, Result};
+use reproto_core::{
     Range, Resolved, ResolvedByPrefix, Resolver, RpPackage, RpRequiredPackage, RpVersionedPackage,
     Source, Version,
 };
@@ -362,7 +362,7 @@ pub fn parse_stem<'a>(stem: &'a str) -> Result<(&'a str, Option<Version>)> {
 #[cfg(test)]
 mod tests {
     use super::path_to_package;
-    use core::{RpPackage, RpVersionedPackage, Version};
+    use reproto_core::{RpPackage, RpVersionedPackage, Version};
 
     fn version(version: &str) -> Version {
         Version::parse(version).expect("bad version")

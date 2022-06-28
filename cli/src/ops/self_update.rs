@@ -5,14 +5,14 @@ use clap::{App, Arg, SubCommand};
 mod internal {
     use crate::VERSION;
     use clap::ArgMatches;
-    use core::errors::{Error, Result};
-    use core::Version;
     use flate2::read::GzDecoder;
     use futures::{executor, Future, StreamExt};
     use hyper::client::HttpConnector;
     use hyper::header;
     use hyper::{Body, Client, Method, Request, Response, StatusCode, Uri};
-    use hyper_rustls::HttpsConnector;
+    use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
+    use reproto_core::errors::{Error, Result};
+    use reproto_core::Version;
     use std::fs::{self, File};
     use std::io::{self, Cursor};
     use std::path::Path;
@@ -62,27 +62,47 @@ mod internal {
 
         check_path(&config)?;
 
-        let force = m.is_present("force");
-        let prerelease = m.is_present("prerelease");
+        let force = m.try_contains_id("force").unwrap_or_default();
+        let prerelease = m.try_contains_id("prerelease").unwrap_or_default();
 
-        let arch = ARCH.clone().or(m.value_of("arch")).ok_or_else(|| {
-            format!("Architecture could not be detected, and is not specified with `--arch`")
-        })?;
+        let arch = ARCH
+            .clone()
+            .or(m
+                .try_get_one::<String>("arch")
+                .ok()
+                .and_then(|s| Some(s?.as_str())))
+            .ok_or_else(|| {
+                "Architecture could not be detected, and is not specified with `--arch`"
+            })?;
 
-        let platform = PLATFORM.clone().or(m.value_of("platform")).ok_or_else(|| {
-            format!("Platform could not be detected, and is not specified with `--platform`")
-        })?;
+        let platform = PLATFORM
+            .clone()
+            .or(m
+                .try_get_one::<String>("platform")
+                .ok()
+                .and_then(|s| Some(s?.as_str())))
+            .ok_or_else(|| {
+                "Platform could not be detected, and is not specified with `--platform`"
+            })?;
 
-        let ext = EXT.clone().or(m.value_of("ext")).ok_or_else(|| {
-            format!(
+        let ext = EXT
+            .clone()
+            .or(m
+                .try_get_one::<String>("ext")
+                .ok()
+                .and_then(|s| Some(s?.as_str())))
+            .ok_or_else(|| {
                 "Binary could not be detected, and is not specified with `--ext`. Should be \
                  something like `reproto` or `reproto.exe`"
-            )
-        })?;
+            })?;
 
         let current = Version::parse(VERSION)?;
 
-        let url = m.value_of("url").unwrap_or(DEFAULT_URL);
+        let url = m
+            .try_get_one::<String>("url")
+            .ok()
+            .and_then(|url| Some(url?.as_str()))
+            .unwrap_or(DEFAULT_URL);
         let url = Url::parse(url)?;
 
         let mut client = UpdateClient::new(url)?;
@@ -268,7 +288,13 @@ mod internal {
 
     impl UpdateClient {
         pub fn new(url: Url) -> Result<Self> {
-            let client = Client::builder().build(HttpsConnector::new());
+            let client = Client::builder().build(
+                HttpsConnectorBuilder::new()
+                    .with_native_roots()
+                    .https_only()
+                    .enable_http1()
+                    .build(),
+            );
 
             Ok(Self {
                 client: Arc::new(client),
@@ -403,8 +429,8 @@ mod internal {
 
 #[cfg(not(feature = "self-updates"))]
 mod internal {
-    use crate::core::errors::Result;
     use clap::ArgMatches;
+    use reproto_core::errors::Result;
 
     pub fn entry(_: &ArgMatches) -> Result<()> {
         return Err("support for self-updates is not enabled".into());
@@ -413,7 +439,7 @@ mod internal {
 
 pub use self::internal::entry;
 
-pub fn options<'a, 'b>() -> App<'a, 'b> {
+pub fn options<'a>() -> App<'a> {
     let out = SubCommand::with_name("self-update").about("Update reproto");
 
     let out = out.arg(
@@ -444,7 +470,7 @@ pub fn options<'a, 'b>() -> App<'a, 'b> {
 
     let out = out.arg(
         Arg::with_name("force")
-            .short("f")
+            .short('f')
             .long("force")
             .help("Force downloading the latest release, even though it is already installed"),
     );

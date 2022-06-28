@@ -1,7 +1,7 @@
 //! Helper utilities for processors.
 
-use core::errors::Result;
-use core::flavored::*;
+use reproto_core::errors::Result;
+use reproto_core::flavored::*;
 
 pub trait Processor {
     /// Extract endpoint request.

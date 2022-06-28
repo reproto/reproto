@@ -3,9 +3,9 @@ mod flavored;
 mod utils;
 
 use crate::compiler::Compiler;
-use core::errors::Result;
-use core::{CoreFlavor, Handle};
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
+use reproto_core::errors::Result;
+use reproto_core::{CoreFlavor, Handle};
 use std::any::Any;
 use std::path::Path;
 use trans::Session;

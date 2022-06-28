@@ -1,7 +1,8 @@
-mod parser;
+use lalrpop_util::lalrpop_mod;
+lalrpop_mod!(grammar);
 
-use core::errors::{Error, Result};
-use core::regex::Regex;
+use reproto_core::errors::{Error, Result};
+use reproto_core::regex::Regex;
 
 pub fn parse(input: &str) -> Result<Regex> {
     use lalrpop_util::ParseError::*;
@@ -9,7 +10,7 @@ pub fn parse(input: &str) -> Result<Regex> {
 
     let lexer = regex_lexer::regex_lex(input);
 
-    let parser = parser::RegexParser::new();
+    let parser = grammar::RegexParser::new();
 
     match parser.parse(lexer) {
         Ok(file) => Ok(file),

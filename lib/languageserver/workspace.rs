@@ -2,12 +2,12 @@
 
 use crate::loaded_file::LoadedFile;
 use crate::models::{Completion, Jump, Prefix, Range, Rename, RenameResult, Symbol};
-use core::errors::{Error, Result};
-use core::{
+use repository::{path_to_package, Packages, EXT};
+use reproto_core::errors::{Error, Result};
+use reproto_core::{
     Encoding, Filesystem, Handle, Reported, Resolved, Resolver, RpPackage, RpRequiredPackage,
     RpVersionedPackage, Source, Spanned,
 };
-use repository::{path_to_package, Packages, EXT};
 use std::collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::io::Read;
@@ -451,11 +451,11 @@ impl Workspace {
 
         for u in &file.uses {
             let range = match u.range {
-                Some(ref range) => match core::Range::parse(range.as_str()) {
+                Some(ref range) => match reproto_core::Range::parse(range.as_str()) {
                     Ok(range) => range,
                     Err(_) => continue,
                 },
-                None => core::Range::any(),
+                None => reproto_core::Range::any(),
             };
 
             let package = {

@@ -1,6 +1,5 @@
 // vim: ft=rust
-use core::{RpNumber, Spanned, RpPackage, Source, Span};
-use std::sync::Arc;
+use reproto_core::{RpNumber, Spanned, Span};
 use ast::*;
 use lexer::{self, Token, Keyword};
 use super::utils;

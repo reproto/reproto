@@ -3,7 +3,7 @@ name = "reproto"
 version = "0.4.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 repository = "https://github.com/reproto/reproto"
 homepage = "https://github.com/reproto/reproto"
@@ -19,7 +19,7 @@ tracing = []
 self-updates = ["same-file", "ring", "hyper", "hyper-rustls", "futures", "flate2", "tar"]
 
 [dependencies]
-core = {package = "reproto-core", path = "../lib/core", version = "0.4"}
+reproto-core = {path = "../lib/core", version = "0.4"}
 languageserver = {package = "reproto-languageserver", path = "../lib/languageserver", version = "0.4", optional = true}
 trans = {package = "reproto-trans", path = "../lib/trans", version = "0.4"}
 ast = {package = "reproto-ast", path = "../lib/ast", version = "0.4"}
@@ -32,25 +32,25 @@ env = {package = "reproto-env", path = "../lib/env", version = "0.4"}
 backend = {package = "reproto-backend", path = "../lib/backend", version = "0.4"}
 doc = {package = "reproto-backend-doc", path = "../lib/backend-doc", version = "0.4"}
 repository = {package = "reproto-repository", path = "../lib/repository", version = "0.4"}
-url = "2.1.1"
+url = "2.2.2"
 
-tokio = {version = "0.2.0", features = ["rt-core", "net", "macros"]}
+tokio = { version = "1.19.2", features = ["rt", "rt-multi-thread", "net", "macros"] }
 ansi_term = "0.12.1"
 atty = "0.2.14"
-clap = "2.33.1"
-linked-hash-map = { version = "0.5.3", features = ["serde"] }
-log = "0.4.8"
-pulldown-cmark = "0.7.1"
-serde = {version = "1.0.111", features = ["derive"]}
-serde_json = "1.0.53"
-toml = "0.5.6"
-notify = { version = "4.0.15", optional = true }
+clap = "3.2.6"
+linked-hash-map = { version = "0.5.6", features = ["serde"] }
+log = "0.4.17"
+pulldown-cmark = "0.9.1"
+serde = { version = "1.0.137", features = ["derive"] }
+serde_json = "1.0.81"
+toml = "0.5.9"
+notify = { version = "4.0.17", optional = true }
 
 # for self-updates
 same-file = { version = "1.0.6", optional = true }
-ring = { version = "0.16.14", optional = true }
-hyper = { version = "0.13.6", optional = true }
-hyper-rustls = { version = "0.20.0", optional = true }
-futures = { version = "0.3.5", optional = true }
-flate2 = { version = "1.0.14", optional = true }
-tar = { version = "0.4.28", optional = true }
+ring = { version = "0.16.20", optional = true }
+hyper = { version = "0.14.19", optional = true }
+hyper-rustls = { version = "0.23.0", optional = true }
+futures = { version = "0.3.21", optional = true }
+flate2 = { version = "1.0.24", optional = true }
+tar = { version = "0.4.38", optional = true }

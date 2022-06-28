@@ -1,6 +1,6 @@
 //! Utilities for loading configuration files.
 
-use core::errors::Result;
+use reproto_core::errors::Result;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::Read;

@@ -1,9 +1,9 @@
 use crate::utils::{load_manifest, matches, publish_matches, semck_check, simple_config, Match};
 use clap::{App, Arg, ArgMatches, SubCommand};
-use core::errors::{Error, Result};
-use core::{Diagnostics, Reporter, RpRequiredPackage, RpVersionedPackage, Version};
+use reproto_core::errors::{Error, Result};
+use reproto_core::{Diagnostics, Reporter, RpRequiredPackage, RpVersionedPackage, Version};
 
-pub fn options<'a, 'b>() -> App<'a, 'b> {
+pub fn options<'a>() -> App<'a> {
     let out = SubCommand::with_name("publish").about("Publish specifications");
 
     let out = out.arg(
@@ -44,7 +44,7 @@ pub fn entry(reporter: &mut dyn Reporter, m: &ArgMatches) -> Result<()> {
     let mut manifest_resolver =
         env::path_resolver(&manifest)?.ok_or_else(|| "could not setup manifest resolver")?;
 
-    let version_override = if let Some(version) = m.value_of("version") {
+    let version_override = if let Ok(Some(version)) = m.try_get_one::<String>("version") {
         Some(
             Version::parse(version)
                 .map_err(|e| format!("not a valid version: {}: {}", version, e))?,
@@ -63,10 +63,12 @@ pub fn entry(reporter: &mut dyn Reporter, m: &ArgMatches) -> Result<()> {
 
     // packages to publish from the commandline
     let packages: Vec<RpRequiredPackage> = m
-        .values_of("package")
+        .try_get_many::<String>("package")
+        .ok()
+        .flatten()
         .into_iter()
-        .flat_map(|it| it)
-        .map(|p| RpRequiredPackage::parse(p).map_err(Into::into))
+        .flatten()
+        .map(|p| RpRequiredPackage::parse(p))
         .collect::<Result<_>>()?;
 
     results.extend(matches(
@@ -75,9 +77,9 @@ pub fn entry(reporter: &mut dyn Reporter, m: &ArgMatches) -> Result<()> {
         &packages,
     )?);
 
-    let force = m.is_present("force");
-    let pretend = m.is_present("pretend");
-    let no_semck = m.is_present("no-semck");
+    let force = m.try_contains_id("force").unwrap_or_default();
+    let pretend = m.try_contains_id("pretend").unwrap_or_default();
+    let no_semck = m.try_contains_id("no-semck").unwrap_or_default();
 
     let mut repository = env::repository(&manifest)?;
 

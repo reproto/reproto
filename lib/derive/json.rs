@@ -1,17 +1,16 @@
-use crate::core;
-use crate::core::errors::Result;
 use crate::format;
 use crate::sir::{FieldSir, Sir};
 use crate::utils::is_datetime;
 use crate::Opaque;
 use linked_hash_map::LinkedHashMap;
+use reproto_core::errors::Result;
 use serde_json as json;
 
 #[derive(Debug)]
 pub struct Json;
 
 impl format::Format for Json {
-    fn decode(&self, object: &core::Source) -> Result<Sir> {
+    fn decode(&self, object: &reproto_core::Source) -> Result<Sir> {
         let mut der = json::Deserializer::from_reader(object.read()?).into_iter::<json::Value>();
 
         let value: Result<json::Value> = der

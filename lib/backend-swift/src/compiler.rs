@@ -3,10 +3,10 @@
 use crate::flavored::*;
 use crate::{Options, EXT};
 use backend::PackageProcessor;
-use core::errors::Result;
-use core::{Handle, Spanned};
 use genco::prelude::*;
 use genco::tokens::{FormatInto, ItemStr};
+use reproto_core::errors::Result;
+use reproto_core::{Handle, Spanned};
 use trans::{self, Packages, Translated};
 
 /// Documentation comments.
@@ -207,9 +207,7 @@ impl<'a> PackageProcessor<'a, SwiftFlavor> for Compiler<'a> {
         self.opt.gen.interface_model_added(&mut inner, body);
 
         let mut extra = Vec::new();
-        self.opt
-            .gen
-            .interface_added(&mut extra, self, &body.name, body);
+        self.opt.gen.interface_added(&mut extra, &body.name, body);
 
         quote_in! { *out =>
             #(Comments(&body.comment))

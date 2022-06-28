@@ -1,7 +1,7 @@
 //! Declares features and what version they are introduced for.
 
-use core::errors::Error;
-use core::Version;
+use reproto_core::errors::Error;
+use reproto_core::Version;
 use std::collections::HashMap;
 
 pub struct Features {

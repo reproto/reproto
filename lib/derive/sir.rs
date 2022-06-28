@@ -1,7 +1,7 @@
-use crate::core::errors::Result;
 use crate::format;
 use crate::Opaque;
 use linked_hash_map::LinkedHashMap;
+use reproto_core::errors::Result;
 use std::collections::HashSet;
 
 /// Results from calling `Sir::test_interface`.

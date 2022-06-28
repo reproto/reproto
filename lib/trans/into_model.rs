@@ -3,14 +3,14 @@
 use crate::attributes;
 use crate::scope::Scope;
 use ast::*;
-use core::errors::Error;
-use core::flavored::*;
-use core::{
+use linked_hash_map::LinkedHashMap;
+use naming::Naming;
+use reproto_core::errors::Error;
+use reproto_core::flavored::*;
+use reproto_core::{
     BigInt, Diagnostics, Import, Range, RpEnabledFeature, RpNumberKind, RpNumberType,
     RpNumberValidate, RpStringType, RpStringValidate, Span, Spanned, SymbolKind, WithSpan,
 };
-use linked_hash_map::LinkedHashMap;
-use naming::Naming;
 use std::borrow::Cow;
 use std::collections::{hash_map, BTreeSet, HashMap};
 use std::option;

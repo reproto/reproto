@@ -4,13 +4,13 @@ mod initialize;
 
 pub use self::config_env::ConfigEnvironment;
 pub use self::initialize::initialize;
-use core::errors::Result;
-use core::{RelativePath, Resolver};
 use manifest::{Lang, Language, Manifest};
 use repository::{
     index_from_path, index_from_url, objects_from_path, objects_from_url, Index, IndexConfig,
     NoIndex, NoObjects, Objects, ObjectsConfig, Paths, Repository, Resolvers,
 };
+use reproto_core::errors::Result;
+use reproto_core::{RelativePath, Resolver};
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::Duration;

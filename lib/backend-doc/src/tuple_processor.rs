@@ -3,8 +3,8 @@
 use crate::doc_builder::DocBuilder;
 use crate::macros::FormatAttribute;
 use crate::processor::Processor;
-use core::errors::Result;
-use core::flavored::*;
+use reproto_core::errors::Result;
+use reproto_core::flavored::*;
 
 define_processor!(TupleProcessor, RpTupleBody, self,
     process => {

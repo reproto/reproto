@@ -3,7 +3,7 @@ name = "reproto-trans"
 version = "0.4.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 repository = "https://github.com/reproto/reproto"
 homepage = "https://github.com/reproto/reproto"
@@ -15,15 +15,15 @@ Transpiler utilities.
 """
 
 [dependencies]
-core = {package = "reproto-core", path = "../core", version = "0.4"}
+reproto-core = {path = "../core", version = "0.4"}
 ast = {package = "reproto-ast", path = "../ast", version = "0.4"}
 parser = {package = "reproto-parser", path = "../parser", version = "0.4"}
 path-parser = {package = "reproto-path-parser", path = "../path-parser", version = "0.4"}
 regex-parser = {package = "reproto-regex-parser", path = "../regex-parser", version = "0.4"}
 naming = {package = "reproto-naming", path = "../naming", version = "0.4"}
 
-log = "0.4.8"
-linked-hash-map = { version = "0.5.3", features = ["serde"] }
+log = "0.4.17"
+linked-hash-map = { version = "0.5.6", features = ["serde"] }
 
 [lib]
 path = "lib.rs"

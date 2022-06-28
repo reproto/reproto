@@ -3,9 +3,9 @@
 use crate::flavored::*;
 use crate::utils::Comments;
 use crate::{Options, Root, RootCodegen, Service, ServiceCodegen, SCOPE_SEP};
-use core::errors::Result;
 use genco::prelude::*;
 use genco::tokens::{FormatInto, ItemStr, Tokens};
+use reproto_core::errors::Result;
 use std::rc::Rc;
 
 pub(crate) fn initialize(options: &mut Options) -> Result<()> {

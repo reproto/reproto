@@ -14,11 +14,11 @@ Rethinking Protocol Generators
 
 [dependencies]
 backend = {package = "reproto-backend", path = "../backend", version = "0.4"}
-core = {package = "reproto-core", path = "../core", version = "0.4"}
+reproto-core = {path = "../core", version = "0.4"}
 trans = {package = "reproto-trans", path = "../trans", version = "0.4"}
 manifest = {package = "reproto-manifest", path = "../manifest", version = "0.4"}
 
-genco = "0.15.0"
-log = "0.4.8"
-serde = {version = "1.0.111", features = ["derive"]}
-toml = "0.5.6"
+genco = "0.16.1"
+log = "0.4.17"
+serde = { version = "1.0.137", features = ["derive"] }
+toml = "0.5.9"

@@ -7,11 +7,11 @@ mod utils;
 
 use crate::compiler::Compiler;
 use crate::flavored::*;
-use core::errors::Result;
-use core::{CoreFlavor, Handle};
 use genco::prelude::*;
 use genco::tokens::ItemStr;
 use manifest::{Lang, Manifest, NoModule, TryFromToml};
+use reproto_core::errors::Result;
+use reproto_core::{CoreFlavor, Handle};
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::path::Path;

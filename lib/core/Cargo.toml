@@ -3,7 +3,7 @@ name = "reproto-core"
 version = "0.4.0"
 authors = ["John-John Tedro <udoprog@tedro.se>"]
 license = "MIT/Apache-2.0"
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 repository = "https://github.com/reproto/reproto"
 homepage = "https://github.com/reproto/reproto"
@@ -15,16 +15,16 @@ Rethinking Protocol Generators
 [dependencies]
 semver = {package = "reproto-semver", path = "../semver", version = "0.4", features = ["serde"]}
 
-num-bigint = { version = "0.2.6", default_features = false, features = ["std"] }
-num-traits = { version = "0.2.11", default_features = false, features = ["std"] }
-num-integer = { version = "0.1.42", default_features = false, features = ["std"] }
+num-bigint = { version = "0.4.3", default_features = false, features = ["std"] }
+num-traits = { version = "0.2.15", default_features = false, features = ["std"] }
+num-integer = { version = "0.1.45", default_features = false, features = ["std"] }
 mime = "0.3.16"
-serde = { version = "1.0.111", features = ["rc", "derive"] }
-relative-path = { version = "1.0.0", features = ["serde"] }
-linked-hash-map = { version = "0.5.3", features = ["serde_impl"] }
-backtrace = { version = "0.3.48", optional = true }
-ropey = "1.1.0"
-url = "2.1.1"
+serde = { version = "1.0.137", features = ["rc", "derive"] }
+relative-path = { version = "1.7.0", features = ["serde"] }
+linked-hash-map = { version = "0.5.6", features = ["serde_impl"] }
+backtrace = { version = "0.3.65", optional = true }
+ropey = "1.5.0"
+url = "2.2.2"
 
 [features]
 default = ["std"]

@@ -1,8 +1,9 @@
-use anyhow::{bail, Result};
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::process::Stdio;
 use std::str;
+
+use anyhow::{bail, Result};
 use tokio::process::Command;
 use tokio::time;
 
@@ -103,7 +104,8 @@ impl<'a> Docker {
     ) -> Result<()> {
         log::trace!("run: {:?}", command);
 
-        let timeout = time::delay_until(deadline);
+        let timeout = time::sleep_until(deadline);
+        tokio::pin!(timeout);
 
         if self.foreground {
             command.stdout(Stdio::inherit());

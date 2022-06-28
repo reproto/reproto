@@ -4,7 +4,6 @@ use anyhow::{bail, format_err, Result};
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::io::AsyncWriteExt as _;
-use tokio::stream::StreamExt as _;
 
 pub async fn setup(
     root: &Path,
@@ -59,7 +58,7 @@ async fn find_packages(path: &Path) -> Result<Vec<String>> {
 
     let mut s = fs::read_dir(path).await?;
 
-    while let Some(entry) = s.next().await.transpose()? {
+    while let Some(entry) = s.next_entry().await? {
         if let Ok(name) = entry.file_name().into_string() {
             if let Some(package) = name.strip_suffix(".reproto") {
                 out.push(package.to_string());

@@ -4,9 +4,9 @@ use crate::codegen;
 use crate::flavored::*;
 use crate::Options;
 use backend::Initializer;
-use core::errors::Result;
-use core::Spanned;
 use genco::prelude::*;
+use reproto_core::errors::Result;
+use reproto_core::Spanned;
 use std::collections::BTreeSet;
 use std::rc::Rc;
 

@@ -12,23 +12,23 @@ mod watch;
 
 use crate::output::Output;
 use clap::{App, Arg, ArgMatches};
-use core::errors::Result;
-use core::{Filesystem, Reporter};
+use reproto_core::errors::Result;
+use reproto_core::{Filesystem, Reporter};
 
-pub fn base_args<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
+pub fn base_args<'a>(out: App<'a>) -> App<'a> {
     let out = out.arg(
         Arg::with_name("debug")
             .long("debug")
-            .short("D")
+            .short('D')
             .help("Enable debug output"),
     );
 
     let out = out.arg(
         Arg::with_name("index")
             .long("index")
-            .short("I")
+            .short('I')
             .takes_value(true)
-            .help("URL for index to use when looking up packages."),
+            .help("URL for index to use when looking up packages"),
     );
 
     let out = out.arg(
@@ -41,19 +41,19 @@ pub fn base_args<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = out.arg(
         Arg::with_name("objects")
             .long("objects")
-            .short("O")
+            .short('O')
             .takes_value(true)
-            .help("URL for objects storage to use when looking up packages."),
+            .help("URL for objects storage to use when looking up packages"),
     );
 
     let out = out.arg(
         Arg::with_name("path")
             .long("path")
-            .short("p")
+            .short('p')
             .takes_value(true)
             .multiple(true)
             .number_of_values(1)
-            .help("Paths to look for definitions."),
+            .help("Paths to look for definitions"),
     );
 
     let out = out.arg(
@@ -67,7 +67,7 @@ pub fn base_args<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
 }
 
 /// Setup base compiler options.
-pub fn build_args<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
+pub fn build_args<'a>(out: App<'a>) -> App<'a> {
     let out = base_args(out);
 
     let out = out.arg(
@@ -82,7 +82,7 @@ pub fn build_args<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = out.arg(
         Arg::with_name("module")
             .long("module")
-            .short("m")
+            .short('m')
             .takes_value(true)
             .multiple(true)
             .number_of_values(1)
@@ -115,7 +115,7 @@ pub fn build_args<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     let out = out.arg(
         Arg::with_name("out")
             .long("out")
-            .short("o")
+            .short('o')
             .takes_value(true)
             .help("Output directory"),
     );
@@ -123,7 +123,7 @@ pub fn build_args<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     out
 }
 
-pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
+pub fn options<'a>(out: App<'a>) -> App<'a> {
     let out = out.subcommand(build_args(build::options()));
     let out = out.subcommand(build_args(language_server::options()));
     let out = out.subcommand(build_args(doc::options()));
@@ -142,7 +142,7 @@ pub fn options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
 ///
 /// If debug (--debug) is specified, logging should be configured with `LogLevelFilter::Debug`.
 fn default_logging(matches: &ArgMatches, output: &dyn Output) -> Result<()> {
-    let level = if matches.is_present("debug") {
+    let level = if matches.try_contains_id("debug").unwrap_or_default() {
         log::LevelFilter::Debug
     } else {
         log::LevelFilter::Info
@@ -160,8 +160,7 @@ pub fn entry(
     matches: &ArgMatches,
     output: &dyn Output,
 ) -> Result<()> {
-    let (name, matches) = matches.subcommand();
-    let matches = matches.ok_or_else(|| "no subcommand")?;
+    let (name, matches) = matches.subcommand().ok_or_else(|| "no subcommand")?;
 
     // has custom log setup.
     if name == "language-server" {

@@ -2,13 +2,13 @@
 
 use crate::TYPE_SEP;
 use backend::package_processor;
-use core::errors::Result;
-use core::{
+use genco::prelude::*;
+use genco::tokens::{FormatInto, ItemStr};
+use reproto_core::errors::Result;
+use reproto_core::{
     self, CoreFlavor, Diagnostics, Flavor, FlavorTranslator, PackageTranslator, RpNumberType,
     RpStringType, Spanned, Translate, Translator,
 };
-use genco::prelude::*;
-use genco::tokens::{FormatInto, ItemStr};
 use std::rc::Rc;
 use trans::Packages;
 
@@ -199,7 +199,7 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
     type Source = CoreFlavor;
     type Target = JavaScriptFlavor;
 
-    core::translator_defaults!(Self, field, endpoint);
+    reproto_core::translator_defaults!(Self, field, endpoint);
 
     fn translate_number(&self, _: RpNumberType) -> Result<Type> {
         Ok(Type::Integer)
@@ -303,4 +303,4 @@ impl FlavorTranslator for JavaScriptFlavorTranslator {
     }
 }
 
-core::decl_flavor!(pub(crate) JavaScriptFlavor);
+reproto_core::decl_flavor!(pub(crate) JavaScriptFlavor);

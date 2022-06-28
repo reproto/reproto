@@ -24,9 +24,9 @@ pub const DEFAULT_SYNTAX_THEME: &str = "ayu-mirage";
 
 use crate::doc_compiler::DocCompiler;
 use clap::{App, Arg, ArgMatches};
-use core::errors::Result;
-use core::CoreFlavor;
 use manifest::Manifest;
+use reproto_core::errors::Result;
+use reproto_core::CoreFlavor;
 use std::collections::HashMap;
 use syntect::dumps::from_binary;
 use syntect::highlighting::{Theme, ThemeSet};
@@ -58,7 +58,7 @@ fn load_theme_set() -> ThemeSet {
     from_binary(THEME_DUMP)
 }
 
-pub fn shared_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
+pub fn shared_options<'a>(out: App<'a>) -> App<'a> {
     let out = out.arg(
         Arg::with_name("theme")
             .long("theme")
@@ -94,7 +94,7 @@ pub fn shared_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
     out
 }
 
-pub fn compile_options<'a, 'b>(out: App<'a, 'b>) -> App<'a, 'b> {
+pub fn compile_options<'a>(out: App<'a>) -> App<'a> {
     shared_options(out).about("Compile Documentation")
 }
 
@@ -109,8 +109,10 @@ where
     F: FnOnce(&Theme, &SyntaxSet, &[u8]) -> Result<()>,
 {
     let syntax_theme = matches
-        .value_of("syntax-theme")
-        .or_else(|| manifest.doc.syntax_theme.as_ref().map(String::as_str))
+        .try_get_one::<String>("syntax-theme")
+        .ok()
+        .and_then(|theme| Some(theme?.as_str()))
+        .or_else(|| manifest.doc.syntax_theme.as_deref())
         .unwrap_or(DEFAULT_SYNTAX_THEME);
 
     let default_theme: Theme = Default::default();
@@ -128,7 +130,11 @@ where
         &default_theme
     };
 
-    let theme = matches.value_of("theme").unwrap_or(DEFAULT_THEME);
+    let theme = matches
+        .try_get_one::<String>("theme")
+        .ok()
+        .and_then(|theme| Some(theme?.as_str()))
+        .unwrap_or(DEFAULT_THEME);
 
     let theme_css = if let Some(theme_css) = themes.get(theme) {
         theme_css
@@ -199,12 +205,15 @@ pub fn compile(
 
     let mut done = false;
 
-    if matches.is_present("list-themes") {
+    if matches.try_contains_id("list-themes").unwrap_or_default() {
         list_themes(&themes)?;
         done = true;
     }
 
-    if matches.is_present("list-syntax-themes") {
+    if matches
+        .try_contains_id("list-syntax-themes")
+        .unwrap_or_default()
+    {
         list_syntax_themes()?;
         done = true;
     }
@@ -214,7 +223,8 @@ pub fn compile(
         return Ok(());
     }
 
-    let skip_static = matches.is_present("skip-static");
+    let skip_static = matches.try_contains_id("skip-static").unwrap_or_default();
+
     let out = manifest
         .output
         .as_ref()

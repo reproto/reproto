@@ -29,6 +29,7 @@ pub struct Suite {
     /// JSON files in suite.
     pub(crate) json: Vec<PathBuf>,
     /// proto files in suite.
+    #[allow(unused)]
     pub(crate) proto: Vec<PathBuf>,
     /// Packages to build.
     pub(crate) packages: Vec<String>,

@@ -2,12 +2,12 @@
 
 use crate::flavored::*;
 use crate::Options;
-use core::errors::Result;
-use core::{Handle, RelativePathBuf, Spanned};
 use genco::fmt;
 use genco::prelude::*;
 use genco::tokens::from_fn;
 use naming::Naming;
+use reproto_core::errors::Result;
+use reproto_core::{Handle, RelativePathBuf, Spanned};
 use trans::Translated;
 
 #[allow(unused)]

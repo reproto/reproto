@@ -5,10 +5,10 @@ mod non_colored;
 pub use self::colored::Colored;
 pub use self::json::Json;
 pub use self::non_colored::NonColored;
-use core::errors::{Error, Result};
-use core::flavored::*;
-use core::{Diagnostic, Reported, Source, Span, SymbolKind};
 use log;
+use reproto_core::errors::{Error, Result};
+use reproto_core::flavored::*;
+use reproto_core::{Diagnostic, Reported, Source, Span, SymbolKind};
 use std::io::{self, Write};
 
 /// Output format to print stuff using.

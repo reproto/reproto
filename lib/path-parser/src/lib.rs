@@ -1,7 +1,9 @@
-mod parser;
+lalrpop_mod!(grammar);
 
 use ast::PathSpec;
-use core::errors::{Error, Result};
+use reproto_core::errors::{Error, Result};
+
+use lalrpop_util::lalrpop_mod;
 
 pub fn parse(input: &str) -> Result<PathSpec> {
     use lalrpop_util::ParseError::*;
@@ -9,7 +11,7 @@ pub fn parse(input: &str) -> Result<PathSpec> {
 
     let lexer = path_lexer::path_lex(input);
 
-    let parser = parser::PathParser::new();
+    let parser = grammar::PathParser::new();
 
     match parser.parse(lexer) {
         Ok(file) => Ok(file),

@@ -1,15 +1,14 @@
 //! ## Load objects from a remote repository over HTTP
 
-use core::errors::Result;
-use core::Source;
-use futures::future::{err, ok};
-use futures::{StreamExt as _, TryFutureExt as _};
 use hyper::client::HttpConnector;
 use hyper::{Body, Client, Method, Request, StatusCode};
-use hyper_rustls::HttpsConnector;
+use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};
 use repository::{CachedObjects, Checksum, HexSlice, Objects, ObjectsConfig};
+use reproto_core::errors::{Error, Result};
+use reproto_core::Source;
 use std::io::Read;
 use std::time::Duration;
+use tokio_stream::StreamExt;
 use url::Url;
 
 pub struct HttpObjects {
@@ -63,19 +62,19 @@ impl Objects for HttpObjects {
             .uri(url)
             .body(Body::from(buffer))?;
 
-        let work = self.handle_request(request).and_then(|(body, status)| {
+        futures_executor::block_on(async {
+            let (body, status) = self.handle_request(request).await?;
+
             if !status.is_success() {
                 if let Ok(body) = String::from_utf8(body) {
-                    return err(format!("bad response: {}: {}", status, body).into());
+                    return Err(format!("bad response: {}: {}", status, body).into());
                 }
 
-                return err(format!("bad response: {}", status).into());
+                return Err(format!("bad response: {}", status).into());
             }
 
-            ok(())
-        });
-
-        futures::executor::block_on(work)?;
+            Ok::<_, Error>(())
+        })?;
 
         // TODO: use status code to determine if the upload resulted in changes or not.
         Ok(true)
@@ -90,30 +89,36 @@ impl Objects for HttpObjects {
             .uri(url)
             .body(Body::empty())?;
 
-        let work = self.handle_request(request).and_then(|(body, status)| {
+        let out = futures_executor::block_on(async {
+            let (body, status) = self.handle_request(request).await?;
+
             if status.is_success() {
-                return ok(Some(body));
+                return Ok::<_, Error>(Some(body));
             }
 
             if status == StatusCode::NOT_FOUND {
-                return ok(None);
+                return Ok(None);
             }
 
             if let Ok(body) = String::from_utf8(body) {
-                return err(format!("bad response: {}: {}", status, body).into());
+                return Err(format!("bad response: {}: {}", status, body).into());
             }
 
-            return err(format!("bad response: {}", status).into());
-        });
-
-        let out = futures::executor::block_on(work)?;
+            return Err(format!("bad response: {}", status).into());
+        })?;
         Ok(out.map(|out| Source::bytes(name, out)))
     }
 }
 
 /// Load objects from an HTTP url.
 pub fn objects_from_url(config: ObjectsConfig, url: &Url) -> Result<Box<dyn Objects>> {
-    let client = Client::builder().build(HttpsConnector::new());
+    let client = Client::builder().build(
+        HttpsConnectorBuilder::new()
+            .with_native_roots()
+            .https_only()
+            .enable_http1()
+            .build(),
+    );
 
     let http_objects = HttpObjects {
         url: url.clone(),

@@ -5,10 +5,10 @@ use crate::compiler::Comments;
 use crate::flavored::*;
 use crate::Options;
 use backend::Initializer;
-use core::errors::Result;
-use core::Spanned;
 use genco::prelude::*;
 use genco::tokens::ItemStr;
+use reproto_core::errors::Result;
+use reproto_core::Spanned;
 use std::rc::Rc;
 
 static NUMERICS: [&str; 6] = ["Int", "UInt", "Int32", "Int64", "UInt32", "UInt64"];
