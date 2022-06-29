@@ -50,12 +50,12 @@ impl Primitive {
     /// Use the appropriate toString implementation.
     pub(crate) fn to_string(self, t: &mut java::Tokens, arg: impl FormatInto<Java>) {
         quote_in! {*t =>
-            #(match self {
-                Self::Boolean => Boolean.toString(#arg),
-                Self::Integer => Integer.toString(#arg),
-                Self::Long => Long.toString(#arg),
-                Self::Float => Float.toString(#arg),
-                Self::Double => Double.toString(#arg),
+            $(match self {
+                Self::Boolean => Boolean.toString($arg),
+                Self::Integer => Integer.toString($arg),
+                Self::Long => Long.toString($arg),
+                Self::Float => Float.toString($arg),
+                Self::Double => Double.toString($arg),
             })
         }
     }
@@ -63,12 +63,12 @@ impl Primitive {
     /// Use the appropriate hashCode implementation.
     pub(crate) fn hash_code(self, t: &mut java::Tokens, arg: impl FormatInto<Java>) {
         quote_in! {*t =>
-            #(match self {
-                Self::Boolean => Boolean.valueOf(#arg).hashCode(),
-                Self::Integer => Integer.valueOf(#arg).hashCode(),
-                Self::Long => Long.valueOf(#arg).hashCode(),
-                Self::Float => Float.valueOf(#arg).hashCode(),
-                Self::Double => Double.valueOf(#arg).hashCode(),
+            $(match self {
+                Self::Boolean => Boolean.valueOf($arg).hashCode(),
+                Self::Integer => Integer.valueOf($arg).hashCode(),
+                Self::Long => Long.valueOf($arg).hashCode(),
+                Self::Float => Float.valueOf($arg).hashCode(),
+                Self::Double => Double.valueOf($arg).hashCode(),
             })
         }
     }
@@ -124,11 +124,11 @@ impl Type {
         optional: &'a Rc<java::Import>,
     ) -> impl FormatInto<Java> + 'a {
         quote_fn! {
-            #(&**optional)<#(match self {
-                Type::Primitive { primitive } => #(Type::Boxed {
+            $(&**optional)<$(match self {
+                Type::Primitive { primitive } => $(Type::Boxed {
                     primitive: *primitive
                 }),
-                other => #(other),
+                other => $(other),
             })>
         }
     }
@@ -136,8 +136,8 @@ impl Type {
     /// Generate an equals function for this type.
     pub(crate) fn equals(&self, a: java::Tokens, b: java::Tokens) -> impl FormatInto<Java> + '_ {
         from_fn(move |t| match self {
-            Type::Primitive { primitive } | Type::Boxed { primitive } => quote_in!(*t => #a == #b),
-            other => quote_in!(*t => #a.equals(#b)),
+            Type::Primitive { primitive } | Type::Boxed { primitive } => quote_in!(*t => $a == $b),
+            other => quote_in!(*t => $a.equals($b)),
         })
     }
 
@@ -175,13 +175,13 @@ impl FormatInto<Java> for Type {
                 Primitive::Double => quote_in!(*t => Double),
             },
             Type::String => quote_in!(*t => String),
-            Type::Import { import } => quote_in!(*t => #(&*import)),
-            Type::DateTime { import } => quote_in!(*t => #(&*import)),
+            Type::Import { import } => quote_in!(*t => $(&*import)),
+            Type::DateTime { import } => quote_in!(*t => $(&*import)),
             Type::List { list, argument } => {
-                quote_in!(*t => #(&*list)<#(&*argument)>);
+                quote_in!(*t => $(&*list)<$(&*argument)>);
             }
             Type::Map { map, key, value } => {
-                quote_in!(*t => #(&*map)<#(&*key), #(&*value)>);
+                quote_in!(*t => $(&*map)<$(&*key), $(&*value)>);
             }
         }
     }
@@ -196,10 +196,10 @@ pub(crate) struct Field {
 impl Field {
     pub(crate) fn field_type(&self) -> impl FormatInto<Java> + '_ {
         quote_fn! {
-            #(if self.is_optional() {
-                #(self.ty.optional_type(&self.optional))
+            $(if self.is_optional() {
+                $(self.ty.optional_type(&self.optional))
             } else {
-                #(&self.ty)
+                $(&self.ty)
             })
         }
     }
@@ -214,14 +214,14 @@ impl Field {
     ) -> impl FormatInto<Java> + '_ {
         from_fn(move |t| {
             if self.is_optional() {
-                return quote_in!(*t => #arg.toString());
+                return quote_in!(*t => $arg.toString());
             }
 
             match &self.ty {
                 Type::Primitive { primitive } | Type::Boxed { primitive } => {
                     primitive.to_string(t, arg)
                 }
-                other => quote_in!(*t => #arg.toString()),
+                other => quote_in!(*t => $arg.toString()),
             }
         })
     }
@@ -232,14 +232,14 @@ impl Field {
     ) -> impl FormatInto<Java> + '_ {
         from_fn(move |t| {
             if self.is_optional() {
-                return quote_in!(*t => #arg.hashCode());
+                return quote_in!(*t => $arg.hashCode());
             }
 
             match &self.ty {
                 Type::Primitive { primitive } | Type::Boxed { primitive } => {
                     primitive.hash_code(t, arg)
                 }
-                other => quote_in!(*t => #arg.hashCode()),
+                other => quote_in!(*t => $arg.hashCode()),
             }
         })
     }
@@ -251,14 +251,14 @@ impl Field {
     ) -> impl FormatInto<Java> + '_ {
         from_fn(move |t| {
             if self.is_optional() {
-                return quote_in!(*t => !#a.equals(#b));
+                return quote_in!(*t => !$a.equals($b));
             }
 
             match &self.ty {
                 Type::Primitive { primitive } | Type::Boxed { primitive } => {
-                    quote_in!(*t => #a != #b)
+                    quote_in!(*t => $a != $b)
                 }
-                other => quote_in!(*t => !#a.equals(#b)),
+                other => quote_in!(*t => !$a.equals($b)),
             }
         })
     }

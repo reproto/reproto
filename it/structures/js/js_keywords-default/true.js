@@ -1,8 +1,8 @@
 export class Empty {
-  constructor() {
-  }
+  constructor() {}
 
   static decode(data) {
+
     return new Empty();
   }
 

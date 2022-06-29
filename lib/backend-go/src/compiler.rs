@@ -54,10 +54,10 @@ impl<'a> Compiler<'a> {
         fields: &[Spanned<RpField>],
     ) -> Result<()> {
         quote_in! { *t =>
-            #(Comments(comment))
-            type #name struct {
-                #(for f in fields.into_iter() join (#<push>) {
-                    #(ref t => {
+            $(Comments(comment))
+            type $name struct {
+                $(for f in fields.into_iter() join ($['\r']) {
+                    $(ref t => {
                         let mut tags = Tags::new();
 
                         for g in &self.options.field_gens {
@@ -68,12 +68,12 @@ impl<'a> Compiler<'a> {
                         }
 
                         quote_in! { *t =>
-                            #(Comments(&f.comment))
-                            #(f.safe_ident()) #(if f.is_optional() {
-                                *#(&f.ty)
+                            $(Comments(&f.comment))
+                            $(f.safe_ident()) $(if f.is_optional() {
+                                *$(&f.ty)
                             } else {
-                                #(&f.ty)
-                            }) #(tags)
+                                $(&f.ty)
+                            }) $(tags)
                         }
                     })
                 })
@@ -146,20 +146,20 @@ impl<'el> PackageProcessor<'el, GoFlavor> for Compiler<'el> {
 
     fn process_tuple(&self, out: &mut Self::Out, body: &RpTupleBody) -> Result<()> {
         quote_in! { out.0 =>
-            #(Comments(&body.comment))
-            type #(&body.name) struct {
-                #(for f in &body.fields {
-                    #(Comments(&f.comment))
-                    #(f.safe_ident()) #(if f.is_optional() {
-                        *#(&f.ty)
+            $(Comments(&body.comment))
+            type $(&body.name) struct {
+                $(for f in &body.fields {
+                    $(Comments(&f.comment))
+                    $(f.safe_ident()) $(if f.is_optional() {
+                        *$(&f.ty)
                     } else {
-                        #(&f.ty)
+                        $(&f.ty)
                     })
                 })
             }
 
-            #(for g in &self.options.tuple_gens join (#<line>) {
-                #(ref container => g.generate(TupleAdded {
+            $(for g in &self.options.tuple_gens join ($['\n']) {
+                $(ref container => g.generate(TupleAdded {
                     container,
                     name: &body.name,
                     body,
@@ -172,26 +172,26 @@ impl<'el> PackageProcessor<'el, GoFlavor> for Compiler<'el> {
 
     fn process_enum(&self, out: &mut Self::Out, body: &RpEnumBody) -> Result<()> {
         quote_in! { out.0 =>
-            #(Comments(&body.comment))
-            type #(&body.name) int
+            $(Comments(&body.comment))
+            type $(&body.name) int
 
             const (
-                #(ref t => {
+                $(ref t => {
                     let mut it = body.variants.iter();
 
                     quote_in! { *t =>
-                        #(if let Some(v) = it.next() {
-                            #(&body.name)_#(v.ident.as_str()) #(&body.name) = iota
+                        $(if let Some(v) = it.next() {
+                            $(&body.name)_$(v.ident.as_str()) $(&body.name) = iota
                         })
-                        #(for v in it join (#<push>) {
-                            #(&body.name)_#(v.ident.as_str())
+                        $(for v in it join ($['\r']) {
+                            $(&body.name)_$(v.ident.as_str())
                         })
                     }
                 })
             )
 
-            #(for g in &self.options.enum_gens join (#<line>) {
-                #(ref container => g.generate(EnumAdded {
+            $(for g in &self.options.enum_gens join ($['\n']) {
+                $(ref container => g.generate(EnumAdded {
                     container,
                     name: &body.name,
                     body,
@@ -204,15 +204,15 @@ impl<'el> PackageProcessor<'el, GoFlavor> for Compiler<'el> {
 
     fn process_interface(&self, out: &mut Self::Out, body: &RpInterfaceBody) -> Result<()> {
         quote_in! { out.0 =>
-            #(Comments(&body.comment))
-            type #(&body.name) struct {
+            $(Comments(&body.comment))
+            type $(&body.name) struct {
                 Value interface {
-                    Is#(&body.name)()
+                    Is$(&body.name)()
                 }
             }
 
-            #(for sub_type in &body.sub_types join (#<line>) {
-                #(ref t {
+            $(for sub_type in &body.sub_types join ($['\n']) {
+                $(ref t {
                     let fields = body.fields
                         .iter()
                         .chain(sub_type.fields.iter())
@@ -222,12 +222,12 @@ impl<'el> PackageProcessor<'el, GoFlavor> for Compiler<'el> {
                     self.process_struct(t, &sub_type.name, &sub_type.comment, &fields)?;
                 })
 
-                func (this #(&sub_type.name)) Is#(&body.name)() {
+                func (this $(&sub_type.name)) Is$(&body.name)() {
                 }
             })
 
-            #(for g in &self.options.interface_gens join (#<line>) {
-                #(ref container => g.generate(InterfaceAdded {
+            $(for g in &self.options.interface_gens join ($['\n']) {
+                $(ref container => g.generate(InterfaceAdded {
                     container,
                     name: &body.name,
                     body,

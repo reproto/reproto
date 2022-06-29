@@ -3,11 +3,9 @@ package test
 import "encoding/json"
 import "errors"
 
-type Entry struct {
-}
+type Entry struct {}
 
-type Type struct {
-}
+type Type struct {}
 
 type Interface struct {
   Value interface {
@@ -15,8 +13,7 @@ type Interface struct {
   }
 }
 
-type Interface_SubType struct {
-}
+type Interface_SubType struct {}
 
 func (this Interface_SubType) IsInterface() {
 }
@@ -118,8 +115,7 @@ func (this Enum) MarshalJSON() ([]byte, error) {
   return json.Marshal(s)
 }
 
-type Tuple struct {
-}
+type Tuple struct {}
 
 func (this *Tuple) UnmarshalJSON(b []byte) error {
   var array []json.RawMessage
@@ -128,13 +124,11 @@ func (this *Tuple) UnmarshalJSON(b []byte) error {
     return err
   }
 
-
   return nil
 }
 
 func (this Tuple) MarshalJSON() ([]byte, error) {
   var array []json.RawMessage
-
 
   return json.Marshal(array)
 }

@@ -3,47 +3,52 @@ package _true;
 import com.fasterxml.jackson.annotation.JsonCreator;
 
 public class Empty {
-  @JsonCreator
-  public Empty() {
-  }
 
-  @Override
-  public int hashCode() {
-    int result = 1;
-    return result;
-  }
+    @JsonCreator
+    public Empty() {}
 
-  @Override
-  public boolean equals(final Object other) {
-    if (other == null) {
-      return false;
+    @Override
+    public String toString() {
+        return "Empty()";
     }
 
-    if (!(other instanceof Empty)) {
-      return false;
+    @Override
+    public int hashCode() {
+        int result = 1;
+        final StringBuilder b = new StringBuilder();
+        return result;
     }
 
-    @SuppressWarnings("unchecked")
-    final Empty o = (Empty) other;
+    @Override
+    public boolean equals(final Object other_) {
+        if (other_ == null) {
+            return false;
+        }
 
-    return true;
-  }
+        if (!(other_ instanceof Empty)) {
+            return false;
+        }
 
-  @Override
-  public String toString() {
-    final StringBuilder b = new StringBuilder();
+        @SuppressWarnings("unchecked")
+        final Empty o_ = (Empty)other_;
 
-    b.append("Empty");
-    b.append("(");
-    b.append(")");
-
-    return b.toString();
-  }
-
-  public static class Builder {
-    public Empty build() {
-
-      return new Empty();
+        return true;
     }
-  }
+
+    public static class Builder {
+
+        private Builder() {}
+
+        public Empty build() {
+
+            return new Empty();
+        }
+    }
+
+    /**
+     * Construct a new builder.
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
 }

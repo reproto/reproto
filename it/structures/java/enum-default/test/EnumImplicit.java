@@ -2,34 +2,33 @@ package test;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import java.util.Objects;
 
+/**
+ * Implicit naming depending on the variant
+ */
 public enum EnumImplicit {
-  A("A"),
-  B("B");
+    A("A"),
+    B("B");
 
-  private final String value;
+    String value;
 
-  private EnumImplicit(
-    final String value
-  ) {
-    Objects.requireNonNull(value, "value");
-    this.value = value;
-  }
-
-  @JsonCreator
-  public static EnumImplicit fromValue(final String value) {
-    for (final EnumImplicit v_value : values()) {
-      if (v_value.value.equals(value)) {
-        return v_value;
-      }
+    EnumImplicit(final String value) {
+        this.value = value;
     }
 
-    throw new IllegalArgumentException("value");
-  }
+    @JsonCreator
+    public static EnumImplicit fromValue(final String value) {
+        for (final EnumImplicit v : values()) {
+            if (v.value.equals(value)) {
+                return v;
+            }
+        }
 
-  @JsonValue
-  public String toValue() {
-    return this.value;
-  }
+        throw new IllegalArgumentException("value");
+    }
+
+    @JsonValue
+    public String toValue() {
+        return this.value;
+    }
 }

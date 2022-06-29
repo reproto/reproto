@@ -1,15 +1,23 @@
 class Entry:
-  def __init__(self, _tagged, _untagged):
-    self._tagged = _tagged
-    self._untagged = _untagged
+  def __init__(self, tagged, untagged):
+    self.__tagged = tagged
+    self.__untagged = untagged
 
   @property
   def tagged(self):
-    return self._tagged
+    return self.__tagged
+
+  @tagged.setter
+  def tagged(self, tagged):
+    self.__tagged = tagged
 
   @property
   def untagged(self):
-    return self._untagged
+    return self.__untagged
+
+  @untagged.setter
+  def untagged(self, untagged):
+    self.__untagged = untagged
 
   @staticmethod
   def decode(data):
@@ -34,20 +42,23 @@ class Entry:
   def encode(self):
     data = dict()
 
-    if self._tagged is not None:
-      data["tagged"] = self._tagged.encode()
+    if self.tagged is not None:
+      data["tagged"] = self.tagged.encode()
 
-    if self._untagged is not None:
-      data["untagged"] = self._untagged.encode()
+    if self.untagged is not None:
+      data["untagged"] = self.untagged.encode()
 
     return data
 
   def __repr__(self):
-    return "<Entry tagged:{!r}, untagged:{!r}>".format(self._tagged, self._untagged)
+    return "<Entry tagged:{!r}, untagged:{!r}>".format(self.tagged, self.untagged)
 
 class Tagged:
   @staticmethod
   def decode(data):
+    if "@type" not in data:
+      raise Exception("missing tag field @type")
+
     f_tag = data["@type"]
 
     if f_tag == "foo":
@@ -62,17 +73,21 @@ class Tagged:
     if f_tag == "Baz":
       return Tagged_Baz.decode(data)
 
-    raise Exception("bad type: " + f_tag)
+    raise Exception("no sub type matching tag: " + f_tag)
 
-class Tagged_A:
+class Tagged_A(Tagged):
   TYPE = "foo"
 
-  def __init__(self, _shared):
-    self._shared = _shared
+  def __init__(self, shared):
+    self.__shared = shared
 
   @property
   def shared(self):
-    return self._shared
+    return self.__shared
+
+  @shared.setter
+  def shared(self, shared):
+    self.__shared = shared
 
   @staticmethod
   def decode(data):
@@ -88,25 +103,29 @@ class Tagged_A:
 
     data["@type"] = "foo"
 
-    if self._shared is None:
-      raise Exception("shared: is a required field")
+    if self.shared is None:
+      raise Exception("missing required field: shared")
 
-    data["shared"] = self._shared
+    data["shared"] = self.shared
 
     return data
 
   def __repr__(self):
-    return "<Tagged_A shared:{!r}>".format(self._shared)
+    return "<Tagged_A shared:{!r}>".format(self.shared)
 
-class Tagged_B:
+class Tagged_B(Tagged):
   TYPE = "b"
 
-  def __init__(self, _shared):
-    self._shared = _shared
+  def __init__(self, shared):
+    self.__shared = shared
 
   @property
   def shared(self):
-    return self._shared
+    return self.__shared
+
+  @shared.setter
+  def shared(self, shared):
+    self.__shared = shared
 
   @staticmethod
   def decode(data):
@@ -122,25 +141,29 @@ class Tagged_B:
 
     data["@type"] = "b"
 
-    if self._shared is None:
-      raise Exception("shared: is a required field")
+    if self.shared is None:
+      raise Exception("missing required field: shared")
 
-    data["shared"] = self._shared
+    data["shared"] = self.shared
 
     return data
 
   def __repr__(self):
-    return "<Tagged_B shared:{!r}>".format(self._shared)
+    return "<Tagged_B shared:{!r}>".format(self.shared)
 
-class Tagged_Bar:
+class Tagged_Bar(Tagged):
   TYPE = "Bar"
 
-  def __init__(self, _shared):
-    self._shared = _shared
+  def __init__(self, shared):
+    self.__shared = shared
 
   @property
   def shared(self):
-    return self._shared
+    return self.__shared
+
+  @shared.setter
+  def shared(self, shared):
+    self.__shared = shared
 
   @staticmethod
   def decode(data):
@@ -156,25 +179,29 @@ class Tagged_Bar:
 
     data["@type"] = "Bar"
 
-    if self._shared is None:
-      raise Exception("shared: is a required field")
+    if self.shared is None:
+      raise Exception("missing required field: shared")
 
-    data["shared"] = self._shared
+    data["shared"] = self.shared
 
     return data
 
   def __repr__(self):
-    return "<Tagged_Bar shared:{!r}>".format(self._shared)
+    return "<Tagged_Bar shared:{!r}>".format(self.shared)
 
-class Tagged_Baz:
+class Tagged_Baz(Tagged):
   TYPE = "Baz"
 
-  def __init__(self, _shared):
-    self._shared = _shared
+  def __init__(self, shared):
+    self.__shared = shared
 
   @property
   def shared(self):
-    return self._shared
+    return self.__shared
+
+  @shared.setter
+  def shared(self, shared):
+    self.__shared = shared
 
   @staticmethod
   def decode(data):
@@ -190,15 +217,15 @@ class Tagged_Baz:
 
     data["@type"] = "Baz"
 
-    if self._shared is None:
-      raise Exception("shared: is a required field")
+    if self.shared is None:
+      raise Exception("missing required field: shared")
 
-    data["shared"] = self._shared
+    data["shared"] = self.shared
 
     return data
 
   def __repr__(self):
-    return "<Tagged_Baz shared:{!r}>".format(self._shared)
+    return "<Tagged_Baz shared:{!r}>".format(self.shared)
 
 class Untagged:
   @staticmethod
@@ -216,35 +243,55 @@ class Untagged:
 
     raise Exception("no sub type matching the given fields: " + repr(keys))
 
-class Untagged_A:
+class Untagged_A(Untagged):
   TYPE = "A"
 
-  def __init__(self, _shared, _shared_ignore, _a, _b, _ignore):
-    self._shared = _shared
-    self._shared_ignore = _shared_ignore
-    self._a = _a
-    self._b = _b
-    self._ignore = _ignore
+  def __init__(self, shared, shared_ignore, a, b, ignore):
+    self.__shared = shared
+    self.__shared_ignore = shared_ignore
+    self.__a = a
+    self.__b = b
+    self.__ignore = ignore
 
   @property
   def shared(self):
-    return self._shared
+    return self.__shared
+
+  @shared.setter
+  def shared(self, shared):
+    self.__shared = shared
 
   @property
   def shared_ignore(self):
-    return self._shared_ignore
+    return self.__shared_ignore
+
+  @shared_ignore.setter
+  def shared_ignore(self, shared_ignore):
+    self.__shared_ignore = shared_ignore
 
   @property
   def a(self):
-    return self._a
+    return self.__a
+
+  @a.setter
+  def a(self, a):
+    self.__a = a
 
   @property
   def b(self):
-    return self._b
+    return self.__b
+
+  @b.setter
+  def b(self, b):
+    self.__b = b
 
   @property
   def ignore(self):
-    return self._ignore
+    return self.__ignore
+
+  @ignore.setter
+  def ignore(self, ignore):
+    self.__ignore = ignore
 
   @staticmethod
   def decode(data):
@@ -286,56 +333,72 @@ class Untagged_A:
   def encode(self):
     data = dict()
 
-    if self._shared is None:
-      raise Exception("shared: is a required field")
+    if self.shared is None:
+      raise Exception("missing required field: shared")
 
-    data["shared"] = self._shared
+    data["shared"] = self.shared
 
-    if self._shared_ignore is not None:
-      data["shared_ignore"] = self._shared_ignore
+    if self.shared_ignore is not None:
+      data["shared_ignore"] = self.shared_ignore
 
-    if self._a is None:
-      raise Exception("a: is a required field")
+    if self.a is None:
+      raise Exception("missing required field: a")
 
-    data["a"] = self._a
+    data["a"] = self.a
 
-    if self._b is None:
-      raise Exception("b: is a required field")
+    if self.b is None:
+      raise Exception("missing required field: b")
 
-    data["b"] = self._b
+    data["b"] = self.b
 
-    if self._ignore is not None:
-      data["ignore"] = self._ignore
+    if self.ignore is not None:
+      data["ignore"] = self.ignore
 
     return data
 
   def __repr__(self):
-    return "<Untagged_A shared:{!r}, shared_ignore:{!r}, a:{!r}, b:{!r}, ignore:{!r}>".format(self._shared, self._shared_ignore, self._a, self._b, self._ignore)
+    return "<Untagged_A shared:{!r}, shared_ignore:{!r}, a:{!r}, b:{!r}, ignore:{!r}>".format(self.shared, self.shared_ignore, self.a, self.b, self.ignore)
 
-class Untagged_B:
+class Untagged_B(Untagged):
   TYPE = "B"
 
-  def __init__(self, _shared, _shared_ignore, _a, _ignore):
-    self._shared = _shared
-    self._shared_ignore = _shared_ignore
-    self._a = _a
-    self._ignore = _ignore
+  def __init__(self, shared, shared_ignore, a, ignore):
+    self.__shared = shared
+    self.__shared_ignore = shared_ignore
+    self.__a = a
+    self.__ignore = ignore
 
   @property
   def shared(self):
-    return self._shared
+    return self.__shared
+
+  @shared.setter
+  def shared(self, shared):
+    self.__shared = shared
 
   @property
   def shared_ignore(self):
-    return self._shared_ignore
+    return self.__shared_ignore
+
+  @shared_ignore.setter
+  def shared_ignore(self, shared_ignore):
+    self.__shared_ignore = shared_ignore
 
   @property
   def a(self):
-    return self._a
+    return self.__a
+
+  @a.setter
+  def a(self, a):
+    self.__a = a
 
   @property
   def ignore(self):
-    return self._ignore
+    return self.__ignore
+
+  @ignore.setter
+  def ignore(self, ignore):
+    self.__ignore = ignore
 
   @staticmethod
   def decode(data):
@@ -372,51 +435,67 @@ class Untagged_B:
   def encode(self):
     data = dict()
 
-    if self._shared is None:
-      raise Exception("shared: is a required field")
+    if self.shared is None:
+      raise Exception("missing required field: shared")
 
-    data["shared"] = self._shared
+    data["shared"] = self.shared
 
-    if self._shared_ignore is not None:
-      data["shared_ignore"] = self._shared_ignore
+    if self.shared_ignore is not None:
+      data["shared_ignore"] = self.shared_ignore
 
-    if self._a is None:
-      raise Exception("a: is a required field")
+    if self.a is None:
+      raise Exception("missing required field: a")
 
-    data["a"] = self._a
+    data["a"] = self.a
 
-    if self._ignore is not None:
-      data["ignore"] = self._ignore
+    if self.ignore is not None:
+      data["ignore"] = self.ignore
 
     return data
 
   def __repr__(self):
-    return "<Untagged_B shared:{!r}, shared_ignore:{!r}, a:{!r}, ignore:{!r}>".format(self._shared, self._shared_ignore, self._a, self._ignore)
+    return "<Untagged_B shared:{!r}, shared_ignore:{!r}, a:{!r}, ignore:{!r}>".format(self.shared, self.shared_ignore, self.a, self.ignore)
 
-class Untagged_C:
+class Untagged_C(Untagged):
   TYPE = "C"
 
-  def __init__(self, _shared, _shared_ignore, _b, _ignore):
-    self._shared = _shared
-    self._shared_ignore = _shared_ignore
-    self._b = _b
-    self._ignore = _ignore
+  def __init__(self, shared, shared_ignore, b, ignore):
+    self.__shared = shared
+    self.__shared_ignore = shared_ignore
+    self.__b = b
+    self.__ignore = ignore
 
   @property
   def shared(self):
-    return self._shared
+    return self.__shared
+
+  @shared.setter
+  def shared(self, shared):
+    self.__shared = shared
 
   @property
   def shared_ignore(self):
-    return self._shared_ignore
+    return self.__shared_ignore
+
+  @shared_ignore.setter
+  def shared_ignore(self, shared_ignore):
+    self.__shared_ignore = shared_ignore
 
   @property
   def b(self):
-    return self._b
+    return self.__b
+
+  @b.setter
+  def b(self, b):
+    self.__b = b
 
   @property
   def ignore(self):
-    return self._ignore
+    return self.__ignore
+
+  @ignore.setter
+  def ignore(self, ignore):
+    self.__ignore = ignore
 
   @staticmethod
   def decode(data):
@@ -453,23 +532,23 @@ class Untagged_C:
   def encode(self):
     data = dict()
 
-    if self._shared is None:
-      raise Exception("shared: is a required field")
+    if self.shared is None:
+      raise Exception("missing required field: shared")
 
-    data["shared"] = self._shared
+    data["shared"] = self.shared
 
-    if self._shared_ignore is not None:
-      data["shared_ignore"] = self._shared_ignore
+    if self.shared_ignore is not None:
+      data["shared_ignore"] = self.shared_ignore
 
-    if self._b is None:
-      raise Exception("b: is a required field")
+    if self.b is None:
+      raise Exception("missing required field: b")
 
-    data["b"] = self._b
+    data["b"] = self.b
 
-    if self._ignore is not None:
-      data["ignore"] = self._ignore
+    if self.ignore is not None:
+      data["ignore"] = self.ignore
 
     return data
 
   def __repr__(self):
-    return "<Untagged_C shared:{!r}, shared_ignore:{!r}, b:{!r}, ignore:{!r}>".format(self._shared, self._shared_ignore, self._b, self._ignore)
+    return "<Untagged_C shared:{!r}, shared_ignore:{!r}, b:{!r}, ignore:{!r}>".format(self.shared, self.shared_ignore, self.b, self.ignore)

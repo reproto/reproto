@@ -1,13 +1,17 @@
 class Entry:
-  def __init__(self, _foo):
-    self._foo = _foo
+  def __init__(self, foo):
+    self.__foo = foo
 
   @property
   def foo(self):
     """
     The foo field.
     """
-    return self._foo
+    return self.__foo
+
+  @foo.setter
+  def foo(self, foo):
+    self.__foo = foo
 
   @staticmethod
   def decode(data):
@@ -24,24 +28,28 @@ class Entry:
   def encode(self):
     data = dict()
 
-    if self._foo is not None:
-      data["foo"] = self._foo.encode()
+    if self.foo is not None:
+      data["foo"] = self.foo.encode()
 
     return data
 
   def __repr__(self):
-    return "<Entry foo:{!r}>".format(self._foo)
+    return "<Entry foo:{!r}>".format(self.foo)
 
 class Foo:
-  def __init__(self, _field):
-    self._field = _field
+  def __init__(self, field):
+    self.__field = field
 
   @property
   def field(self):
     """
     The field.
     """
-    return self._field
+    return self.__field
+
+  @field.setter
+  def field(self, field):
+    self.__field = field
 
   @staticmethod
   def decode(data):
@@ -55,26 +63,30 @@ class Foo:
   def encode(self):
     data = dict()
 
-    if self._field is None:
-      raise Exception("field: is a required field")
+    if self.field is None:
+      raise Exception("missing required field: field")
 
-    data["field"] = self._field
+    data["field"] = self.field
 
     return data
 
   def __repr__(self):
-    return "<Foo field:{!r}>".format(self._field)
+    return "<Foo field:{!r}>".format(self.field)
 
 class Bar:
-  def __init__(self, _field):
-    self._field = _field
+  def __init__(self, field):
+    self.__field = field
 
   @property
   def field(self):
     """
     The inner field.
     """
-    return self._field
+    return self.__field
+
+  @field.setter
+  def field(self, field):
+    self.__field = field
 
   @staticmethod
   def decode(data):
@@ -87,26 +99,30 @@ class Bar:
   def encode(self):
     data = dict()
 
-    if self._field is None:
-      raise Exception("field: is a required field")
+    if self.field is None:
+      raise Exception("missing required field: field")
 
-    data["field"] = self._field.encode()
+    data["field"] = self.field.encode()
 
     return data
 
   def __repr__(self):
-    return "<Bar field:{!r}>".format(self._field)
+    return "<Bar field:{!r}>".format(self.field)
 
 class Bar_Inner:
-  def __init__(self, _field):
-    self._field = _field
+  def __init__(self, field):
+    self.__field = field
 
   @property
   def field(self):
     """
     The field.
     """
-    return self._field
+    return self.__field
+
+  @field.setter
+  def field(self, field):
+    self.__field = field
 
   @staticmethod
   def decode(data):
@@ -120,12 +136,12 @@ class Bar_Inner:
   def encode(self):
     data = dict()
 
-    if self._field is None:
-      raise Exception("field: is a required field")
+    if self.field is None:
+      raise Exception("missing required field: field")
 
-    data["field"] = self._field
+    data["field"] = self.field
 
     return data
 
   def __repr__(self):
-    return "<Bar_Inner field:{!r}>".format(self._field)
+    return "<Bar_Inner field:{!r}>".format(self.field)

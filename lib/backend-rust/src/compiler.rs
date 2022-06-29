@@ -30,7 +30,7 @@ impl Derives {
 
 impl<'a> FormatInto<Rust> for &'a Derives {
     fn format_into(self, tokens: &mut Tokens<Rust>) {
-        quote_in! { *tokens => #[derive(Clone, Debug, PartialEq, #(&self.serialize), #(&self.deserialize))] }
+        quote_in! { *tokens => #[derive(Clone, Debug, PartialEq, $(&self.serialize), $(&self.deserialize))] }
     }
 }
 
@@ -47,7 +47,7 @@ pub(crate) struct Rename<'a>(&'a str);
 
 impl<'a> FormatInto<Rust> for Rename<'a> {
     fn format_into(self, tokens: &mut Tokens<Rust>) {
-        quote_in!(*tokens => #[serde(rename = #(quoted(self.0)))])
+        quote_in!(*tokens => #[serde(rename = $(quoted(self.0)))])
     }
 }
 
@@ -56,7 +56,7 @@ pub(crate) struct Tag<'a>(&'a str);
 
 impl<'a> FormatInto<Rust> for Tag<'a> {
     fn format_into(self, tokens: &mut Tokens<Rust>) {
-        quote_in!(*tokens => #[serde(tag = #(quoted(self.0)))])
+        quote_in!(*tokens => #[serde(tag = $(quoted(self.0)))])
     }
 }
 
@@ -106,9 +106,9 @@ impl<'el> Compiler<'el> {
 
     fn write_type(&self, out: &mut Tokens<Rust>, field: &RpField) {
         if field.is_optional() {
-            quote_in!(*out => Option<#(&field.ty)>)
+            quote_in!(*out => Option<$(&field.ty)>)
         } else {
-            quote_in!(*out => #(&field.ty))
+            quote_in!(*out => $(&field.ty))
         }
     }
 
@@ -119,15 +119,15 @@ impl<'el> Compiler<'el> {
         variants: &RpVariants,
     ) {
         quote_in! { *out =>
-            pub fn value(&self) -> #(&body.enum_type) {
+            pub fn value(&self) -> $(&body.enum_type) {
                 match self {
-                    #(for v in variants join (#<push>) =>
-                        #(match v.value {
+                    $(for v in variants join ($['\r']) =>
+                        $(match v.value {
                             RpVariantValue::String(string) => {
-                                Self::#(v.ident()) => #(quoted(string)),
+                                Self::$(v.ident()) => $(quoted(string)),
                             }
                             RpVariantValue::Number(number) => {
-                                Self::#(v.ident()) => #(display(number)),
+                                Self::$(v.ident()) => $(display(number)),
                             }
                         })
                     )
@@ -141,13 +141,13 @@ impl<'el> Compiler<'el> {
         let ident = field.safe_ident().to_string();
 
         quote_in! { *out =>
-            #(if field.is_optional() {
+            $(if field.is_optional() {
                 #[serde(skip_serializing_if="Option::is_none")]
             })
-            #(if field.name() != ident {
-                #(Rename(field.name()))
+            $(if field.name() != ident {
+                $(Rename(field.name()))
             })
-            pub #ident: #(ref out => self.write_type(out, field))
+            pub $ident: $(ref out => self.write_type(out, field))
         }
     }
 
@@ -263,11 +263,11 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
         let (name, attributes) = self.convert_type_name(&body.name);
 
         quote_in! { *out =>
-            #<line>
-            #(Comments(&body.comment))
-            #attributes
-            #(&self.derives)
-            pub struct #name(#(for f in &body.fields join (, ) => pub #(ref out => self.write_type(out, f))));
+            $['\n']
+            $(Comments(&body.comment))
+            $attributes
+            $(&self.derives)
+            pub struct $name($(for f in &body.fields join (, ) => pub $(ref out => self.write_type(out, f))));
         };
 
         Ok(())
@@ -289,33 +289,33 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
         }
 
         quote_in! { *out =>
-            #(Comments(&body.comment))
-            #attributes
-            pub enum #name {
-                #(for v in &body.variants join (#<push>) =>
-                    #(Comments(v.comment))
-                    #(match v.value {
+            $(Comments(&body.comment))
+            $attributes
+            pub enum $name {
+                $(for v in &body.variants join ($['\r']) =>
+                    $(Comments(v.comment))
+                    $(match v.value {
                         RpVariantValue::String(string) if string != v.ident() => {
-                            #(Rename(string))
+                            $(Rename(string))
                         }
                         _ => {}
                     })
-                    #(v.ident()),
+                    $(v.ident()),
                 )
             }
 
-            impl #name {
-                #(ref out => self.enum_value_fn(out, body, &body.variants))
+            impl $name {
+                $(ref out => self.enum_value_fn(out, body, &body.variants))
 
-                #(if backend::code_contains!(body.codes, RpContext::Rust) {
-                    #(ref out => backend::code_in!(out, &body.codes, RpContext::Rust))
+                $(if backend::code_contains!(body.codes, RpContext::Rust) {
+                    $(ref out => backend::code_in!(out, &body.codes, RpContext::Rust))
                 })
             }
 
-            #(if let RpVariants::Number { variants } = &body.variants {
-                #(ref t => numeric_serialize(t, body, &name, variants))
+            $(if let RpVariants::Number { variants } = &body.variants {
+                $(ref t => numeric_serialize(t, body, &name, variants))
 
-                #(ref t => numeric_deserialize(t, body, &name, variants))
+                $(ref t => numeric_deserialize(t, body, &name, variants))
             })
         }
 
@@ -335,18 +335,18 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
             let ty = &body.enum_type;
 
             quote_in! { *out =>
-                impl #ser for #name {
+                impl $ser for $name {
                     fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
                     where
-                        S: #serializer
+                        S: $serializer
                     {
                         let o = match self {
-                            #(for v in variants =>
-                                #name::#(v.ident()) => #(v.value.to_string())#(ty),#<push>
+                            $(for v in variants =>
+                                $name::$(v.ident()) => $(v.value.to_string())$(ty),$['\r']
                             )
                         };
 
-                        s.serialize_#(&body.enum_type)(o)
+                        s.serialize_$(&body.enum_type)(o)
                     }
                 }
             }
@@ -365,14 +365,14 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
             let deserializer = rust::import("serde", "Deserializer");
 
             quote_in! { *out =>
-                impl<'de> #des<'de> for #name {
-                    fn deserialize<D>(d: D) -> Result<#name, D::Error>
+                impl<'de> $des<'de> for $name {
+                    fn deserialize<D>(d: D) -> Result<$name, D::Error>
                     where
-                        D: #deserializer<'de>
+                        D: $deserializer<'de>
                     {
-                        #(ref out => numeric_visitor_deserialize(out, body, name, variants, "Visitor"))
+                        $(ref out => numeric_visitor_deserialize(out, body, name, variants, "Visitor"))
 
-                        d.deserialize_#(&body.enum_type)(Visitor)
+                        d.deserialize_$(&body.enum_type)(Visitor)
                     }
                 }
             }
@@ -393,10 +393,10 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
             quote_in! { *out =>
                 struct Visitor;
 
-                impl<'de> #visitor<'de> for #name {
-                    type Value = #parent;
+                impl<'de> $visitor<'de> for $name {
+                    type Value = $parent;
 
-                    #(ref out => {
+                    $(ref out => {
                         numeric_expecting(out, parent, variants);
                         out.line();
                         numeric_visit(out, &body.enum_type, parent, variants);
@@ -440,8 +440,8 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
             let m = quoted(format!("{}, one of: {}", parent, variants));
 
             quote_in! { *out =>
-                fn expecting(&self, fmt: &mut #fmt) -> #res {
-                    fmt.write_str(#m)
+                fn expecting(&self, fmt: &mut $fmt) -> $res {
+                    fmt.write_str($m)
                 }
             }
         }
@@ -458,14 +458,14 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
             let error_fmt = quoted(format!("{}: unknown value: {{}}", parent.as_str()));
 
             quote_in! { *out =>
-                fn visit_#(ty)<E>(self, value: #ty) -> Result<#parent, E>
-                    where E: #err
+                fn visit_$(ty)<E>(self, value: $ty) -> Result<$parent, E>
+                    where E: $err
                 {
                     match value {
-                        #(for v in &*variants join(,#<push>) =>
-                            #(v.value.to_string())#ty => Ok(#(parent.clone())::#(v.ident()))
+                        $(for v in &*variants join(,$['\r']) =>
+                            $(v.value.to_string())$ty => Ok($(parent.clone())::$(v.ident()))
                         ),
-                        value => Err(E::custom(format!(#error_fmt, value))),
+                        value => Err(E::custom(format!($error_fmt, value))),
                     }
                 }
             }
@@ -480,10 +480,10 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
             out.line();
 
             quote_in! { *out =>
-                fn visit_#(ty)<E>(self, value: #ty) -> Result<#(parent.clone()), E>
-                    where E: #(rust::import("serde::de", "Error"))
+                fn visit_$(ty)<E>(self, value: $ty) -> Result<$(parent.clone()), E>
+                    where E: $(rust::import("serde::de", "Error"))
                 {
-                    self.visit_#(forward_ty)(value as #forward_ty)
+                    self.visit_$(forward_ty)(value as $forward_ty)
                 }
             }
         }
@@ -494,20 +494,20 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
         let name = &name;
 
         quote_in! { *out =>
-            #<line>
-            #(Comments(&body.comment))
-            #attributes
-            #(&self.derives)
-            pub struct #name {
-                #(for field in &body.fields join (#<line>) =>
-                    #(Comments(&field.comment))
-                    #(ref out => self.field_element(out, field)),
+            $['\n']
+            $(Comments(&body.comment))
+            $attributes
+            $(&self.derives)
+            pub struct $name {
+                $(for field in &body.fields join ($['\n']) =>
+                    $(Comments(&field.comment))
+                    $(ref out => self.field_element(out, field)),
                 )
             }
 
-            #(if backend::code_contains!(body.codes, RpContext::Rust) {
-                impl #name {
-                    #(ref out => backend::code_in!(out, &body.codes, RpContext::Rust))
+            $(if backend::code_contains!(body.codes, RpContext::Rust) {
+                impl $name {
+                    $(ref out => backend::code_in!(out, &body.codes, RpContext::Rust))
                 }
             })
         };
@@ -519,15 +519,15 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
         let (name, attributes) = self.convert_type_name(&body.name);
 
         quote_in! { *out =>
-            #(Comments(&body.comment))
-            #(attributes)
-            #(&self.derives)
-            #(match &body.sub_type_strategy {
-                RpSubTypeStrategy::Tagged { tag, .. } => #(Tag(tag.as_str())),
-                RpSubTypeStrategy::Untagged => #Untagged,
+            $(Comments(&body.comment))
+            $(attributes)
+            $(&self.derives)
+            $(match &body.sub_type_strategy {
+                RpSubTypeStrategy::Tagged { tag, .. } => $(Tag(tag.as_str())),
+                RpSubTypeStrategy::Untagged => $Untagged,
             })
-            pub enum #(&name) {
-                #(for s in &body.sub_types join (#<line>) => #(ref out =>
+            pub enum $(&name) {
+                $(for s in &body.sub_types join ($['\n']) => $(ref out =>
                     let (sub_name, _) = self.convert_type_name(&s.name);
 
                     if let Some(name) = &s.sub_type_name {
@@ -538,27 +538,27 @@ impl<'el> PackageProcessor<'el, RustFlavor> for Compiler<'el> {
                     }
 
                     out.push();
-                    quote_in!(*out => #(&s.ident)(#sub_name),);
+                    quote_in!(*out => $(&s.ident)($sub_name),);
                 ))
             }
 
-            #(if backend::code_contains!(body.codes, RpContext::Rust) {
-                impl #name {
-                    #(ref out => backend::code_in!(out, &body.codes, RpContext::Rust))
+            $(if backend::code_contains!(body.codes, RpContext::Rust) {
+                impl $name {
+                    $(ref out => backend::code_in!(out, &body.codes, RpContext::Rust))
                 }
             })
 
-            #(for s in &body.sub_types join (#<line>) => #(ref out =>
+            $(for s in &body.sub_types join ($['\n']) => $(ref out =>
                 let (sub_name, attributes) = self.convert_type_name(&s.name);
 
                 quote_in! { *out =>
-                    #(Comments(&s.comment))
-                    #(&self.derives)
-                    #attributes
-                    pub struct #sub_name {
-                        #(for field in body.fields.iter().chain(&s.fields) join (#<line>) =>
-                            #(Comments(&field.comment))
-                            #(ref out => self.field_element(out, field)),
+                    $(Comments(&s.comment))
+                    $(&self.derives)
+                    $attributes
+                    pub struct $sub_name {
+                        $(for field in body.fields.iter().chain(&s.fields) join ($['\n']) =>
+                            $(Comments(&field.comment))
+                            $(ref out => self.field_element(out, field)),
                         )
                     }
                 }

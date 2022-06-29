@@ -4,10 +4,14 @@ export class Value {
   }
 
   static decode(data) {
-    const v_foo_bar = data["FOO_BAR"];
+    let v_foo_bar = data["FOO_BAR"];
 
     if (v_foo_bar === null || v_foo_bar === undefined) {
       throw new Error("FOO_BAR" + ": required field");
+    }
+
+    if (typeof v_foo_bar !== "string") {
+      throw Error("expected string");
     }
 
     return new Value(v_foo_bar);

@@ -73,39 +73,39 @@ impl EnumCodegen for Codegen {
         } = e;
 
         quote_in! { *container =>
-            #(ref t => unmarshal_json(t, self, name, body))
+            $(ref t => unmarshal_json(t, self, name, body))
 
-            #(ref t => marshal_json(t, self, name, body))
+            $(ref t => marshal_json(t, self, name, body))
         }
 
         return Ok(());
 
         fn unmarshal_json(t: &mut Tokens<Go>, c: &Codegen, name: &GoName, body: &RpEnumBody) {
             quote_in! { *t =>
-                func (this *#name) UnmarshalJSON(b []byte) error {
-                    var s #(&body.enum_type)
+                func (this *$name) UnmarshalJSON(b []byte) error {
+                    var s $(&body.enum_type)
 
-                    if err := #(&c.unmarshal)(b, &s); err != nil {
+                    if err := $(&c.unmarshal)(b, &s); err != nil {
                         return err
                     }
 
                     switch s {
-                    #(match &body.variants {
+                    $(match &body.variants {
                         RpVariants::String { variants } => {
-                            #(for v in variants {
-                                case #(quoted(v.value.as_str())):
-                                    *this = #(name)_#(v.ident.as_str())
+                            $(for v in variants {
+                                case $(quoted(v.value.as_str())):
+                                    *this = $(name)_$(v.ident.as_str())
                             })
                         }
                         RpVariants::Number { variants } => {
-                            #(for v in variants {
-                                case #(v.value.to_string()):
-                                    *this = #(name)_#(v.ident.as_str())
+                            $(for v in variants {
+                                case $(v.value.to_string()):
+                                    *this = $(name)_$(v.ident.as_str())
                             })
                         }
                     })
                     default:
-                        return #(&c.new_error)("bad value")
+                        return $(&c.new_error)("bad value")
                     }
 
                     return nil
@@ -115,29 +115,29 @@ impl EnumCodegen for Codegen {
 
         fn marshal_json(t: &mut Tokens<Go>, c: &Codegen, name: &GoName, body: &RpEnumBody) {
             quote_in! { *t =>
-                func (this #name) MarshalJSON() ([]byte, error) {
-                    var s #(&body.enum_type)
+                func (this $name) MarshalJSON() ([]byte, error) {
+                    var s $(&body.enum_type)
 
                     switch this {
-                    #(match &body.variants {
+                    $(match &body.variants {
                         RpVariants::String { variants } => {
-                            #(for v in variants {
-                                case #(name)_#(v.ident.as_str()):
-                                    s = #(quoted(v.value.as_str()))
+                            $(for v in variants {
+                                case $(name)_$(v.ident.as_str()):
+                                    s = $(quoted(v.value.as_str()))
                             })
                         }
                         RpVariants::Number { variants } => {
-                            #(for v in variants {
-                                case #(name)_#(v.ident.as_str()):
-                                    s = #(v.value.to_string())
+                            $(for v in variants {
+                                case $(name)_$(v.ident.as_str()):
+                                    s = $(v.value.to_string())
                             })
                         }
                     })
                     default:
-                        return nil, #(&c.new_error)("bad value")
+                        return nil, $(&c.new_error)("bad value")
                     }
 
-                    return #(&c.marshal)(s)
+                    return $(&c.marshal)(s)
                 }
             }
         }
@@ -154,30 +154,30 @@ impl TupleCodegen for Codegen {
         } = e;
 
         quote_in! { *container =>
-            #(ref t => unmarshal_json(t, self, name, body))
+            $(ref t => unmarshal_json(t, self, name, body))
 
-            #(ref t => marshal_json(t, self, name, body))
+            $(ref t => marshal_json(t, self, name, body))
         }
 
         return Ok(());
 
         fn unmarshal_json(t: &mut Tokens<Go>, c: &Codegen, name: &GoName, body: &RpTupleBody) {
             quote_in! { *t =>
-                func (this *#(name)) UnmarshalJSON(b []byte) error {
-                    var array []#(&c.raw_message)
+                func (this *$(name)) UnmarshalJSON(b []byte) error {
+                    var array []$(&c.raw_message)
 
-                    if err := #(&c.unmarshal)(b, &array); err != nil {
+                    if err := $(&c.unmarshal)(b, &array); err != nil {
                         return err
                     }
 
-                    #(for (i, f) in body.fields.iter().enumerate() join (#<line>) {
-                        var #(f.safe_ident()) #(&f.ty)
+                    $(for (i, f) in body.fields.iter().enumerate() join ($['\n']) {
+                        var $(f.safe_ident()) $(&f.ty)
 
-                        if err := #(&c.unmarshal)(array[#i], &#(f.safe_ident())); err != nil {
+                        if err := $(&c.unmarshal)(array[$i], &$(f.safe_ident())); err != nil {
                             return err
                         }
 
-                        this.#(f.safe_ident()) = #(f.safe_ident())
+                        this.$(f.safe_ident()) = $(f.safe_ident())
                     })
 
                     return nil
@@ -187,20 +187,20 @@ impl TupleCodegen for Codegen {
 
         fn marshal_json(t: &mut Tokens<Go>, c: &Codegen, name: &GoName, body: &RpTupleBody) {
             quote_in! { *t =>
-                func (this #name) MarshalJSON() ([]byte, error) {
-                    var array []#(&c.raw_message)
+                func (this $name) MarshalJSON() ([]byte, error) {
+                    var array []$(&c.raw_message)
 
-                    #(for f in &body.fields join (#<line>) {
-                        #(f.safe_ident()), err := #(&c.marshal)(this.#(f.safe_ident()))
+                    $(for f in &body.fields join ($['\n']) {
+                        $(f.safe_ident()), err := $(&c.marshal)(this.$(f.safe_ident()))
 
                         if err != nil {
                             return nil, err
                         }
 
-                        array = append(array, #(f.safe_ident()))
+                        array = append(array, $(f.safe_ident()))
                     })
 
-                    return #(&c.marshal)(array)
+                    return $(&c.marshal)(array)
                 }
             }
         }
@@ -217,22 +217,22 @@ impl InterfaceCodegen for Codegen {
         } = e;
 
         quote_in! { *container =>
-            #(ref t => unmarshal_json(t, self, name, body))
+            $(ref t => unmarshal_json(t, self, name, body))
 
-            #(ref t => marshal_json(t, self, name, body))
+            $(ref t => marshal_json(t, self, name, body))
         }
 
         return Ok(());
 
         fn unmarshal_json(t: &mut Tokens<Go>, c: &Codegen, name: &GoName, body: &RpInterfaceBody) {
             quote_in! { *t =>
-                func (this *#name) UnmarshalJSON(b []byte) error {
-                    #(match &body.sub_type_strategy {
+                func (this *$name) UnmarshalJSON(b []byte) error {
+                    $(match &body.sub_type_strategy {
                         RpSubTypeStrategy::Tagged { tag } => {
-                            #(ref t => unmarshal_tagged(t, c, body, tag))
+                            $(ref t => unmarshal_tagged(t, c, body, tag))
                         }
                         RpSubTypeStrategy::Untagged => {
-                            #(ref t => unmarshal_untagged(t, c, body))
+                            $(ref t => unmarshal_untagged(t, c, body))
                         }
                     })
                 }
@@ -240,9 +240,9 @@ impl InterfaceCodegen for Codegen {
 
             fn unmarshal_sub_type(t: &mut Tokens<Go>, c: &Codegen, sub_type: &RpSubType) {
                 quote_in! { *t =>
-                    sub := #(&sub_type.name){}
+                    sub := $(&sub_type.name){}
 
-                    if err = #(&c.unmarshal)(b, &sub); err != nil {
+                    if err = $(&c.unmarshal)(b, &sub); err != nil {
                         return err
                     }
 
@@ -261,31 +261,31 @@ impl InterfaceCodegen for Codegen {
                 quote_in! { *t =>
                     var err error
                     var ok bool
-                    env := make(map[string]#(&c.raw_message))
+                    env := make(map[string]$(&c.raw_message))
 
-                    if err := #(&c.unmarshal)(b, &env); err != nil {
+                    if err := $(&c.unmarshal)(b, &env); err != nil {
                         return err
                     }
 
-                    var raw_tag #(&c.raw_message)
+                    var raw_tag $(&c.raw_message)
 
-                    if raw_tag, ok = env[#(quoted(tag))]; !ok {
-                        return #(&c.new_error)("missing tag")
+                    if raw_tag, ok = env[$(quoted(tag))]; !ok {
+                        return $(&c.new_error)("missing tag")
                     }
 
                     var tag string
 
-                    if err = #(&c.unmarshal)(raw_tag, &tag); err != nil {
+                    if err = $(&c.unmarshal)(raw_tag, &tag); err != nil {
                         return err
                     }
 
                     switch (tag) {
-                    #(for sub_type in &body.sub_types {
-                        case #(quoted(sub_type.name())):
-                            #(ref t => unmarshal_sub_type(t, c, sub_type))
+                    $(for sub_type in &body.sub_types {
+                        case $(quoted(sub_type.name())):
+                            $(ref t => unmarshal_sub_type(t, c, sub_type))
                     })
                     default:
-                        return #(&c.new_error)("bad tag")
+                        return $(&c.new_error)("bad tag")
                     }
                 }
             }
@@ -293,9 +293,9 @@ impl InterfaceCodegen for Codegen {
             fn unmarshal_untagged(t: &mut Tokens<Go>, c: &Codegen, body: &RpInterfaceBody) {
                 quote_in! { *t =>
                     var err error
-                    env := make(map[string]#(&c.raw_message))
+                    env := make(map[string]$(&c.raw_message))
 
-                    if err := #(&c.unmarshal)(b, &env); err != nil {
+                    if err := $(&c.unmarshal)(b, &env); err != nil {
                         return err
                     }
 
@@ -308,32 +308,32 @@ impl InterfaceCodegen for Codegen {
                     var all bool
                     all = true
 
-                    #(for sub_type in &body.sub_types join (#<line>) {
-                        for _, k := range([]string{#(for r in sub_type.discriminating_fields() join (, ) => #(quoted(r.name())))}) {
+                    $(for sub_type in &body.sub_types join ($['\n']) {
+                        for _, k := range([]string{$(for r in sub_type.discriminating_fields() join (, ) => $(quoted(r.name())))}) {
                             if _, all = keys[k]; !all {
                                 break
                             }
                         }
 
                         if all {
-                            #(ref t => unmarshal_sub_type(t, c, sub_type))
+                            $(ref t => unmarshal_sub_type(t, c, sub_type))
                         }
                     })
 
-                    return #(&c.new_error)("no combination of fields found")
+                    return $(&c.new_error)("no combination of fields found")
                 }
             }
         }
 
         fn marshal_json(t: &mut Tokens<Go>, c: &Codegen, name: &GoName, body: &RpInterfaceBody) {
             quote_in! { *t =>
-                func (this #name) MarshalJSON() ([]byte, error) {
-                    #(match body.sub_type_strategy {
+                func (this $name) MarshalJSON() ([]byte, error) {
+                    $(match body.sub_type_strategy {
                         RpSubTypeStrategy::Tagged { ref tag } => {
-                            #(ref t => marshal_tagged(t, c, body, tag))
+                            $(ref t => marshal_tagged(t, c, body, tag))
                         }
                         RpSubTypeStrategy::Untagged => {
-                            #(ref t => marshal_untagged(t, c, body))
+                            $(ref t => marshal_untagged(t, c, body))
                         }
                     })
                 }
@@ -344,27 +344,27 @@ impl InterfaceCodegen for Codegen {
                 quote_in! { *t =>
                     var b []byte
                     var err error
-                    env := make(map[string]#(&c.raw_message))
+                    env := make(map[string]$(&c.raw_message))
 
                     switch v := this.Value.(type) {
-                    #(for sub_type in &body.sub_types {
-                        case *#(&sub_type.name):
-                            if b, err = #(&c.marshal)(v); err != nil {
+                    $(for sub_type in &body.sub_types {
+                        case *$(&sub_type.name):
+                            if b, err = $(&c.marshal)(v); err != nil {
                                 return nil, err
                             }
 
-                            if err = #(&c.unmarshal)(b, &env); err != nil {
+                            if err = $(&c.unmarshal)(b, &env); err != nil {
                                 return nil, err
                             }
 
-                            if env[#(quoted(tag))], err = #(&c.marshal)(#(quoted(sub_type.name()))); err != nil {
+                            if env[$(quoted(tag))], err = $(&c.marshal)($(quoted(sub_type.name()))); err != nil {
                                 return nil, err
                             }
 
-                            return #(&c.marshal)(env)
+                            return $(&c.marshal)(env)
                     })
                     default:
-                        return nil, #(&c.new_error)(#_(#(&body.name): no sub-type set))
+                        return nil, $(&c.new_error)($[str]($[const](&body.name): no sub-type set))
                     }
                 }
             }
@@ -373,12 +373,12 @@ impl InterfaceCodegen for Codegen {
             fn marshal_untagged(t: &mut Tokens<Go>, c: &Codegen, body: &RpInterfaceBody) {
                 quote_in! { *t =>
                     switch v := this.Value.(type) {
-                    #(for sub_type in &body.sub_types {
-                        case *#(&sub_type.name):
-                            return #(&c.marshal)(v)
+                    $(for sub_type in &body.sub_types {
+                        case *$(&sub_type.name):
+                            return $(&c.marshal)(v)
                     })
                     default:
-                        return nil, #(&c.new_error)(#_(#(&body.name): no sub-type set))
+                        return nil, $(&c.new_error)($[str]($[const](&body.name): no sub-type set))
                     }
                 }
             }

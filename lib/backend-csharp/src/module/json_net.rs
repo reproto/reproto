@@ -75,10 +75,10 @@ impl Codegen {
     pub(crate) fn read_field<'a>(&'a self, f: &'a Spanned<Field>) -> impl FormatInto<Csharp> + 'a {
         quote_fn! {
             if (!enumerator.MoveNext()) {
-                throw new #(&self.invalid_operation_exception)("expected more items in array");
+                throw new $(&self.invalid_operation_exception)("expected more items in array");
             }
 
-            #(&f.ty) #(f.safe_ident()) = enumerator.Current.ToObject<#(&f.ty)>(serializer);
+            $(&f.ty) $(f.safe_ident()) = enumerator.Current.ToObject<$(&f.ty)>(serializer);
         }
     }
 
@@ -87,10 +87,10 @@ impl Codegen {
         sub_type: &'a RpSubType,
     ) -> impl FormatInto<Csharp> + 'a {
         quote_fn! {
-            if (#(for f in sub_type.discriminating_fields() join ( && ) => o.ContainsKey(#(quoted(f.name()))))) {
+            if ($(for f in sub_type.discriminating_fields() join ( && ) => o.ContainsKey($(quoted(f.name()))))) {
                 _isInsideRead = true;
                 try {
-                    return serializer.Deserialize(o.CreateReader(), typeof(#(&sub_type.ident)));
+                    return serializer.Deserialize(o.CreateReader(), typeof($(&sub_type.ident)));
                 } finally {
                     _isInsideRead = false;
                 }
@@ -102,7 +102,7 @@ impl Codegen {
 impl codegen::class::Codegen for Codegen {
     fn generate(&self, e: codegen::class::Args<'_>) {
         e.annotations.push(quote! {
-            [#(&self.json_object)(ItemNullValueHandling = #(&self.null_value_handling).Ignore)]
+            [$(&self.json_object)(ItemNullValueHandling = $(&self.null_value_handling).Ignore)]
         })
     }
 }
@@ -110,7 +110,7 @@ impl codegen::class::Codegen for Codegen {
 impl codegen::class_field::Codegen for Codegen {
     fn generate(&self, e: codegen::class_field::Args<'_>) {
         e.annotations.push(quote! {
-            [#(&self.json_property)(#(quoted(e.field.name())))]
+            [$(&self.json_property)($(quoted(e.field.name())))]
         })
     }
 }
@@ -118,7 +118,7 @@ impl codegen::class_field::Codegen for Codegen {
 impl codegen::class_constructor::Codegen for Codegen {
     fn generate(&self, e: codegen::class_constructor::Args<'_>) {
         e.annotations.push(quote! {
-            [#(&self.json_constructor)]
+            [$(&self.json_constructor)]
         })
     }
 }
@@ -126,7 +126,7 @@ impl codegen::class_constructor::Codegen for Codegen {
 impl codegen::class_constructor_arg::Codegen for Codegen {
     fn generate(&self, e: codegen::class_constructor_arg::Args<'_>) {
         e.annotations.push(quote! {
-            [#(&self.json_property)(#(quoted(e.field.name())))]
+            [$(&self.json_property)($(quoted(e.field.name())))]
         })
     }
 }
@@ -135,7 +135,7 @@ impl codegen::enum_type::Codegen for Codegen {
     fn generate(&self, e: codegen::enum_type::Args<'_>) {
         match e.variants {
             RpVariants::String { .. } => e.annotations.push(quote! {
-                [#(&self.json_converter)(typeof(#(&self.string_enum_converter)))]
+                [$(&self.json_converter)(typeof($(&self.string_enum_converter)))]
             }),
             _ => (),
         }
@@ -146,10 +146,10 @@ impl codegen::enum_variant::Codegen for Codegen {
     fn generate(&self, e: codegen::enum_variant::Args<'_>) {
         match e.variant.value {
             RpVariantValue::String(string) => e.annotations.push(quote! {
-                [#(&self.enum_member)(Value = #(quoted(string)))]
+                [$(&self.enum_member)(Value = $(quoted(string)))]
             }),
             RpVariantValue::Number(number) => {
-                *e.value = Some(quote!(#(display(number))));
+                *e.value = Some(quote!($(display(number))));
             }
         }
     }
@@ -168,35 +168,35 @@ impl codegen::tuple::Codegen for Codegen {
         let json_converter = &self.json_converter;
 
         args.annotations.push(quote! {
-            [#json_converter(typeof(#(args.ident).Json_Net_Converter))]
+            [$json_converter(typeof($(args.ident).Json_Net_Converter))]
         });
 
         args.inner.push(quote!{
-            public class Json_Net_Converter : #json_converter {
+            public class Json_Net_Converter : $json_converter {
                 public override bool CanConvert(System.Type objectType) {
-                    return objectType == typeof(#(args.ident));
+                    return objectType == typeof($(args.ident));
                 }
 
-                public override void WriteJson(#json_writer writer, #object obj, #json_serializer serializer) {
-                    #(args.ident) o = (#(args.ident))obj;
-                    #j_array array = new #j_array();
+                public override void WriteJson($json_writer writer, $object obj, $json_serializer serializer) {
+                    $(args.ident) o = ($(args.ident))obj;
+                    $j_array array = new $j_array();
 
-                    #(for f in args.fields join (#<line>) {
-                        array.Add(#j_token.FromObject(o.#(f.safe_ident()), serializer));
+                    $(for f in args.fields join ($['\n']) {
+                        array.Add($j_token.FromObject(o.$(f.safe_ident()), serializer));
                     })
 
                     array.WriteTo(writer);
                 }
 
-                public override #object ReadJson(#json_reader reader, System.Type objectType, #object existingValue, #json_serializer serializer) {
-                    #j_array array = #j_array.Load(reader);
-                    #i_enumerator<#j_token> enumerator = array.GetEnumerator();
+                public override $object ReadJson($json_reader reader, System.Type objectType, $object existingValue, $json_serializer serializer) {
+                    $j_array array = $j_array.Load(reader);
+                    $i_enumerator<$j_token> enumerator = array.GetEnumerator();
 
-                    #(for f in args.fields join (#<line>) {
-                        #(self.read_field(f))
+                    $(for f in args.fields join ($['\n']) {
+                        $(self.read_field(f))
                     })
 
-                    return new #(args.ident)(#(for f in args.fields join (, ) => #(f.safe_ident())));
+                    return new $(args.ident)($(for f in args.fields join (, ) => $(f.safe_ident())));
                 }
             }
         });
@@ -208,26 +208,26 @@ impl codegen::interface::Codegen for Codegen {
         match args.sub_type_strategy {
             RpSubTypeStrategy::Tagged { tag } => {
                 args.tag_annotations.push(quote! {
-                    [JsonProperty(#(quoted(tag)), Required = Required.DisallowNull)]
+                    [JsonProperty($(quoted(tag)), Required = Required.DisallowNull)]
                 });
 
                 args.annotations.push(quote! {
-                    [#(&self.json_converter)(typeof(#(&self.json_sub_types)), #(quoted(tag)))]
+                    [$(&self.json_converter)(typeof($(&self.json_sub_types)), $(quoted(tag)))]
                 });
 
                 for sub_type in args.sub_types {
                     args.annotations.push(quote!{
-                        [#(&self.json_sub_types).KnownSubType(typeof(#(args.ident).#(&sub_type.ident)), #(quoted(sub_type.name())))]
+                        [$(&self.json_sub_types).KnownSubType(typeof($(args.ident).$(&sub_type.ident)), $(quoted(sub_type.name())))]
                     });
                 }
             }
             RpSubTypeStrategy::Untagged => {
                 args.annotations.push(quote! {
-                    [#(&self.json_converter)(typeof(#(args.ident).Json_Net_Converter))]
+                    [$(&self.json_converter)(typeof($(args.ident).Json_Net_Converter))]
                 });
 
                 args.inner.push(quote!{
-                    public class Json_Net_Converter : #(&self.json_converter) {
+                    public class Json_Net_Converter : $(&self.json_converter) {
                         [ThreadStatic]
                         private static bool _isInsideRead;
                         public override bool CanWrite {
@@ -243,18 +243,18 @@ impl codegen::interface::Codegen for Codegen {
                             return false;
                         }
 
-                        public override void WriteJson(#(&self.json_writer) writer, #(&self.object) obj, #(&self.json_serializer) serializer) {
-                            throw new #(&self.invalid_operation_exception)("not implemented");
+                        public override void WriteJson($(&self.json_writer) writer, $(&self.object) obj, $(&self.json_serializer) serializer) {
+                            throw new $(&self.invalid_operation_exception)("not implemented");
                         }
 
-                        public override #(&self.object) ReadJson(#(&self.json_reader) reader, System.Type objectType, #(&self.object) existingValue, #(&self.json_serializer) serializer) {
-                            #(&self.j_object) o = #(&self.j_object).Load(reader);
+                        public override $(&self.object) ReadJson($(&self.json_reader) reader, System.Type objectType, $(&self.object) existingValue, $(&self.json_serializer) serializer) {
+                            $(&self.j_object) o = $(&self.j_object).Load(reader);
 
-                            #(for sub_type in args.sub_types {
-                                #(self.try_read_untagged_sub_type(sub_type))
+                            $(for sub_type in args.sub_types {
+                                $(self.try_read_untagged_sub_type(sub_type))
                             })
 
-                            throw new #(&self.invalid_operation_exception)("no legal combination of fields");
+                            throw new $(&self.invalid_operation_exception)("no legal combination of fields");
                         }
                     }
                 });
@@ -266,7 +266,7 @@ impl codegen::interface::Codegen for Codegen {
 impl codegen::interface_tag_constructor_arg::Codegen for Codegen {
     fn generate(&self, args: codegen::interface_tag_constructor_arg::Args<'_>) {
         args.annotations.push(quote! {
-            [#(&self.json_property)(#(quoted(args.tag)), Required = Required.DisallowNull)]
+            [$(&self.json_property)($(quoted(args.tag)), Required = Required.DisallowNull)]
         });
     }
 }

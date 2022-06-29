@@ -12,7 +12,6 @@ public extension Test_Entry {
     if let value = json["foo"] {
       foo = Optional.some(try Test_Foo.decode(json: value))
     }
-
     return Test_Entry(foo: foo)
   }
 
@@ -41,7 +40,6 @@ public extension Test_Foo {
     }
 
     let field = try decode_name(unbox(f_field, as: String.self), name: "field")
-
     return Test_Foo(field: field)
   }
 
@@ -68,7 +66,6 @@ public extension Test_Bar {
     }
 
     let field = try Test_Bar_Inner.decode(json: f_field)
-
     return Test_Bar(field: field)
   }
 
@@ -95,7 +92,6 @@ public extension Test_Bar_Inner {
     }
 
     let field = try decode_name(unbox(f_field, as: String.self), name: "field")
-
     return Test_Bar_Inner(field: field)
   }
 

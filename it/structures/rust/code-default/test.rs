@@ -1,10 +1,10 @@
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Entry {
-}
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Type {
-}
+pub struct Entry {}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Type {}
 
 impl Type {
   pub fn type_method(&self) {
@@ -24,8 +24,7 @@ impl Interface {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
-pub struct Interface_SubType {
-}
+pub struct Interface_SubType {}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Enum {
@@ -34,11 +33,11 @@ pub enum Enum {
 
 impl Enum {
   pub fn value(&self) -> &'static str {
-    use self::Enum::*;
-    match *self {
-      Variant => "Variant",
+    match self {
+      Self::Variant => "Variant",
     }
   }
+
   pub fn enum_method(&self) {
   }
 }

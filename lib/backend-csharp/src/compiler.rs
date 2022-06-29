@@ -1,4 +1,4 @@
-//! C# backend for reproto
+//! C$ backend for reproto
 
 use crate::flavored::*;
 use crate::processor::Processor;
@@ -63,7 +63,7 @@ impl Compiler {
         log::debug!("+class: {}", path);
 
         let file = quote! {
-            #(ref t => self.process_decl(t, decl)?)
+            $(ref t => self.process_decl(t, decl)?)
         };
 
         let config = csharp::Config::default().with_namespace(namespace);
@@ -82,11 +82,11 @@ impl Compiler {
         self.opt.gen.enum_type(&body.variants, &mut annotations);
 
         quote_in! { *t =>
-            #(csharp::block_comment(&body.comment))
-            #(for a in annotations join (#<push>) => #a)
-            public enum #(&body.ident)#(self.enum_type(body.enum_type)) {
-                #(for v in &body.variants join (,#<push>) {
-                    #(self.variant(body.enum_type, v))
+            $(csharp::block_comment(&body.comment))
+            $(for a in annotations join ($['\r']) => $a)
+            public enum $(&body.ident)$(self.enum_type(body.enum_type)) {
+                $(for v in &body.variants join (,$['\r']) {
+                    $(self.variant(body.enum_type, v))
                 })
             }
         }
@@ -102,23 +102,23 @@ impl Compiler {
             .tuple(&body.ident, &body.fields, &mut annotations, &mut inner);
 
         quote_in! { *t =>
-            #(csharp::block_comment(&body.comment))
-            #(for a in annotations join (#<push>) => #a)
-            public class #(&body.ident) {
-                #(for f in &body.fields join (#<line>) => #(self.field(f)))
+            $(csharp::block_comment(&body.comment))
+            $(for a in annotations join ($['\r']) => $a)
+            public class $(&body.ident) {
+                $(for f in &body.fields join ($['\n']) => $(self.field(f)))
 
-                #(self.constructor(&body.ident, &body.fields))
+                $(self.constructor(&body.ident, &body.fields))
 
-                #(self.equals(&body.ident, &body.fields))
+                $(self.equals(&body.ident, &body.fields))
 
-                #(self.get_hash_code(&body.fields))
+                $(self.get_hash_code(&body.fields))
 
-                #(self.to_string(&body.ident, &body.fields))
+                $(self.to_string(&body.ident, &body.fields))
 
-                #(for i in inner join (#<line>) => #i)
+                $(for i in inner join ($['\n']) => $i)
 
-                #(for d in &body.decls {
-                    #(ref t => self.process_decl(t, d)?)
+                $(for d in &body.decls {
+                    $(ref t => self.process_decl(t, d)?)
                 })
             }
         }
@@ -131,21 +131,21 @@ impl Compiler {
         self.opt.gen.class(&mut annotations);
 
         quote_in! { *t =>
-            #(csharp::block_comment(&body.comment))
-            #(for a in annotations join (#<push>) => #a)
-            public class #(&body.ident) {
-                #(for f in &body.fields join (#<line>) => #(self.field(f)))
+            $(csharp::block_comment(&body.comment))
+            $(for a in annotations join ($['\r']) => $a)
+            public class $(&body.ident) {
+                $(for f in &body.fields join ($['\n']) => $(self.field(f)))
 
-                #(self.constructor(&body.ident, &body.fields))
+                $(self.constructor(&body.ident, &body.fields))
 
-                #(self.equals(&body.ident, &body.fields))
+                $(self.equals(&body.ident, &body.fields))
 
-                #(self.get_hash_code(&body.fields))
+                $(self.get_hash_code(&body.fields))
 
-                #(self.to_string(&body.ident, &body.fields))
+                $(self.to_string(&body.ident, &body.fields))
 
-                #(for d in &body.decls {
-                    #(ref t => self.process_decl(t, d)?)
+                $(for d in &body.decls {
+                    $(ref t => self.process_decl(t, d)?)
                 })
             }
         }
@@ -168,19 +168,19 @@ impl Compiler {
         );
 
         quote_in! { *t =>
-            #(csharp::block_comment(&body.comment))
-            #(for a in annotations => #a)
-            public abstract class #(&body.ident) {
-                #(self.interface_sub_type_strategy(&body.ident, &body.sub_type_strategy, &tag_annotations))
+            $(csharp::block_comment(&body.comment))
+            $(for a in annotations => $a)
+            public abstract class $(&body.ident) {
+                $(self.interface_sub_type_strategy(&body.ident, &body.sub_type_strategy, &tag_annotations))
 
-                #(for i in inner join (#<line>) => #i)
+                $(for i in inner join ($['\n']) => $i)
 
-                #(for sub_type in &body.sub_types {
-                    #(self.sub_type(body, sub_type))
+                $(for sub_type in &body.sub_types {
+                    $(self.sub_type(body, sub_type))
                 })
 
-                #(for d in &body.decls {
-                    #(ref t => self.process_decl(t, d)?)
+                $(for d in &body.decls {
+                    $(ref t => self.process_decl(t, d)?)
                 })
             }
         }
@@ -230,13 +230,13 @@ impl Compiler {
             .interface_tag_constructor_arg(tag, &mut tag_ann);
 
         quote_fn! {
-            #(for a in ann join (#<push>) => #a)
-            public #ident (
-                #(for a in tag_ann => #a#<space>)#(&self.string) TypeField#(if !fields.is_empty() => ,)
-                #(for f in fields join (,#<push>) => #(self.constructor_arg(f)))
+            $(for a in ann join ($['\r']) => $a)
+            public $ident (
+                $(for a in tag_ann => $a$[' '])$(&self.string) TypeField$(if !fields.is_empty() => ,)
+                $(for f in fields join (,$['\r']) => $(self.constructor_arg(f)))
             ) : base(TypeField) {
-                #(for f in fields join (#<push>) {
-                    this.#(&f.var) = #(&f.var);
+                $(for f in fields join ($['\r']) {
+                    this.$(&f.var) = $(&f.var);
                 })
             }
         }
@@ -249,11 +249,11 @@ impl Compiler {
         fields: &'f [Spanned<Field>],
     ) -> impl FormatInto<Csharp> + 'f {
         quote_fn! {
-            #(match sub_type_strategy {
+            $(match sub_type_strategy {
                 RpSubTypeStrategy::Tagged { tag } => {
-                    #(self.tagged_constructor(ident, tag, fields))
+                    $(self.tagged_constructor(ident, tag, fields))
                 }
-                RpSubTypeStrategy::Untagged => #(self.constructor(ident, fields)),
+                RpSubTypeStrategy::Untagged => $(self.constructor(ident, fields)),
             })
         }
     }
@@ -274,18 +274,18 @@ impl Compiler {
         self.opt.gen.class(&mut annotations);
 
         quote_fn! {
-            #(csharp::block_comment(&sub_type.comment))
-            #(for a in annotations join (#<push>) => #a)
-            public class #(&sub_type.ident) : #(&body.ident) {
-                #(for f in &fields join (#<line>) => #(self.field(f)))
+            $(csharp::block_comment(&sub_type.comment))
+            $(for a in annotations join ($['\r']) => $a)
+            public class $(&sub_type.ident) : $(&body.ident) {
+                $(for f in &fields join ($['\n']) => $(self.field(f)))
 
-                #(self.sub_type_constructor(&sub_type.ident, &body.sub_type_strategy, &fields))
+                $(self.sub_type_constructor(&sub_type.ident, &body.sub_type_strategy, &fields))
 
-                #(self.equals(&sub_type.ident, &fields))
+                $(self.equals(&sub_type.ident, &fields))
 
-                #(self.get_hash_code(&fields))
+                $(self.get_hash_code(&fields))
 
-                #(self.to_string(&sub_type.ident, &fields))
+                $(self.to_string(&sub_type.ident, &fields))
             }
         }
     }
@@ -299,12 +299,12 @@ impl Compiler {
         from_fn(move |t| match strategy {
             RpSubTypeStrategy::Tagged { .. } => {
                 quote_in! { *t =>
-                    #(for a in ann join (#<push>) => #a)
-                    private #(&self.string) TypeField {
+                    $(for a in ann join ($['\r']) => $a)
+                    private $(&self.string) TypeField {
                         get;
                     }
 
-                    public #ident(#(&self.string) TypeField) {
+                    public $ident($(&self.string) TypeField) {
                         this.TypeField = TypeField;
                     }
                 }
@@ -316,7 +316,7 @@ impl Compiler {
     /// Format the enum type.
     fn enum_type(&self, enum_type: EnumType) -> impl FormatInto<Csharp> + '_ {
         quote_fn! {
-            #(match enum_type {
+            $(match enum_type {
                 EnumType::Long => ( : long),
                 EnumType::Int | EnumType::String => (),
             })
@@ -329,7 +329,7 @@ impl Compiler {
         self.opt.gen.class_constructor_arg(f, &mut ann);
 
         quote_fn! {
-            #(for a in ann join (#<push>) => #a) #(f.field_type()) #(&f.var)
+            $(for a in ann join ($['\r']) => $a) $(f.field_type()) $(&f.var)
         }
     }
 
@@ -342,12 +342,12 @@ impl Compiler {
         self.opt.gen.class_constructor(&mut annotations);
 
         quote_fn! {
-            #(for a in annotations join (#<push>) => #a)
-            public #ident (
-                #(for f in fields join (,#<push>) => #(self.constructor_arg(f)))
+            $(for a in annotations join ($['\r']) => $a)
+            public $ident (
+                $(for f in fields join (,$['\r']) => $(self.constructor_arg(f)))
             ) {
-                #(for f in fields join (#<push>) {
-                    this.#(&f.var) = #(&f.var);
+                $(for f in fields join ($['\r']) {
+                    this.$(&f.var) = $(&f.var);
                 })
             }
         }
@@ -360,9 +360,9 @@ impl Compiler {
         variant: RpVariantRef<'f>,
     ) -> impl FormatInto<Csharp> + 'f {
         quote_fn! {
-            #(match (enum_type, variant.value) {
-                (EnumType::Long, RpVariantValue::Number(number)) => ( = #(display(number))L),
-                (EnumType::Int, RpVariantValue::Number(number)) => ( = #(display(number))),
+            $(match (enum_type, variant.value) {
+                (EnumType::Long, RpVariantValue::Number(number)) => ( = $(display(number))L),
+                (EnumType::Int, RpVariantValue::Number(number)) => ( = $(display(number))),
                 _ => {},
             })
         }
@@ -383,9 +383,9 @@ impl Compiler {
         let name = display(self.to_upper_snake.display(&**variant.ident));
 
         quote_fn! {
-            #(csharp::block_comment(variant.comment))
-            #(for a in annotations join (#<push>) => #a)
-            #name#(self.variant_value(enum_type, variant))
+            $(csharp::block_comment(variant.comment))
+            $(for a in annotations join ($['\r']) => $a)
+            $name$(self.variant_value(enum_type, variant))
         }
     }
 
@@ -394,9 +394,9 @@ impl Compiler {
         self.opt.gen.class_field(f, &mut annotations);
 
         quote_fn! {
-            #(csharp::block_comment(&f.comment))
-            #(for a in annotations join (#<push>) => #a)
-            public #(f.field_type()) #(&f.var) {
+            $(csharp::block_comment(&f.comment))
+            $(for a in annotations join ($['\r']) => $a)
+            public $(f.field_type()) $(&f.var) {
                 get;
             }
         }
@@ -407,8 +407,8 @@ impl Compiler {
         quote_fn! {
             public override int GetHashCode()  {
                 int result = 1;
-                #(for f in fields join (#<push>) {
-                    result = result * 31 + this.#(&f.var).GetHashCode();
+                $(for f in fields join ($['\r']) {
+                    result = result * 31 + this.$(&f.var).GetHashCode();
                 })
                 return result;
             }
@@ -422,26 +422,26 @@ impl Compiler {
         fields: &'f [Spanned<Field>],
     ) -> impl FormatInto<Csharp> + 'f {
         quote_fn! {
-            public override bool Equals(#(&self.object) other)  {
-                #ident o = other as #ident;
+            public override bool Equals($(&self.object) other)  {
+                $ident o = other as $ident;
 
                 if (o == null) {
                     return false;
                 }
 
-                #(for f in fields join (#<line>) {
-                    #(if f.ty.is_nullable() {
-                        if (this.#(&f.var) == null) {
-                            if (o.#(&f.var) != null) {
+                $(for f in fields join ($['\n']) {
+                    $(if f.ty.is_nullable() {
+                        if (this.$(&f.var) == null) {
+                            if (o.$(&f.var) != null) {
                                 return false;
                             }
                         } else {
-                            if (!this.#(&f.var).Equals(o.#(&f.var))) {
+                            if (!this.$(&f.var).Equals(o.$(&f.var))) {
                                 return false;
                             }
                         }
                     } else {
-                        if (!this.#(&f.var).Equals(o.#(&f.var))) {
+                        if (!this.$(&f.var).Equals(o.$(&f.var))) {
                             return false;
                         }
                     })
@@ -462,7 +462,7 @@ impl Compiler {
             if fields.is_empty() {
                 quote_in! { *t =>
                     public override String ToString() {
-                        return #_(#name());
+                        return $[str]($[const](name)());
                     }
                 }
 
@@ -473,12 +473,12 @@ impl Compiler {
 
             quote_in! { *t =>
                 public override String ToString() {
-                    #string_builder b = new #string_builder();
+                    $string_builder b = new $string_builder();
 
-                    b.Append(#_(#name#("(")));
-                    #(for f in fields join (#<push>b.Append(", ");#<push>) {
-                        b.Append(#_(#(&f.ident)=));
-                        b.Append(this.#(&f.var));
+                    b.Append($[str]($[const](name)$[const]("(")));
+                    $(for f in fields join ($['\r']b.Append(", ");$['\r']) {
+                        b.Append($[str]($[const](&f.ident)=));
+                        b.Append(this.$(&f.var));
                     })
                     b.Append(")");
 

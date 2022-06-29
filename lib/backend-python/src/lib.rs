@@ -114,7 +114,7 @@ struct Python3VersionHelper {}
 
 impl VersionHelper for Python3VersionHelper {
     fn is_string(&self, var: &ItemStr) -> Tokens<Python> {
-        quote!(isinstance(#var, str))
+        quote!(isinstance($var, str))
     }
 }
 

@@ -46,16 +46,24 @@ export class Tuple1 {
   }
 
   static decode(data) {
-    const v_a = data[0];
+    let v_a = data[0];
 
     if (v_a === null || v_a === undefined) {
       throw new Error(0 + ": required field");
     }
 
-    const v_b = data[1];
+    if (typeof v_a !== "string") {
+      throw Error("expected string");
+    }
+
+    let v_b = data[1];
 
     if (v_b === null || v_b === undefined) {
       throw new Error(1 + ": required field");
+    }
+
+    if (!Number.isInteger(v_b)) {
+      throw Error("expected integer");
     }
 
     return new Tuple1(v_a, v_b);
@@ -70,9 +78,7 @@ export class Tuple1 {
       throw new Error("b: is a required field");
     }
 
-    return [
-    this.a, 
-    this.b];
+    return [this.a, this.b];
   }
 }
 
@@ -83,17 +89,23 @@ export class Tuple2 {
   }
 
   static decode(data) {
-    const v_a = data[0];
+    let v_a = data[0];
 
     if (v_a === null || v_a === undefined) {
       throw new Error(0 + ": required field");
     }
 
-    const v_b = Other.decode(data[1]);
+    if (typeof v_a !== "string") {
+      throw Error("expected string");
+    }
+
+    let v_b = data[1];
 
     if (v_b === null || v_b === undefined) {
       throw new Error(1 + ": required field");
     }
+
+    v_b = Other.decode(v_b);
 
     return new Tuple2(v_a, v_b);
   }
@@ -107,9 +119,7 @@ export class Tuple2 {
       throw new Error("b: is a required field");
     }
 
-    return [
-    this.a, 
-    this.b.encode()];
+    return [this.a, this.b.encode()];
   }
 }
 
@@ -119,10 +129,14 @@ export class Other {
   }
 
   static decode(data) {
-    const v_a = data["a"];
+    let v_a = data["a"];
 
     if (v_a === null || v_a === undefined) {
       throw new Error("a" + ": required field");
+    }
+
+    if (typeof v_a !== "string") {
+      throw Error("expected string");
     }
 
     return new Other(v_a);

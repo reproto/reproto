@@ -1,172 +1,304 @@
-import _yield as t
+from _yield import Empty as t
 
 class Entry:
-  def __init__(self, _and, _as, _assert, _break, _class, _continue, _def, _del, _elif, _else, _except, _exec, _finally, _for, _from, _global, _if, _import, _imported, _in, _is, _lambda, _nonlocal, _not, _or, _pass, _print, _raise, _return, _try, _while, _with, _yield):
-    self._and = _and
-    self._as = _as
-    self._assert = _assert
-    self._break = _break
-    self._class = _class
-    self._continue = _continue
-    self._def = _def
-    self._del = _del
-    self._elif = _elif
-    self._else = _else
-    self._except = _except
-    self._exec = _exec
-    self._finally = _finally
-    self._for = _for
-    self._from = _from
-    self._global = _global
-    self._if = _if
-    self._import = _import
-    self._imported = _imported
-    self._in = _in
-    self._is = _is
-    self._lambda = _lambda
-    self._nonlocal = _nonlocal
-    self._not = _not
-    self._or = _or
-    self._pass = _pass
-    self._print = _print
-    self._raise = _raise
-    self._return = _return
-    self._try = _try
-    self._while = _while
-    self._with = _with
-    self._yield = _yield
+  def __init__(self, _and, _as, _assert, _break, _class, _continue, _def, _del, _elif, _else, _except, _exec, _finally, _for, _from, _global, _if, _import, imported, _in, _is, _lambda, _nonlocal, _not, _or, _pass, _print, _raise, _return, _try, _while, _with, _yield):
+    self.__and = _and
+    self.__as = _as
+    self.__assert = _assert
+    self.__break = _break
+    self.__class = _class
+    self.__continue = _continue
+    self.__def = _def
+    self.__del = _del
+    self.__elif = _elif
+    self.__else = _else
+    self.__except = _except
+    self.__exec = _exec
+    self.__finally = _finally
+    self.__for = _for
+    self.__from = _from
+    self.__global = _global
+    self.__if = _if
+    self.__import = _import
+    self.__imported = imported
+    self.__in = _in
+    self.__is = _is
+    self.__lambda = _lambda
+    self.__nonlocal = _nonlocal
+    self.__not = _not
+    self.__or = _or
+    self.__pass = _pass
+    self.__print = _print
+    self.__raise = _raise
+    self.__return = _return
+    self.__try = _try
+    self.__while = _while
+    self.__with = _with
+    self.__yield = _yield
 
   @property
-  def and(self):
-    return self._and
+  def _and(self):
+    return self.__and
+
+  @_and.setter
+  def _and(self, _and):
+    self.__and = _and
 
   @property
-  def as(self):
-    return self._as
+  def _as(self):
+    return self.__as
+
+  @_as.setter
+  def _as(self, _as):
+    self.__as = _as
 
   @property
-  def assert(self):
-    return self._assert
+  def _assert(self):
+    return self.__assert
+
+  @_assert.setter
+  def _assert(self, _assert):
+    self.__assert = _assert
 
   @property
-  def break(self):
-    return self._break
+  def _break(self):
+    return self.__break
+
+  @_break.setter
+  def _break(self, _break):
+    self.__break = _break
 
   @property
-  def class(self):
-    return self._class
+  def _class(self):
+    return self.__class
+
+  @_class.setter
+  def _class(self, _class):
+    self.__class = _class
 
   @property
-  def continue(self):
-    return self._continue
+  def _continue(self):
+    return self.__continue
+
+  @_continue.setter
+  def _continue(self, _continue):
+    self.__continue = _continue
 
   @property
-  def def(self):
-    return self._def
+  def _def(self):
+    return self.__def
+
+  @_def.setter
+  def _def(self, _def):
+    self.__def = _def
 
   @property
-  def del(self):
-    return self._del
+  def _del(self):
+    return self.__del
+
+  @_del.setter
+  def _del(self, _del):
+    self.__del = _del
 
   @property
-  def elif(self):
-    return self._elif
+  def _elif(self):
+    return self.__elif
+
+  @_elif.setter
+  def _elif(self, _elif):
+    self.__elif = _elif
 
   @property
-  def else(self):
-    return self._else
+  def _else(self):
+    return self.__else
+
+  @_else.setter
+  def _else(self, _else):
+    self.__else = _else
 
   @property
-  def except(self):
-    return self._except
+  def _except(self):
+    return self.__except
+
+  @_except.setter
+  def _except(self, _except):
+    self.__except = _except
 
   @property
-  def exec(self):
-    return self._exec
+  def _exec(self):
+    return self.__exec
+
+  @_exec.setter
+  def _exec(self, _exec):
+    self.__exec = _exec
 
   @property
-  def finally(self):
-    return self._finally
+  def _finally(self):
+    return self.__finally
+
+  @_finally.setter
+  def _finally(self, _finally):
+    self.__finally = _finally
 
   @property
-  def for(self):
-    return self._for
+  def _for(self):
+    return self.__for
+
+  @_for.setter
+  def _for(self, _for):
+    self.__for = _for
 
   @property
-  def from(self):
-    return self._from
+  def _from(self):
+    return self.__from
+
+  @_from.setter
+  def _from(self, _from):
+    self.__from = _from
 
   @property
-  def global(self):
-    return self._global
+  def _global(self):
+    return self.__global
+
+  @_global.setter
+  def _global(self, _global):
+    self.__global = _global
 
   @property
-  def if(self):
-    return self._if
+  def _if(self):
+    return self.__if
+
+  @_if.setter
+  def _if(self, _if):
+    self.__if = _if
 
   @property
-  def import(self):
-    return self._import
+  def _import(self):
+    return self.__import
+
+  @_import.setter
+  def _import(self, _import):
+    self.__import = _import
 
   @property
   def imported(self):
-    return self._imported
+    return self.__imported
+
+  @imported.setter
+  def imported(self, imported):
+    self.__imported = imported
 
   @property
-  def in(self):
-    return self._in
+  def _in(self):
+    return self.__in
+
+  @_in.setter
+  def _in(self, _in):
+    self.__in = _in
 
   @property
-  def is(self):
-    return self._is
+  def _is(self):
+    return self.__is
+
+  @_is.setter
+  def _is(self, _is):
+    self.__is = _is
 
   @property
-  def lambda(self):
-    return self._lambda
+  def _lambda(self):
+    return self.__lambda
+
+  @_lambda.setter
+  def _lambda(self, _lambda):
+    self.__lambda = _lambda
 
   @property
-  def nonlocal(self):
-    return self._nonlocal
+  def _nonlocal(self):
+    return self.__nonlocal
+
+  @_nonlocal.setter
+  def _nonlocal(self, _nonlocal):
+    self.__nonlocal = _nonlocal
 
   @property
-  def not(self):
-    return self._not
+  def _not(self):
+    return self.__not
+
+  @_not.setter
+  def _not(self, _not):
+    self.__not = _not
 
   @property
-  def or(self):
-    return self._or
+  def _or(self):
+    return self.__or
+
+  @_or.setter
+  def _or(self, _or):
+    self.__or = _or
 
   @property
-  def pass(self):
-    return self._pass
+  def _pass(self):
+    return self.__pass
+
+  @_pass.setter
+  def _pass(self, _pass):
+    self.__pass = _pass
 
   @property
-  def print(self):
-    return self._print
+  def _print(self):
+    return self.__print
+
+  @_print.setter
+  def _print(self, _print):
+    self.__print = _print
 
   @property
-  def raise(self):
-    return self._raise
+  def _raise(self):
+    return self.__raise
+
+  @_raise.setter
+  def _raise(self, _raise):
+    self.__raise = _raise
 
   @property
-  def return(self):
-    return self._return
+  def _return(self):
+    return self.__return
+
+  @_return.setter
+  def _return(self, _return):
+    self.__return = _return
 
   @property
-  def try(self):
-    return self._try
+  def _try(self):
+    return self.__try
+
+  @_try.setter
+  def _try(self, _try):
+    self.__try = _try
 
   @property
-  def while(self):
-    return self._while
+  def _while(self):
+    return self.__while
+
+  @_while.setter
+  def _while(self, _while):
+    self.__while = _while
 
   @property
-  def with(self):
-    return self._with
+  def _with(self):
+    return self.__with
+
+  @_with.setter
+  def _with(self, _with):
+    self.__with = _with
 
   @property
-  def yield(self):
-    return self._yield
+  def _yield(self):
+    return self.__yield
+
+  @_yield.setter
+  def _yield(self, _yield):
+    self.__yield = _yield
 
   @staticmethod
   def decode(data):
@@ -338,7 +470,7 @@ class Entry:
       f_imported = data["imported"]
 
       if f_imported is not None:
-        f_imported = t.Empty.decode(f_imported)
+        f_imported = t.decode(f_imported)
 
     f_in = None
 
@@ -525,8 +657,8 @@ class Entry:
     if self._import is not None:
       data["import"] = self._import
 
-    if self._imported is not None:
-      data["imported"] = self._imported.encode()
+    if self.imported is not None:
+      data["imported"] = self.imported.encode()
 
     if self._in is not None:
       data["in"] = self._in
@@ -573,4 +705,4 @@ class Entry:
     return data
 
   def __repr__(self):
-    return "<Entry and:{!r}, as:{!r}, assert:{!r}, break:{!r}, class:{!r}, continue:{!r}, def:{!r}, del:{!r}, elif:{!r}, else:{!r}, except:{!r}, exec:{!r}, finally:{!r}, for:{!r}, from:{!r}, global:{!r}, if:{!r}, import:{!r}, imported:{!r}, in:{!r}, is:{!r}, lambda:{!r}, nonlocal:{!r}, not:{!r}, or:{!r}, pass:{!r}, print:{!r}, raise:{!r}, return:{!r}, try:{!r}, while:{!r}, with:{!r}, yield:{!r}>".format(self._and, self._as, self._assert, self._break, self._class, self._continue, self._def, self._del, self._elif, self._else, self._except, self._exec, self._finally, self._for, self._from, self._global, self._if, self._import, self._imported, self._in, self._is, self._lambda, self._nonlocal, self._not, self._or, self._pass, self._print, self._raise, self._return, self._try, self._while, self._with, self._yield)
+    return "<Entry and:{!r}, as:{!r}, assert:{!r}, break:{!r}, class:{!r}, continue:{!r}, def:{!r}, del:{!r}, elif:{!r}, else:{!r}, except:{!r}, exec:{!r}, finally:{!r}, for:{!r}, from:{!r}, global:{!r}, if:{!r}, import:{!r}, imported:{!r}, in:{!r}, is:{!r}, lambda:{!r}, nonlocal:{!r}, not:{!r}, or:{!r}, pass:{!r}, print:{!r}, raise:{!r}, return:{!r}, try:{!r}, while:{!r}, with:{!r}, yield:{!r}>".format(self._and, self._as, self._assert, self._break, self._class, self._continue, self._def, self._del, self._elif, self._else, self._except, self._exec, self._finally, self._for, self._from, self._global, self._if, self._import, self.imported, self._in, self._is, self._lambda, self._nonlocal, self._not, self._or, self._pass, self._print, self._raise, self._return, self._try, self._while, self._with, self._yield)

@@ -79,8 +79,8 @@ impl<'a> Compiler<'a> {
             self.options.gen.class_field(f, &mut ann);
 
             quote_in! { *t =>
-                #(for a in ann join (#<push>) => #a)
-                #(if self.options.immutable => final#<space>)#(f.field_type()) #(f.safe_ident())
+                $(for a in ann join ($['\r']) => $a)
+                $(if self.options.immutable => final$[' '])$(f.field_type()) $(f.safe_ident())
             }
         })
     }
@@ -102,7 +102,7 @@ impl<'a> Compiler<'a> {
                 self.options.gen.class_constructor_arg(f, &mut ann);
 
                 arguments.push(quote! {
-                    #(for a in ann => #a#<space>)#(f.field_type()) #(f.safe_ident())
+                    $(for a in ann => $a$[' '])$(f.field_type()) $(f.safe_ident())
                 });
             }
 
@@ -110,15 +110,15 @@ impl<'a> Compiler<'a> {
             self.options.gen.class_constructor(fields, &mut annotations);
 
             quote_in! {*t =>
-                #(for a in annotations join (#<push>) => #a)
-                public #name(
-                    #(for a in arguments join (,#<push>) => #a)
+                $(for a in annotations join ($['\r']) => $a)
+                public $name(
+                    $(for a in arguments join (,$['\r']) => $a)
                 ) {
-                    #(for f in fields join (#<push>) {
-                        #(if !f.is_optional() && !f.ty.is_primitive() {
-                            #(&self.objects).requireNonNull(#(f.safe_ident()), #_(#(&f.ident): must not be null));
+                    $(for f in fields join ($['\r']) {
+                        $(if !f.is_optional() && !f.ty.is_primitive() {
+                            $(&self.objects).requireNonNull($(f.safe_ident()), $[str]($[const](&f.ident): must not be null));
                         })
-                        this.#(f.safe_ident()) = #(f.safe_ident());
+                        this.$(f.safe_ident()) = $(f.safe_ident());
                     })
                 }
             }
@@ -133,31 +133,31 @@ impl<'a> Compiler<'a> {
             .enum_ty(&body.ident, &body.enum_type, &mut inner);
 
         quote_in! {*t =>
-            #(java::block_comment(&body.comment))
-            public #(if depth > 0 => static) enum #(&body.ident) {
-                #(match &body.variants {
+            $(java::block_comment(&body.comment))
+            public $(if depth > 0 => static) enum $(&body.ident) {
+                $(match &body.variants {
                     RpVariants::String { variants } => {
-                        #(for variant in variants join (,#<push>) {
-                            #(self.to_upper.convert(variant.ident()))(#(quoted(&variant.value)))
+                        $(for variant in variants join (,$['\r']) {
+                            $(self.to_upper.convert(variant.ident()))($(quoted(&variant.value)))
                         })
                     }
                     RpVariants::Number { variants } => {
-                        #(for variant in variants join (,#<push>) {
-                            #(self.to_upper.convert(variant.ident()))(#(match body.enum_type.as_primitive() {
-                                Some(Primitive::Long) => #(display(&variant.value))L,
-                                _ => #(display(&variant.value)),
+                        $(for variant in variants join (,$['\r']) {
+                            $(self.to_upper.convert(variant.ident()))($(match body.enum_type.as_primitive() {
+                                Some(Primitive::Long) => $(display(&variant.value))L,
+                                _ => $(display(&variant.value)),
                             }))
                         })
                     }
                 });
 
-                #(&body.enum_type) value;
+                $(&body.enum_type) value;
 
-                #(&body.ident)(final #(&body.enum_type) value) {
+                $(&body.ident)(final $(&body.enum_type) value) {
                     this.value = value;
                 }
 
-                #(for i in inner join (#<line>) => #i)
+                $(for i in inner join ($['\n']) => $i)
             }
         }
 
@@ -175,33 +175,33 @@ impl<'a> Compiler<'a> {
             .tuple(&body.ident, &body.fields, &mut inner, &mut annotations);
 
         quote_in! { *t =>
-            #(java::block_comment(&body.comment))
-            #(for a in annotations join (#<push>) => #a)
-            public #(if depth > 0 => static) class #(&body.ident) {
-                #(for f in &body.fields join (#<push>) {
-                    #(self.field(f));
+            $(java::block_comment(&body.comment))
+            $(for a in annotations join ($['\r']) => $a)
+            public $(if depth > 0 => static) class $(&body.ident) {
+                $(for f in &body.fields join ($['\r']) {
+                    $(self.field(f));
                 })
 
-                #(self.constructor(&body.ident, &body.fields))
+                $(self.constructor(&body.ident, &body.fields))
 
-                #(for f in &body.fields join (#<line>) {
-                    #(self.getter(f, false))
+                $(for f in &body.fields join ($['\n']) {
+                    $(self.getter(f, false))
 
-                    #(self.setter(f, false))
+                    $(self.setter(f, false))
                 })
 
-                #(self.to_string(&body.ident, &body.fields))
+                $(self.to_string(&body.ident, &body.fields))
 
-                #(self.hash_code(&body.fields))
+                $(self.hash_code(&body.fields))
 
-                #(self.equals(&body.ident, &body.fields))
+                $(self.equals(&body.ident, &body.fields))
 
-                #(for i in inner join (#<line>) => #i)
+                $(for i in inner join ($['\n']) => $i)
 
-                #(code(&body.codes))
+                $(code(&body.codes))
 
-                #(for d in &body.decls join (#<line>) {
-                    #(ref t => self.process_decl(t, depth + 1, d)?)
+                $(for d in &body.decls join ($['\n']) {
+                    $(ref t => self.process_decl(t, depth + 1, d)?)
                 })
             }
         }
@@ -218,33 +218,33 @@ impl<'a> Compiler<'a> {
             .class(&body.ident, &body.fields, &mut inner, &mut annotations);
 
         quote_in! { *t =>
-            #(java::block_comment(&body.comment))
-            #(for a in annotations join (#<push>) => #a)
-            public #(if depth > 0 => static) class #(&body.ident) {
-                #(for f in &body.fields join (#<push>) {
-                    #(self.field(f));
+            $(java::block_comment(&body.comment))
+            $(for a in annotations join ($['\r']) => $a)
+            public $(if depth > 0 => static) class $(&body.ident) {
+                $(for f in &body.fields join ($['\r']) {
+                    $(self.field(f));
                 })
 
-                #(self.constructor(&body.ident, &body.fields))
+                $(self.constructor(&body.ident, &body.fields))
 
-                #(for f in &body.fields join (#<line>) {
-                    #(self.getter(f, false))
+                $(for f in &body.fields join ($['\n']) {
+                    $(self.getter(f, false))
 
-                    #(self.setter(f, false))
+                    $(self.setter(f, false))
                 })
 
-                #(self.to_string(&body.ident, &body.fields))
+                $(self.to_string(&body.ident, &body.fields))
 
-                #(self.hash_code(&body.fields))
+                $(self.hash_code(&body.fields))
 
-                #(self.equals(&body.ident, &body.fields))
+                $(self.equals(&body.ident, &body.fields))
 
-                #(for i in inner join (#<line>) => #i)
+                $(for i in inner join ($['\n']) => $i)
 
-                #(code(&body.codes))
+                $(code(&body.codes))
 
-                #(for d in &body.decls join (#<line>) {
-                    #(ref t => self.process_decl(t, depth + 1, d)?)
+                $(for d in &body.decls join ($['\n']) {
+                    $(ref t => self.process_decl(t, depth + 1, d)?)
                 })
             }
         };
@@ -269,19 +269,19 @@ impl<'a> Compiler<'a> {
         );
 
         quote_in! { *t =>
-            #(java::block_comment(&body.comment))
-            #(for a in annotations join (#<push>) => #a)
-            public #(if depth > 0 => static) interface #(&body.ident) {
-                #(for f in &body.fields join (#<line>) {
-                    #(self.getter_without_body(f))
+            $(java::block_comment(&body.comment))
+            $(for a in annotations join ($['\r']) => $a)
+            public $(if depth > 0 => static) interface $(&body.ident) {
+                $(for f in &body.fields join ($['\n']) {
+                    $(self.getter_without_body(f))
 
-                    #(self.setter_without_body(f))
+                    $(self.setter_without_body(f))
                 })
 
-                #(code(&body.codes))
+                $(code(&body.codes))
 
-                #(for s in &body.sub_types join (#<line>) {
-                    #(ref t {
+                $(for s in &body.sub_types join ($['\n']) {
+                    $(ref t {
                         let fields = body.fields.iter().chain(&s.fields).cloned().collect::<Vec<_>>();
                         let mut inner = Vec::new();
                         let mut annotations = Vec::new();
@@ -291,50 +291,50 @@ impl<'a> Compiler<'a> {
                             .interface_sub_type(&body.sub_type_strategy, &mut annotations);
 
                         quote_in!{*t =>
-                            #(java::block_comment(&s.comment))
-                            #(for a in annotations join (#<push>) => #a)
-                            public static class #(&s.ident) implements #(&body.ident) {
-                                #(for f in &fields join (#<push>) {
-                                    #(self.field(f));
+                            $(java::block_comment(&s.comment))
+                            $(for a in annotations join ($['\r']) => $a)
+                            public static class $(&s.ident) implements $(&body.ident) {
+                                $(for f in &fields join ($['\r']) {
+                                    $(self.field(f));
                                 })
 
-                                #(self.constructor(&s.ident, &fields))
+                                $(self.constructor(&s.ident, &fields))
 
-                                #(for f in &body.fields join (#<line>) {
-                                    #(self.getter(f, true))
+                                $(for f in &body.fields join ($['\n']) {
+                                    $(self.getter(f, true))
 
-                                    #(self.setter(f, true))
+                                    $(self.setter(f, true))
                                 })
 
-                                #(for f in &s.fields join (#<line>) {
-                                    #(self.getter(f, false))
+                                $(for f in &s.fields join ($['\n']) {
+                                    $(self.getter(f, false))
 
-                                    #(self.setter(f, false))
+                                    $(self.setter(f, false))
                                 })
 
-                                #(self.to_string(&s.ident, &fields))
+                                $(self.to_string(&s.ident, &fields))
 
-                                #(self.hash_code(&fields))
+                                $(self.hash_code(&fields))
 
-                                #(self.equals(&s.ident, &fields))
+                                $(self.equals(&s.ident, &fields))
 
-                                #(for i in inner join (#<line>) => #i)
+                                $(for i in inner join ($['\n']) => $i)
 
-                                #(code(&s.codes))
+                                $(code(&s.codes))
 
-                                #(for d in &s.decls join (#<line>) {
-                                    #(ref t => self.process_decl(t, depth + 2, d)?)
+                                $(for d in &s.decls join ($['\n']) {
+                                    $(ref t => self.process_decl(t, depth + 2, d)?)
                                 })
                             }
                         }
                     })
                 });
 
-                #(for d in &body.decls join (#<line>) {
-                    #(ref t => self.process_decl(t, depth + 1, d)?)
+                $(for d in &body.decls join ($['\n']) {
+                    $(ref t => self.process_decl(t, depth + 1, d)?)
                 })
 
-                #(for i in inner join (#<line>) => #i)
+                $(for i in inner join ($['\n']) => $i)
             }
         }
 
@@ -377,7 +377,7 @@ impl<'a> Compiler<'a> {
             let name = self.to_upper.convert(&f.ident);
 
             quote_in! {*t =>
-                public void set#name(final #(&f.ty) #(f.safe_ident()));
+                public void set$name(final $(&f.ty) $(f.safe_ident()));
             }
         })
     }
@@ -392,9 +392,9 @@ impl<'a> Compiler<'a> {
             let name = self.to_upper.convert(&f.ident);
 
             quote_in! { *t =>
-                #(if is_override => @Override)
-                public void set#name(final #(&f.ty) #ident) {
-                    this.#ident = #ident;
+                $(if is_override => @Override)
+                public void set$name(final $(&f.ty) $ident) {
+                    this.$ident = $ident;
                 }
             }
         })
@@ -416,8 +416,8 @@ impl<'a> Compiler<'a> {
             };
 
             quote_in! {*t =>
-                #(java::block_comment(&f.comment))
-                public #(f.field_type()) get#name();
+                $(java::block_comment(&f.comment))
+                public $(f.field_type()) get$name();
             }
         })
     }
@@ -446,11 +446,11 @@ impl<'a> Compiler<'a> {
             };
 
             quote_in! { *t =>
-                #(java::block_comment(&f.comment))
-                #(for a in ann join (#<push>) => #a)
-                #(if is_override => @Override)
-                public #(f.field_type()) get#name() {
-                    return this.#ident;
+                $(java::block_comment(&f.comment))
+                $(for a in ann join ($['\r']) => $a)
+                $(if is_override => @Override)
+                public $(f.field_type()) get$name() {
+                    return this.$ident;
                 }
             }
         })
@@ -471,7 +471,7 @@ impl<'a> Compiler<'a> {
                 quote_in! { *t =>
                     @Override
                     public String toString() {
-                        return #_(#name());
+                        return $[str]($[const](name)());
                     }
                 }
 
@@ -483,12 +483,12 @@ impl<'a> Compiler<'a> {
             quote_in! { *t =>
                 @Override
                 public String toString() {
-                    final #string_builder b = new #string_builder();
+                    final $string_builder b = new $string_builder();
 
-                    b.append(#_(#name#("(")));
-                    #(for f in fields join (#<push>b.append(", ");#<push>) {
-                        b.append(#_(#(&f.ident)=));
-                        b.append(#(f.to_string(quote!(this.#(f.safe_ident())))));
+                    b.append($[str]($[const](name)$[const]("(")));
+                    $(for f in fields join ($['\r']b.append(", ");$['\r']) {
+                        b.append($[str]($[const](&f.ident)=));
+                        b.append($(f.to_string(quote!(this.$(f.safe_ident())))));
                     })
                     b.append(")");
 
@@ -511,9 +511,9 @@ impl<'a> Compiler<'a> {
                 @Override
                 public int hashCode() {
                     int result = 1;
-                    final #string_builder b = new #string_builder();
-                    #(for f in fields join (#<push>) {
-                        result = result * 31 + #(f.hash_code(quote!(this.#(f.safe_ident()))));
+                    final $string_builder b = new $string_builder();
+                    $(for f in fields join ($['\r']) {
+                        result = result * 31 + $(f.hash_code(quote!(this.$(f.safe_ident()))));
                     })
                     return result;
                 }
@@ -539,15 +539,15 @@ impl<'a> Compiler<'a> {
                         return false;
                     }
 
-                    if (!(other_ instanceof #name)) {
+                    if (!(other_ instanceof $name)) {
                         return false;
                     }
 
                     @SuppressWarnings("unchecked")
-                    final #name o_ = (#name)other_;
+                    final $name o_ = ($name)other_;
 
-                    #(for f in fields join (#<line>) {
-                        if (#(f.not_equals(quote!(this.#(f.safe_ident())), quote!(o_.#(f.safe_ident()))))) {
+                    $(for f in fields join ($['\n']) {
+                        if ($(f.not_equals(quote!(this.$(f.safe_ident())), quote!(o_.$(f.safe_ident()))))) {
                             return false;
                         }
                     })
@@ -573,7 +573,7 @@ fn code(codes: &[Spanned<RpCode>]) -> impl FormatInto<Java> + '_ {
                 }
 
                 quote_in! {*t =>
-                    #(for line in &c.lines join (#<push>) => #line)
+                    $(for line in &c.lines join ($['\r']) => $line)
                 }
             }
         }

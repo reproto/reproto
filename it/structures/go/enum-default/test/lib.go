@@ -5,15 +5,10 @@ import "errors"
 
 type Entry struct {
   Explicit *EnumExplicit `json:"explicit,omitempty"`
-
   Implicit *EnumImplicit `json:"implicit,omitempty"`
-
   EnumU32 *EnumU32 `json:"enum_u32,omitempty"`
-
   EnumU64 *EnumU64 `json:"enum_u64,omitempty"`
-
   EnumI32 *EnumI32 `json:"enum_i32,omitempty"`
-
   EnumI64 *EnumI64 `json:"enum_i64,omitempty"`
 }
 

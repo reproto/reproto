@@ -56,34 +56,34 @@ impl Codegen {
                 class AnyCodable: Codable {
                     public let value: Any
 
-                    #(init())
+                    $(init())
 
-                    #(encode())
+                    $(encode())
 
-                    #(decoding_error())
+                    $(decoding_error())
 
-                    #(encoding_error())
+                    $(encoding_error())
 
-                    #(decode_single(&PRIMITIVES))
+                    $(decode_single(&PRIMITIVES))
 
-                    #(decode_unkeyed(&PRIMITIVES))
+                    $(decode_unkeyed(&PRIMITIVES))
 
-                    #(decode_keyed(&PRIMITIVES))
+                    $(decode_keyed(&PRIMITIVES))
 
-                    #(decode_array())
+                    $(decode_array())
 
-                    #(decode_dictionary())
+                    $(decode_dictionary())
 
-                    #(encode_single(&PRIMITIVES))
+                    $(encode_single(&PRIMITIVES))
 
-                    #(encode_unkeyed(&PRIMITIVES))
+                    $(encode_unkeyed(&PRIMITIVES))
 
-                    #(encode_keyed(&PRIMITIVES))
+                    $(encode_keyed(&PRIMITIVES))
                 }
 
-                #(any_coding_key())
+                $(any_coding_key())
 
-                #(any_null())
+                $(any_null())
             };
 
             return;
@@ -157,8 +157,8 @@ impl Codegen {
             fn decode_single<'f>(primitives: &'f [&str]) -> impl FormatInto<Swift> + 'f {
                 quote_fn! {
                     static func decode(from c: SingleValueDecodingContainer) throws -> Any {
-                        #(for p in primitives.iter().copied() join (#<line>) {
-                            if let value = try? c.decode(#p.self) {
+                        $(for p in primitives.iter().copied() join ($['\n']) {
+                            if let value = try? c.decode($p.self) {
                                 return value
                             }
                         })
@@ -175,8 +175,8 @@ impl Codegen {
             fn decode_unkeyed<'f>(primitives: &'f [&str]) -> impl FormatInto<Swift> + 'f {
                 quote_fn! {
                     static func decode(from c: inout UnkeyedDecodingContainer) throws -> Any {
-                        #(for p in primitives.iter().copied() join (#<line>) {
-                            if let value = try? c.decode(#p.self) {
+                        $(for p in primitives.iter().copied() join ($['\n']) {
+                            if let value = try? c.decode($p.self) {
                                 return value
                             }
                         })
@@ -203,8 +203,8 @@ impl Codegen {
             fn decode_keyed<'f>(primitives: &'f [&str]) -> impl FormatInto<Swift> + 'f {
                 quote_fn! {
                     static func decode(from c: inout KeyedDecodingContainer<AnyCodingKey>, forKey key: AnyCodingKey) throws -> Any {
-                        #(for p in primitives.iter().copied() join (#<line>) {
-                            if let value = try? c.decode(#p.self, forKey: key) {
+                        $(for p in primitives.iter().copied() join ($['\n']) {
+                            if let value = try? c.decode($p.self, forKey: key) {
                                 return value
                             }
                         })
@@ -260,8 +260,8 @@ impl Codegen {
                 quote_fn! {
                     static func encode(to c: inout SingleValueEncodingContainer, value: Any) throws {
                         switch value {
-                        #(for p in primitives.iter().copied() join (#<push>) {
-                            case let value as #p:
+                        $(for p in primitives.iter().copied() join ($['\r']) {
+                            case let value as $p:
                                 try c.encode(value)
                         })
                         case _ as AnyNull:
@@ -278,8 +278,8 @@ impl Codegen {
                     static func encode(to c: inout UnkeyedEncodingContainer, array: [Any]) throws {
                         for value in array {
                             switch value {
-                            #(for p in primitives.iter().copied() join (#<push>) {
-                                case let value as #p:
+                            $(for p in primitives.iter().copied() join ($['\r']) {
+                                case let value as $p:
                                     try c.encode(value)
                             })
                             case let value as [Any]:
@@ -305,8 +305,8 @@ impl Codegen {
                             let key = AnyCodingKey(stringValue: key)!
 
                             switch value {
-                            #(for p in primitives.iter().copied() join (#<push>) {
-                                case let value as #p:
+                            $(for p in primitives.iter().copied() join ($['\r']) {
+                                case let value as $p:
                                     try c.encode(value, forKey: key)
                             })
                             case let value as [Any]:
@@ -388,9 +388,9 @@ impl codegen::tuple_added::Codegen for Codegen {
         } = e;
 
         container.push(quote! {
-            #(decodable(name, fields))
+            $(decodable(name, fields))
 
-            #(encodable(name, fields))
+            $(encodable(name, fields))
         });
 
         fn decodable<'f>(
@@ -398,15 +398,15 @@ impl codegen::tuple_added::Codegen for Codegen {
             fields: &'f [Spanned<Field>],
         ) -> impl FormatInto<Swift> + 'f {
             quote_fn! {
-                extension #name: Decodable {
+                extension $name: Decodable {
                     public init(from decoder: Decoder) throws {
                         var values = try decoder.unkeyedContainer()
 
-                        #(for field in fields join (#<push>) {
-                            #(if field.is_optional() {
-                                self.#(field.safe_ident()) = try values.decodeIfPresent(#(&field.ty).self)
+                        $(for field in fields join ($['\r']) {
+                            $(if field.is_optional() {
+                                self.$(field.safe_ident()) = try values.decodeIfPresent($(&field.ty).self)
                             } else {
-                                self.#(field.safe_ident()) = try values.decode(#(&field.ty).self)
+                                self.$(field.safe_ident()) = try values.decode($(&field.ty).self)
                             })
                         })
                     }
@@ -419,17 +419,17 @@ impl codegen::tuple_added::Codegen for Codegen {
             fields: &'f [Spanned<Field>],
         ) -> impl FormatInto<Swift> + 'f {
             quote_fn! {
-                extension #name: Encodable {
+                extension $name: Encodable {
                     public func encode(to encoder: Encoder) throws {
                         var values = encoder.unkeyedContainer()
 
-                        #(for field in fields join (#<push>) {
-                            #(if field.is_optional() {
-                                if let #(field.safe_ident()) = self.#(field.safe_ident()) {
-                                    try values.encode(#(field.safe_ident()))
+                        $(for field in fields join ($['\r']) {
+                            $(if field.is_optional() {
+                                if let $(field.safe_ident()) = self.$(field.safe_ident()) {
+                                    try values.encode($(field.safe_ident()))
                                 }
                             } else {
-                                try values.encode(self.#(field.safe_ident()))
+                                try values.encode(self.$(field.safe_ident()))
                             })
                         })
                     }
@@ -449,29 +449,29 @@ impl codegen::enum_added::Codegen for Codegen {
         } = e;
 
         container.push(quote! {
-            #(decodable(name, body))
+            $(decodable(name, body))
 
-            #(encodable(name, body))
+            $(encodable(name, body))
         });
 
         fn decodable<'f>(name: &'f Name, body: &'f RpEnumBody) -> impl FormatInto<Swift> + 'f {
             quote_fn! {
-                extension #name: Decodable {
+                extension $name: Decodable {
                     public init(from decoder: Decoder) throws {
                         let value = try decoder.singleValueContainer()
 
-                        switch try value.decode(#(&body.enum_type).self) {
-                        #(match &body.variants {
+                        switch try value.decode($(&body.enum_type).self) {
+                        $(match &body.variants {
                             RpVariants::String { variants } => {
-                                #(for v in variants join (#<push>) {
-                                    case #(quoted(v.value.to_string())):
-                                        self = .#(v.ident())
+                                $(for v in variants join ($['\r']) {
+                                    case $(quoted(v.value.to_string())):
+                                        self = .$(v.ident())
                                 })
                             }
                             RpVariants::Number { variants } => {
-                                #(for v in variants join (#<push>) {
-                                    case #(v.value.to_string()):
-                                        self = .#(v.ident())
+                                $(for v in variants join ($['\r']) {
+                                    case $(v.value.to_string()):
+                                        self = .$(v.ident())
                                 })
                             }
                         })
@@ -490,22 +490,22 @@ impl codegen::enum_added::Codegen for Codegen {
 
         fn encodable<'f>(name: &'f Name, body: &'f RpEnumBody) -> impl FormatInto<Swift> + 'f {
             quote_fn! {
-                extension #name: Encodable {
+                extension $name: Encodable {
                     public func encode(to encoder: Encoder) throws {
                         var value = encoder.singleValueContainer()
 
                         switch self {
-                        #(match &body.variants {
+                        $(match &body.variants {
                             RpVariants::String { variants } => {
-                                #(for v in variants join (#<push>) {
-                                    case .#(v.ident()):
-                                        try value.encode(#(quoted(v.value.to_string())))
+                                $(for v in variants join ($['\r']) {
+                                    case .$(v.ident()):
+                                        try value.encode($(quoted(v.value.to_string())))
                                 })
                             }
                             RpVariants::Number { variants } => {
-                                #(for v in variants {
-                                    case .#(v.ident()):
-                                        try value.encode(#(v.value.to_string()))
+                                $(for v in variants {
+                                    case .$(v.ident()):
+                                        try value.encode($(v.value.to_string()))
                                 })
                             }
                         })
@@ -526,8 +526,8 @@ impl codegen::struct_model_added::Codegen for Codegen {
         if !fields.is_empty() {
             container.push(quote! {
                 enum CodingKeys: String, CodingKey {
-                    #(for field in fields join (#<push>) {
-                        case #(field.safe_ident()) = #(quoted(field.name()))
+                    $(for field in fields join ($['\r']) {
+                        case $(field.safe_ident()) = $(quoted(field.name()))
                     })
                 }
             });
@@ -545,20 +545,20 @@ impl codegen::interface_added::Codegen for Codegen {
         } = e;
 
         container.push(quote! {
-            #(decodable(name, body))
+            $(decodable(name, body))
 
-            #(encodable(name, body))
+            $(encodable(name, body))
         });
 
         fn decodable<'f>(name: &'f Name, body: &'f RpInterfaceBody) -> impl FormatInto<Swift> + 'f {
             return quote_fn! {
-                extension #name: Decodable {
-                    #(match &body.sub_type_strategy {
+                extension $name: Decodable {
+                    $(match &body.sub_type_strategy {
                         RpSubTypeStrategy::Tagged { tag, .. } => {
-                            #(ref o => tagged_init(o, body, tag))
+                            $(ref o => tagged_init(o, body, tag))
                         }
                         RpSubTypeStrategy::Untagged => {
-                            #(ref o => untagged_init(o, body))
+                            $(ref o => untagged_init(o, body))
                         }
                     })
                 }
@@ -570,12 +570,12 @@ impl codegen::interface_added::Codegen for Codegen {
                         let values = try decoder.container(keyedBy: CodingKeys.self)
 
                         switch try values.decode(String.self, forKey: .tag) {
-                        #(for sub_type in &body.sub_types join (#<push>) {
-                            case #(quoted(sub_type.name())):
-                                self = try .#(sub_type.ident.as_str())(#(&sub_type.name)(from: decoder))
+                        $(for sub_type in &body.sub_types join ($['\r']) {
+                            case $(quoted(sub_type.name())):
+                                self = try .$(sub_type.ident.as_str())($(&sub_type.name)(from: decoder))
                         })
                         default:
-                            let context = DecodingError.Context(codingPath: [], debugDescription: #(quoted(tag)))
+                            let context = DecodingError.Context(codingPath: [], debugDescription: $(quoted(tag)))
                             throw DecodingError.dataCorrupted(context)
                         }
                     }
@@ -585,21 +585,21 @@ impl codegen::interface_added::Codegen for Codegen {
             fn untagged_init(t: &mut swift::Tokens, body: &RpInterfaceBody) {
                 quote_in! { *t =>
                     public init(from decoder: Decoder) throws {
-                        #(ref o => for sub_type in &body.sub_types {
-                            let keys = quote!(Set(try decoder.container(keyedBy: #(&sub_type.ident)Keys.self).allKeys));
+                        $(ref o => for sub_type in &body.sub_types {
+                            let keys = quote!(Set(try decoder.container(keyedBy: $(&sub_type.ident)Keys.self).allKeys));
 
                             let mut expected = Vec::new();
 
                             for f in sub_type.discriminating_fields() {
-                                expected.push(quote!(#(&sub_type.ident)Keys.#(f.safe_ident())));
+                                expected.push(quote!($(&sub_type.ident)Keys.$(f.safe_ident())));
                             }
 
                             quote_in! { *o =>
-                                if #keys == Set([#(for e in expected join (, ) => #e)]) {
-                                    self = try .#(&sub_type.ident)(#(&sub_type.name)(from: decoder))
+                                if $keys == Set([$(for e in expected join (, ) => $e)]) {
+                                    self = try .$(&sub_type.ident)($(&sub_type.name)(from: decoder))
                                     return
                                 }
-                                #<line>
+                                $['\n']
                             }
                         })
                         let context = DecodingError.Context(
@@ -615,8 +615,8 @@ impl codegen::interface_added::Codegen for Codegen {
 
         fn encodable<'f>(name: &'f Name, body: &'f RpInterfaceBody) -> impl FormatInto<Swift> + 'f {
             return quote_fn! {
-                extension #name: Encodable {
-                    #(ref o => match body.sub_type_strategy {
+                extension $name: Encodable {
+                    $(ref o => match body.sub_type_strategy {
                         RpSubTypeStrategy::Tagged { .. } => {
                             encode_tagged(o, body);
                         }
@@ -633,9 +633,9 @@ impl codegen::interface_added::Codegen for Codegen {
                         var values = encoder.container(keyedBy: CodingKeys.self)
 
                         switch self {
-                        #(for sub_type in &body.sub_types join (#<push>) {
-                            case .#(&sub_type.ident)(let d):
-                                try values.encode(#(quoted(sub_type.name())), forKey: .tag)
+                        $(for sub_type in &body.sub_types join ($['\r']) {
+                            case .$(&sub_type.ident)(let d):
+                                try values.encode($(quoted(sub_type.name())), forKey: .tag)
                                 try d.encode(to: encoder)
                         })
                         }
@@ -647,8 +647,8 @@ impl codegen::interface_added::Codegen for Codegen {
                 quote_in! { *o =>
                     public func encode(to encoder: Encoder) throws {
                         switch self {
-                        #(for sub_type in &body.sub_types join (#<push>) {
-                            case .#(sub_type.ident.as_str())(let d):
+                        $(for sub_type in &body.sub_types join ($['\r']) {
+                            case .$(sub_type.ident.as_str())(let d):
                                 try d.encode(to: encoder)
                         })
                         }
@@ -669,7 +669,7 @@ impl codegen::interface_model_added::Codegen for Codegen {
             RpSubTypeStrategy::Tagged { tag, .. } => {
                 container.push(quote! {
                     enum CodingKeys: String, CodingKey {
-                        case tag = #(quoted(tag.as_str()))
+                        case tag = $(quoted(tag.as_str()))
                     }
                 });
             }
@@ -688,16 +688,16 @@ impl codegen::interface_model_added::Codegen for Codegen {
                     // rest of the fields that need to be declared to throw of the count in
                     // case of intersections.
                     container.push(quote!{
-                        enum #(&sub_type.ident)Keys: String, CodingKey {
-                            #(for f in sub_type.fields.iter().filter(|f| f.is_required()) join (#<push>) {
-                                #(ref o => {
+                        enum $(&sub_type.ident)Keys: String, CodingKey {
+                            $(for f in sub_type.fields.iter().filter(|f| f.is_required()) join ($['\r']) {
+                                $(ref o => {
                                     current.remove(f.name());
-                                    quote_in!(*o => case #(f.safe_ident()) = #(quoted(f.name())));
+                                    quote_in!(*o => case $(f.safe_ident()) = $(quoted(f.name())));
                                 })
                             })
 
-                            #(for (n, name) in current.into_iter().enumerate() join (#<push>) {
-                                case _k#(n.to_string()) = #(quoted(name))
+                            $(for (n, name) in current.into_iter().enumerate() join ($['\r']) {
+                                case _k$(n.to_string()) = $(quoted(name))
                             })
                         }
                     });

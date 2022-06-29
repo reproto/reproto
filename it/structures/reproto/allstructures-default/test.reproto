@@ -1,14 +1,11 @@
-type Entry {
-}
+type Entry {}
 
 type RootType {
-  type NestedType {
-  }
+  type NestedType {}
 
   interface NestedInterface {
     Foo {
-      type Nested {
-      }
+      type Nested {}
     }
   }
 
@@ -17,23 +14,19 @@ type RootType {
   }
 
   tuple NestedTuple {
-    type Nested {
-    }
+    type Nested {}
   }
 
-  service NestedService {
-  }
+  service NestedService {}
 }
 
 interface RootInterface {
   Foo {
-    type NestedType {
-    }
+    type NestedType {}
 
     interface NestedInterface {
       NestedFoo {
-        type Nested {
-        }
+        type Nested {}
       }
     }
 
@@ -42,12 +35,10 @@ interface RootInterface {
     }
 
     tuple NestedTuple {
-      type Nested {
-      }
+      type Nested {}
     }
 
-    service NestedService {
-    }
+    service NestedService {}
   }
 }
 
@@ -56,13 +47,11 @@ enum RootEnum as string {
 }
 
 tuple RootTuple {
-  type NestedType {
-  }
+  type NestedType {}
 
   interface NestedInterface {
     Foo {
-      type Nested {
-      }
+      type Nested {}
     }
   }
 
@@ -71,13 +60,10 @@ tuple RootTuple {
   }
 
   tuple NestedTuple {
-    type Nested {
-    }
+    type Nested {}
   }
 
-  service NestedService {
-  }
+  service NestedService {}
 }
 
-service RootService {
-}
+service RootService {}

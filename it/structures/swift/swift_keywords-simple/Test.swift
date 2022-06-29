@@ -515,7 +515,6 @@ public extension Test_Entry {
     if let value = json["while"] {
       while_ = Optional.some(try decode_name(unbox(value, as: String.self), name: "while"))
     }
-
     return Test_Entry(as_: as_, associatedtype_: associatedtype_, associativity_: associativity_, break_: break_, case_: case_, catch_: catch_, class_: class_, continue_: continue_, convenience_: convenience_, default_: default_, defer_: defer_, deinit_: deinit_, do_: do_, dynamic_: dynamic_, else_: else_, enum_: enum_, extension_: extension_, fallthrough_: fallthrough_, false_: false_, fileprivate_: fileprivate_, final_: final_, for_: for_, func_: func_, get_: get_, guard_: guard_, if_: if_, import_: import_, in_: in_, indirect_: indirect_, infix_: infix_, init_: init_, inout_: inout_, internal_: internal_, is_: is_, lazy_: lazy_, left_: left_, let_: let_, mutating_: mutating_, nil_: nil_, none_: none_, nonmutating_: nonmutating_, open_: open_, operator_: operator_, optional_: optional_, override_: override_, postfix_: postfix_, precedence_: precedence_, prefix_: prefix_, private_: private_, protocol_: protocol_, public_: public_, repeat_: repeat_, required_: required_, rethrows_: rethrows_, return_: return_, right_: right_, self_: self_, set_: set_, static_: static_, struct_: struct_, subscript_: subscript_, super_: super_, switch_: switch_, throw_: throw_, throws_: throws_, true_: true_, try_: try_, typealias_: typealias_, unowned_: unowned_, var_: var_, weak_: weak_, where_: where_, while_: while_)
   }
 
@@ -525,219 +524,291 @@ public extension Test_Entry {
     if let value = self.as_ {
       json["as"] = value
     }
+
     if let value = self.associatedtype_ {
       json["associatedtype"] = value
     }
+
     if let value = self.associativity_ {
       json["associativity"] = value
     }
+
     if let value = self.break_ {
       json["break"] = value
     }
+
     if let value = self.case_ {
       json["case"] = value
     }
+
     if let value = self.catch_ {
       json["catch"] = value
     }
+
     if let value = self.class_ {
       json["class"] = value
     }
+
     if let value = self.continue_ {
       json["continue"] = value
     }
+
     if let value = self.convenience_ {
       json["convenience"] = value
     }
+
     if let value = self.default_ {
       json["default"] = value
     }
+
     if let value = self.defer_ {
       json["defer"] = value
     }
+
     if let value = self.deinit_ {
       json["deinit"] = value
     }
+
     if let value = self.do_ {
       json["do"] = value
     }
+
     if let value = self.dynamic_ {
       json["dynamic"] = value
     }
+
     if let value = self.else_ {
       json["else"] = value
     }
+
     if let value = self.enum_ {
       json["enum"] = value
     }
+
     if let value = self.extension_ {
       json["extension"] = value
     }
+
     if let value = self.fallthrough_ {
       json["fallthrough"] = value
     }
+
     if let value = self.false_ {
       json["false"] = value
     }
+
     if let value = self.fileprivate_ {
       json["fileprivate"] = value
     }
+
     if let value = self.final_ {
       json["final"] = value
     }
+
     if let value = self.for_ {
       json["for"] = value
     }
+
     if let value = self.func_ {
       json["func"] = value
     }
+
     if let value = self.get_ {
       json["get"] = value
     }
+
     if let value = self.guard_ {
       json["guard"] = value
     }
+
     if let value = self.if_ {
       json["if"] = value
     }
+
     if let value = self.import_ {
       json["import"] = value
     }
+
     if let value = self.in_ {
       json["in"] = value
     }
+
     if let value = self.indirect_ {
       json["indirect"] = value
     }
+
     if let value = self.infix_ {
       json["infix"] = value
     }
+
     if let value = self.init_ {
       json["init"] = value
     }
+
     if let value = self.inout_ {
       json["inout"] = value
     }
+
     if let value = self.internal_ {
       json["internal"] = value
     }
+
     if let value = self.is_ {
       json["is"] = value
     }
+
     if let value = self.lazy_ {
       json["lazy"] = value
     }
+
     if let value = self.left_ {
       json["left"] = value
     }
+
     if let value = self.let_ {
       json["let"] = value
     }
+
     if let value = self.mutating_ {
       json["mutating"] = value
     }
+
     if let value = self.nil_ {
       json["nil"] = value
     }
+
     if let value = self.none_ {
       json["none"] = value
     }
+
     if let value = self.nonmutating_ {
       json["nonmutating"] = value
     }
+
     if let value = self.open_ {
       json["open"] = value
     }
+
     if let value = self.operator_ {
       json["operator"] = value
     }
+
     if let value = self.optional_ {
       json["optional"] = value
     }
+
     if let value = self.override_ {
       json["override"] = value
     }
+
     if let value = self.postfix_ {
       json["postfix"] = value
     }
+
     if let value = self.precedence_ {
       json["precedence"] = value
     }
+
     if let value = self.prefix_ {
       json["prefix"] = value
     }
+
     if let value = self.private_ {
       json["private"] = value
     }
+
     if let value = self.protocol_ {
       json["protocol"] = value
     }
+
     if let value = self.public_ {
       json["public"] = value
     }
+
     if let value = self.repeat_ {
       json["repeat"] = value
     }
+
     if let value = self.required_ {
       json["required"] = value
     }
+
     if let value = self.rethrows_ {
       json["rethrows"] = value
     }
+
     if let value = self.return_ {
       json["return"] = value
     }
+
     if let value = self.right_ {
       json["right"] = value
     }
+
     if let value = self.self_ {
       json["self"] = value
     }
+
     if let value = self.set_ {
       json["set"] = value
     }
+
     if let value = self.static_ {
       json["static"] = value
     }
+
     if let value = self.struct_ {
       json["struct"] = value
     }
+
     if let value = self.subscript_ {
       json["subscript"] = value
     }
+
     if let value = self.super_ {
       json["super"] = value
     }
+
     if let value = self.switch_ {
       json["switch"] = value
     }
+
     if let value = self.throw_ {
       json["throw"] = value
     }
+
     if let value = self.throws_ {
       json["throws"] = value
     }
+
     if let value = self.true_ {
       json["true"] = value
     }
+
     if let value = self.try_ {
       json["try"] = value
     }
+
     if let value = self.typealias_ {
       json["typealias"] = value
     }
+
     if let value = self.unowned_ {
       json["unowned"] = value
     }
+
     if let value = self.var_ {
       json["var"] = value
     }
+
     if let value = self.weak_ {
       json["weak"] = value
     }
+
     if let value = self.where_ {
       json["where"] = value
     }
+
     if let value = self.while_ {
       json["while"] = value
     }

@@ -18,6 +18,7 @@ public struct Test_Tuple1 {
     case b = "b"
   }
 }
+
 extension Test_Tuple1: Decodable {
   public init(from decoder: Decoder) throws {
     var values = try decoder.unkeyedContainer()
@@ -26,6 +27,7 @@ extension Test_Tuple1: Decodable {
     self.b = try values.decode(UInt64.self)
   }
 }
+
 extension Test_Tuple1: Encodable {
   public func encode(to encoder: Encoder) throws {
     var values = encoder.unkeyedContainer()
@@ -45,6 +47,7 @@ public struct Test_Tuple2 {
     case b = "b"
   }
 }
+
 extension Test_Tuple2: Decodable {
   public init(from decoder: Decoder) throws {
     var values = try decoder.unkeyedContainer()
@@ -53,6 +56,7 @@ extension Test_Tuple2: Decodable {
     self.b = try values.decode(Test_Other.self)
   }
 }
+
 extension Test_Tuple2: Encodable {
   public func encode(to encoder: Encoder) throws {
     var values = encoder.unkeyedContainer()

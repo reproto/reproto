@@ -1,8 +1,6 @@
-public struct Test_Entry: Codable {
-}
+public struct Test_Entry: Codable {}
 
-public struct Test_RootType: Codable {
-}
+public struct Test_RootType: Codable {}
 
 public enum Test_RootInterface {
   case Foo(Test_RootInterface_Foo)
@@ -38,8 +36,7 @@ extension Test_RootInterface: Encodable {
   }
 }
 
-public struct Test_RootInterface_Foo: Codable {
-}
+public struct Test_RootInterface_Foo: Codable {}
 
 public enum Test_RootEnum {
   case Foo
@@ -53,7 +50,11 @@ extension Test_RootEnum: Decodable {
     case "Foo":
       self = .Foo
     default:
-      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
+      let context = DecodingError.Context(
+        codingPath: decoder.codingPath,
+        debugDescription: "enum variant"
+      )
+
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -70,23 +71,21 @@ extension Test_RootEnum: Encodable {
   }
 }
 
-public struct Test_RootTuple {
-}
+public struct Test_RootTuple {}
+
 extension Test_RootTuple: Decodable {
   public init(from decoder: Decoder) throws {
     var values = try decoder.unkeyedContainer()
-
   }
 }
+
 extension Test_RootTuple: Encodable {
   public func encode(to encoder: Encoder) throws {
     var values = encoder.unkeyedContainer()
-
   }
 }
 
-public struct Test_RootType_NestedType: Codable {
-}
+public struct Test_RootType_NestedType: Codable {}
 
 public enum Test_RootType_NestedInterface {
   case Foo(Test_RootType_NestedInterface_Foo)
@@ -122,8 +121,7 @@ extension Test_RootType_NestedInterface: Encodable {
   }
 }
 
-public struct Test_RootType_NestedInterface_Foo: Codable {
-}
+public struct Test_RootType_NestedInterface_Foo: Codable {}
 
 public enum Test_RootType_NestedEnum {
   case Foo
@@ -137,7 +135,11 @@ extension Test_RootType_NestedEnum: Decodable {
     case "Foo":
       self = .Foo
     default:
-      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
+      let context = DecodingError.Context(
+        codingPath: decoder.codingPath,
+        debugDescription: "enum variant"
+      )
+
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -154,23 +156,21 @@ extension Test_RootType_NestedEnum: Encodable {
   }
 }
 
-public struct Test_RootType_NestedTuple {
-}
+public struct Test_RootType_NestedTuple {}
+
 extension Test_RootType_NestedTuple: Decodable {
   public init(from decoder: Decoder) throws {
     var values = try decoder.unkeyedContainer()
-
   }
 }
+
 extension Test_RootType_NestedTuple: Encodable {
   public func encode(to encoder: Encoder) throws {
     var values = encoder.unkeyedContainer()
-
   }
 }
 
-public struct Test_RootInterface_Foo_NestedType: Codable {
-}
+public struct Test_RootInterface_Foo_NestedType: Codable {}
 
 public enum Test_RootInterface_Foo_NestedInterface {
   case NestedFoo(Test_RootInterface_Foo_NestedInterface_NestedFoo)
@@ -206,8 +206,7 @@ extension Test_RootInterface_Foo_NestedInterface: Encodable {
   }
 }
 
-public struct Test_RootInterface_Foo_NestedInterface_NestedFoo: Codable {
-}
+public struct Test_RootInterface_Foo_NestedInterface_NestedFoo: Codable {}
 
 public enum Test_RootInterface_Foo_NestedEnum {
   case Foo
@@ -221,7 +220,11 @@ extension Test_RootInterface_Foo_NestedEnum: Decodable {
     case "Foo":
       self = .Foo
     default:
-      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
+      let context = DecodingError.Context(
+        codingPath: decoder.codingPath,
+        debugDescription: "enum variant"
+      )
+
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -238,23 +241,21 @@ extension Test_RootInterface_Foo_NestedEnum: Encodable {
   }
 }
 
-public struct Test_RootInterface_Foo_NestedTuple {
-}
+public struct Test_RootInterface_Foo_NestedTuple {}
+
 extension Test_RootInterface_Foo_NestedTuple: Decodable {
   public init(from decoder: Decoder) throws {
     var values = try decoder.unkeyedContainer()
-
   }
 }
+
 extension Test_RootInterface_Foo_NestedTuple: Encodable {
   public func encode(to encoder: Encoder) throws {
     var values = encoder.unkeyedContainer()
-
   }
 }
 
-public struct Test_RootTuple_NestedType: Codable {
-}
+public struct Test_RootTuple_NestedType: Codable {}
 
 public enum Test_RootTuple_NestedInterface {
   case Foo(Test_RootTuple_NestedInterface_Foo)
@@ -290,8 +291,7 @@ extension Test_RootTuple_NestedInterface: Encodable {
   }
 }
 
-public struct Test_RootTuple_NestedInterface_Foo: Codable {
-}
+public struct Test_RootTuple_NestedInterface_Foo: Codable {}
 
 public enum Test_RootTuple_NestedEnum {
   case Foo
@@ -305,7 +305,11 @@ extension Test_RootTuple_NestedEnum: Decodable {
     case "Foo":
       self = .Foo
     default:
-      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
+      let context = DecodingError.Context(
+        codingPath: decoder.codingPath,
+        debugDescription: "enum variant"
+      )
+
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -322,23 +326,21 @@ extension Test_RootTuple_NestedEnum: Encodable {
   }
 }
 
-public struct Test_RootTuple_NestedTuple {
-}
+public struct Test_RootTuple_NestedTuple {}
+
 extension Test_RootTuple_NestedTuple: Decodable {
   public init(from decoder: Decoder) throws {
     var values = try decoder.unkeyedContainer()
-
   }
 }
+
 extension Test_RootTuple_NestedTuple: Encodable {
   public func encode(to encoder: Encoder) throws {
     var values = encoder.unkeyedContainer()
-
   }
 }
 
-public struct Test_RootService_NestedType: Codable {
-}
+public struct Test_RootService_NestedType: Codable {}
 
 public enum Test_RootService_NestedInterface {
   case Foo(Test_RootService_NestedInterface_Foo)
@@ -374,8 +376,7 @@ extension Test_RootService_NestedInterface: Encodable {
   }
 }
 
-public struct Test_RootService_NestedInterface_Foo: Codable {
-}
+public struct Test_RootService_NestedInterface_Foo: Codable {}
 
 public enum Test_RootService_NestedEnum {
   case Foo
@@ -389,7 +390,11 @@ extension Test_RootService_NestedEnum: Decodable {
     case "Foo":
       self = .Foo
     default:
-      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
+      let context = DecodingError.Context(
+        codingPath: decoder.codingPath,
+        debugDescription: "enum variant"
+      )
+
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -406,53 +411,40 @@ extension Test_RootService_NestedEnum: Encodable {
   }
 }
 
-public struct Test_RootService_NestedTuple {
-}
+public struct Test_RootService_NestedTuple {}
+
 extension Test_RootService_NestedTuple: Decodable {
   public init(from decoder: Decoder) throws {
     var values = try decoder.unkeyedContainer()
-
   }
 }
+
 extension Test_RootService_NestedTuple: Encodable {
   public func encode(to encoder: Encoder) throws {
     var values = encoder.unkeyedContainer()
-
   }
 }
 
-public struct Test_RootType_NestedInterface_Foo_Nested: Codable {
-}
+public struct Test_RootType_NestedInterface_Foo_Nested: Codable {}
 
-public struct Test_RootType_NestedTuple_Nested: Codable {
-}
+public struct Test_RootType_NestedTuple_Nested: Codable {}
 
-public struct Test_RootType_NestedService_Nested: Codable {
-}
+public struct Test_RootType_NestedService_Nested: Codable {}
 
-public struct Test_RootInterface_Foo_NestedInterface_NestedFoo_Nested: Codable {
-}
+public struct Test_RootInterface_Foo_NestedInterface_NestedFoo_Nested: Codable {}
 
-public struct Test_RootInterface_Foo_NestedTuple_Nested: Codable {
-}
+public struct Test_RootInterface_Foo_NestedTuple_Nested: Codable {}
 
-public struct Test_RootInterface_Foo_NestedService_Nested: Codable {
-}
+public struct Test_RootInterface_Foo_NestedService_Nested: Codable {}
 
-public struct Test_RootTuple_NestedInterface_Foo_Nested: Codable {
-}
+public struct Test_RootTuple_NestedInterface_Foo_Nested: Codable {}
 
-public struct Test_RootTuple_NestedTuple_Nested: Codable {
-}
+public struct Test_RootTuple_NestedTuple_Nested: Codable {}
 
-public struct Test_RootTuple_NestedService_Nested: Codable {
-}
+public struct Test_RootTuple_NestedService_Nested: Codable {}
 
-public struct Test_RootService_NestedInterface_Foo_Nested: Codable {
-}
+public struct Test_RootService_NestedInterface_Foo_Nested: Codable {}
 
-public struct Test_RootService_NestedTuple_Nested: Codable {
-}
+public struct Test_RootService_NestedTuple_Nested: Codable {}
 
-public struct Test_RootService_NestedService_Nested: Codable {
-}
+public struct Test_RootService_NestedService_Nested: Codable {}

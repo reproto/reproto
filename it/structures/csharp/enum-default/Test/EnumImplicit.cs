@@ -3,11 +3,12 @@ using Newtonsoft.Json.Converters;
 using System.Runtime.Serialization;
 
 namespace Test {
-  [JsonConverter(typeof(StringEnumConverter))]
-  public enum EnumImplicit {
-    [EnumMember(Value = "A")]
-    A,
-    [EnumMember(Value = "B")]
-    B
-  }
+    /// Implicit naming depending on the variant
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum EnumImplicit {
+        [EnumMember(Value = "A")]
+        A,
+        [EnumMember(Value = "B")]
+        B
+    }
 }

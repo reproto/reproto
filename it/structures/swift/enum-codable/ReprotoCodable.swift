@@ -6,10 +6,12 @@ class AnyCodable: Codable {
       self.value = try AnyCodable.decodeArray(from: &array)
       return
     }
+
     if var c = try? decoder.container(keyedBy: AnyCodingKey.self) {
       self.value = try AnyCodable.decodeDictionary(from: &c)
       return
     }
+
     let c = try decoder.singleValueContainer()
     self.value = try AnyCodable.decode(from: c)
   }
@@ -20,26 +22,32 @@ class AnyCodable: Codable {
       try AnyCodable.encode(to: &c, array: arr)
       return
     }
+
     if let dict = self.value as? [String: Any] {
       var c = encoder.container(keyedBy: AnyCodingKey.self)
       try AnyCodable.encode(to: &c, dictionary: dict)
       return
     }
+
     var c = encoder.singleValueContainer()
     try AnyCodable.encode(to: &c, value: self.value)
   }
 
   static func decodingError(forCodingPath codingPath: [CodingKey]) -> DecodingError {
     let context = DecodingError.Context(
-    codingPath: codingPath, 
-    debugDescription: "Cannot decode AnyCodable")
+      codingPath: codingPath,
+      debugDescription: "Cannot decode AnyCodable"
+    )
+
     return DecodingError.typeMismatch(AnyCodable.self, context)
   }
 
   static func encodingError(forValue value: Any, codingPath: [CodingKey]) -> EncodingError {
     let context = EncodingError.Context(
-    codingPath: codingPath, 
-    debugDescription: "Cannot encode AnyCodable")
+      codingPath: codingPath,
+      debugDescription: "Cannot encode AnyCodable"
+    )
+
     return EncodingError.invalidValue(value, context)
   }
 
@@ -296,6 +304,7 @@ class AnyCodable: Codable {
   static func encode(to c: inout KeyedEncodingContainer<AnyCodingKey>, dictionary: [String: Any]) throws {
     for (key, value) in dictionary {
       let key = AnyCodingKey(stringValue: key)!
+
       switch value {
       case let value as Bool:
         try c.encode(value, forKey: key)
@@ -331,6 +340,7 @@ class AnyCodable: Codable {
     }
   }
 }
+
 class AnyCodingKey: CodingKey {
   let key: String
 
@@ -350,14 +360,20 @@ class AnyCodingKey: CodingKey {
     return key
   }
 }
+
 class AnyNull: Codable {
   public init() {
   }
 
   public required init(from decoder: Decoder) throws {
     let c = try decoder.singleValueContainer()
+
     if !c.decodeNil() {
-      throw DecodingError.typeMismatch(AnyNull.self, DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Wrong type for AnyNull"))
+      let context = DecodingError.Context(
+        codingPath: decoder.codingPath,
+        debugDescription: "Wrong type for AnyNull"
+      )
+      throw DecodingError.typeMismatch(AnyNull.self, context)
     }
   }
 

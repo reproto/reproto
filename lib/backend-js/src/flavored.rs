@@ -39,28 +39,28 @@ impl Type {
             Self::Object => (),
             Self::Integer => {
                 quote_in! { *t =>
-                    if (!Number.isInteger(#var)) {
+                    if (!Number.isInteger($var)) {
                         throw Error("expected integer");
                     }
                 }
             }
             Self::Float => {
                 quote_in! { *t =>
-                    if (!Number.isFinite(#var)) {
+                    if (!Number.isFinite($var)) {
                         throw Error("expected float");
                     }
                 }
             }
             Self::Bool => {
                 quote_in! { *t =>
-                    if (typeof #var !== "boolean") {
+                    if (typeof $var !== "boolean") {
                         throw Error("expected boolean");
                     }
                 }
             }
             Self::String => {
                 quote_in! { *t =>
-                    if (typeof #var !== "string") {
+                    if (typeof $var !== "string") {
                         throw Error("expected string");
                     }
                 }
@@ -72,21 +72,21 @@ impl Type {
                 let v = &format!("v{}", d);
 
                 quote_in! { *t =>
-                    if (!Array.isArray(#var)) {
+                    if (!Array.isArray($var)) {
                         throw Error("expected array");
                     }
 
-                    let #o = [];
+                    let $o = [];
 
-                    for (let #i = 0, #l = #var.length; #i < #l; #i++) {
-                        let #v = #var[#i];
+                    for (let $i = 0, $l = $var.length; $i < $l; $i++) {
+                        let $v = $var[$i];
 
-                        #(ref t => argument.decode_depth(t, v, d + 1))
+                        $(ref t => argument.decode_depth(t, v, d + 1))
 
-                        #o.push(#v);
+                        $o.push($v);
                     }
 
-                    #var = #o;
+                    $var = $o;
                 }
             }
             Self::Map { key, value } => {
@@ -95,27 +95,27 @@ impl Type {
                 let v = &format!("v{}", d);
 
                 quote_in! { *t =>
-                    if (typeof #var !== "object") {
+                    if (typeof $var !== "object") {
                         throw Error("expected object");
                     }
 
-                    let #o = {};
+                    let $o = {};
 
-                    for (let [#k, #v] of Object.entries(#var)) {
-                        #(ref t => key.decode_depth(t, k, d + 1))
-                        #(ref t => value.decode_depth(t, v, d + 1))
+                    for (let [$k, $v] of Object.entries($var)) {
+                        $(ref t => key.decode_depth(t, k, d + 1))
+                        $(ref t => value.decode_depth(t, v, d + 1))
 
-                        #o[#k] = #v;
+                        $o[$k] = $v;
                     }
 
-                    #var = #o;
+                    $var = $o;
                 }
             }
             Self::Import { import } => quote_in! { *t =>
-                #var = #import.decode(#var);
+                $var = $import.decode($var);
             },
             Self::Local { ident } => quote_in! { *t =>
-                #var = #ident.decode(#var);
+                $var = $ident.decode($var);
             },
         }
     }
@@ -123,33 +123,33 @@ impl Type {
     /// Build encode method.
     pub(crate) fn encode(&self, var: js::Tokens) -> js::Tokens {
         match self {
-            Self::String => quote!(#var),
-            Self::Float => quote!(#var),
-            Self::Integer => quote!(#var),
-            Self::Bool => quote!(#var),
-            Self::Object => quote!(#var),
+            Self::String => quote!($var),
+            Self::Float => quote!($var),
+            Self::Integer => quote!($var),
+            Self::Bool => quote!($var),
+            Self::Object => quote!($var),
             Self::Array { argument } => {
                 let v = argument.encode(quote!(v));
-                quote!(#var.map(function(v) { return #v; }))
+                quote!($var.map(function(v) { return $v; }))
             }
             Self::Map { key, value } => {
                 let k = &key.encode(quote!(k));
-                let v = &value.encode(quote!(data[#k]));
+                let v = &value.encode(quote!(data[$k]));
 
                 quote! {
                     (function(data) {
                         let o = {};
 
                         for (let k in data) {
-                            o[#k] = #v;
+                            o[$k] = $v;
                         }
 
                         return o;
-                    })(#var)
+                    })($var)
                 }
             }
-            Self::Import { .. } => quote!(#var.encode()),
-            Self::Local { .. } => quote!(#var.encode()),
+            Self::Import { .. } => quote!($var.encode()),
+            Self::Local { .. } => quote!($var.encode()),
         }
     }
 }

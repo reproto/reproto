@@ -82,40 +82,40 @@ impl Type {
 
         let unbox = match self {
             Type::DateTime { formatter } => {
-                let string = quote!(try decode_value(#var as? String));
-                let date = quote!(#(&**formatter)().date(from: #string));
-                quote!(try decode_value(#date))
+                let string = quote!(try decode_value($var as? String));
+                let date = quote!($(&**formatter)().date(from: $string));
+                quote!(try decode_value($date))
             }
             Type::Bytes { data } => quote! {
-                #(&**data)(base64Encoded: try decode_value(#var as? String))
+                $(&**data)(base64Encoded: try decode_value($var as? String))
             },
             Type::Array { argument } => {
                 let argument = argument.decode_value(name.clone(), quote!(inner));
 
                 return quote! {
-                    try decode_array(#var, name: #(quoted(name)), inner: { inner in #argument })
+                    try decode_array($var, name: $(quoted(name)), inner: { inner in $argument })
                 };
             }
             Type::Dictionary { value, .. } => {
                 let value = value.decode_value(name.clone(), quote!(value));
 
                 return quote! {
-                    try decode_map(#var, name: #(quoted(name)), value: { value in #value })
+                    try decode_map($var, name: $(quoted(name)), value: { value in $value })
                 };
             }
             Type::Local { ident } => {
-                return quote!(try #ident.decode(json: #var));
+                return quote!(try $ident.decode(json: $var));
             }
             Type::Name { name } => {
-                return quote!(try #name.decode(json: #var));
+                return quote!(try $name.decode(json: $var));
             }
             Type::Any => var,
-            Type::Primitive { primitive } => quote!(unbox(#var, as: #(*primitive).self)),
-            Type::String => quote!(unbox(#var, as: String.self)),
+            Type::Primitive { primitive } => quote!(unbox($var, as: $(*primitive).self)),
+            Type::String => quote!(unbox($var, as: String.self)),
         };
 
         quote! {
-            try decode_name(#unbox, name: #(quoted(name)))
+            try decode_name($unbox, name: $(quoted(name)))
         }
     }
 
@@ -123,17 +123,17 @@ impl Type {
     pub(crate) fn encode_value(&self, name: &str, var: swift::Tokens) -> swift::Tokens {
         match self {
             Type::Primitive { .. } | Type::Any | Type::String => var,
-            Type::DateTime { formatter } => quote!(#(&**formatter)().string(from: #var)),
-            Type::Bytes { .. } => quote!(#var.base64EncodedString()),
+            Type::DateTime { formatter } => quote!($(&**formatter)().string(from: $var)),
+            Type::Bytes { .. } => quote!($var.base64EncodedString()),
             Type::Array { argument } => {
                 let argument = argument.encode_value(name, quote!(inner));
-                quote!(try encode_array(#var, name: #(quoted(name)), inner: { inner in #argument }))
+                quote!(try encode_array($var, name: $(quoted(name)), inner: { inner in $argument }))
             }
             Type::Dictionary { value, .. } => {
                 let value = value.encode_value(name, quote!(value));
-                quote!(try encode_map(#var, name: #(quoted(name)), value: { value in #value }))
+                quote!(try encode_map($var, name: $(quoted(name)), value: { value in $value }))
             }
-            Type::Name { .. } | Type::Local { .. } => quote!(try #var.encode()),
+            Type::Name { .. } | Type::Local { .. } => quote!(try $var.encode()),
         }
     }
 }
@@ -151,19 +151,19 @@ impl<'a> FormatInto<Swift> for &'a Type {
                 quote_in!(*t => Date);
             }
             Type::Bytes { data } => {
-                quote_in!(*t => #(&**data));
+                quote_in!(*t => $(&**data));
             }
             Type::Array { argument } => {
-                quote_in!(*t => [#(&**argument)]);
+                quote_in!(*t => [$(&**argument)]);
             }
             Type::Dictionary { key, value } => {
-                quote_in!(*t => [#(&**key): #(&**value)]);
+                quote_in!(*t => [$(&**key): $(&**value)]);
             }
             Type::Local { ident } => {
                 t.append(ident);
             }
             Type::Name { name } => {
-                quote_in!(*t => #name);
+                quote_in!(*t => $name);
             }
             Type::Any => {
                 quote_in!(*t => Any);
@@ -204,10 +204,10 @@ pub(crate) struct Field {
 impl Field {
     pub(crate) fn field_type(&self) -> impl FormatInto<Swift> + '_ {
         quote_fn! {
-            #(if self.inner.is_optional() {
-                #(&self.inner.ty)?
+            $(if self.inner.is_optional() {
+                $(&self.inner.ty)?
             } else {
-                #(&self.inner.ty)
+                $(&self.inner.ty)
             })
         }
     }

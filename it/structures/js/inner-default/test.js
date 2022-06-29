@@ -45,11 +45,13 @@ export class A {
   }
 
   static decode(data) {
-    const v_b = A_B.decode(data["b"]);
+    let v_b = data["b"];
 
     if (v_b === null || v_b === undefined) {
       throw new Error("b" + ": required field");
     }
+
+    v_b = A_B.decode(v_b);
 
     return new A(v_b);
   }
@@ -73,10 +75,14 @@ export class A_B {
   }
 
   static decode(data) {
-    const v_field = data["field"];
+    let v_field = data["field"];
 
     if (v_field === null || v_field === undefined) {
       throw new Error("field" + ": required field");
+    }
+
+    if (typeof v_field !== "string") {
+      throw Error("expected string");
     }
 
     return new A_B(v_field);

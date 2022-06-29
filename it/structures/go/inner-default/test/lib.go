@@ -2,7 +2,6 @@ package test
 
 type Entry struct {
   A *A `json:"a,omitempty"`
-
   B *A_B `json:"b,omitempty"`
 }
 

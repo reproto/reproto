@@ -1,5 +1,4 @@
-public struct Test_Entry {
-}
+public struct Test_Entry {}
 
 public extension Test_Entry {
   static func decode(json: Any) throws -> Test_Entry {
@@ -13,8 +12,7 @@ public extension Test_Entry {
   }
 }
 
-public struct Test_Type {
-}
+public struct Test_Type {}
 
 public extension Test_Type {
   static func decode(json: Any) throws -> Test_Type {
@@ -35,30 +33,28 @@ public enum Test_Interface {
 public extension Test_Interface {
   static func decode(json: Any) throws -> Test_Interface {
     let json = try decode_value(json as? [String: Any])
-
     let type = try decode_name(json["type"] as? String, name: "type")
 
     switch type {
-      case "SubType":
-        let v = try Test_Interface_SubType.decode(json: json)
-        return Test_Interface.SubType(v)
-      default:
-        throw SerializationError.invalid(type)
+    case "SubType":
+      let v = try Test_Interface_SubType.decode(json: json)
+      return Test_Interface.SubType(v)
+    default:
+      throw SerializationError.invalid(type)
     }
   }
-
   func encode() throws -> [String: Any] {
     switch self {
-      case .SubType(let s):
-        var json = try s.encode()
-        json["type"] = "SubType"
-        return json
+    case .SubType(let s):
+      var json = try s.encode()
+      json["type"] = "SubType"
+      return json
     }
   }
 }
 
-public struct Test_Interface_SubType {
-}
+public struct Test_Interface_SubType {}
+
 public extension Test_Interface_SubType {
   static func decode(json: Any) throws -> Test_Interface_SubType {
     let _ = try decode_value(json as? [String: Any])
@@ -78,30 +74,30 @@ public enum Test_Enum {
 public extension Test_Enum {
   static func decode(json: Any) throws -> Test_Enum {
     let json = try decode_value(json)
-
-    let value = try decode_value(unbox(json, as: String))
+    let value = try decode_value(unbox(json, as: String.self))
 
     switch value {
-      case "Variant":
-        return Test_Enum.Variant
-      default:
-        throw SerializationError.bad_value()
+    case "Variant":
+      return Test_Enum.Variant
+    default:
+      throw SerializationError.bad_value
     }
   }
 
   func encode() throws -> String {
     switch self {
-      case .Variant:
-        return "Variant"
+    case .Variant:
+      return "Variant"
     }
   }
 }
 
-public struct Test_Tuple {
-}
+public struct Test_Tuple {}
+
 public extension Test_Tuple {
   static func decode(json: Any) throws -> Test_Tuple {
     let json = try decode_value(json as? [Any])
+
     return Test_Tuple()
   }
 

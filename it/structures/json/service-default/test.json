@@ -1,0 +1,27 @@
+{
+  "comment": [],
+  "version": "0.0.0",
+  "features": {},
+  "decls": [
+    {
+      "type": "type",
+      "name": {
+        "package": {
+          "package": "test"
+        },
+        "path": [
+          "Entry"
+        ]
+      },
+      "ident": "Entry",
+      "comment": [],
+      "decls": [],
+      "decl_idents": {},
+      "fields": [],
+      "codes": []
+    }
+  ],
+  "decl_idents": {
+    "Entry": 0
+  }
+}

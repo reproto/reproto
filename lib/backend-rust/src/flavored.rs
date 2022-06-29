@@ -94,22 +94,22 @@ impl<'a> tokens::FormatInto<Rust> for &'a Type {
                 quote_in!(*t => String);
             }
             Type::Vec(inner) => {
-                quote_in!(*t => Vec<#(&**inner)>);
+                quote_in!(*t => Vec<$(&**inner)>);
             }
             Type::Map(map, key, value) => {
-                quote_in!(*t => #(&**map)<#(&**key), #(&**value)>);
+                quote_in!(*t => $(&**map)<$(&**key), $(&**value)>);
             }
             Type::StaticStr => {
                 quote_in!(*t => &'static str);
             }
             Type::Option(a) => {
-                quote_in!(*t => Option<#(&**a)>);
+                quote_in!(*t => Option<$(&**a)>);
             }
             Type::Custom(import) => {
                 (&**import).format_into(t);
             }
             Type::Generic(base, a) => {
-                quote_in!(*t => #(&**base)<#(&**a)>);
+                quote_in!(*t => $(&**base)<$(&**a)>);
             }
         }
     }

@@ -51,15 +51,15 @@ impl ReqwestUtils {
             quote_in! { t =>
                 #[derive(Debug)]
                 pub enum Error {
-                    #(for (ty, v) in errors.iter().cloned() join (,#<push>) => #v(#ty))
+                    $(for (ty, v) in errors.iter().cloned() join (,$['\r']) => $v($ty))
                 }
 
-                pub type Result<T, E = Error> = #result<T, E>;
+                pub type Result<T, E = Error> = $result<T, E>;
 
-                #(for (ref ty, variant) in errors.iter().cloned() join (#<line>) =>
-                    impl From<#ty> for Error {
-                        fn from(value: #ty) -> Self {
-                            Error::#variant(value)
+                $(for (ref ty, variant) in errors.iter().cloned() join ($['\n']) =>
+                    impl From<$ty> for Error {
+                        fn from(value: $ty) -> Self {
+                            Error::$variant(value)
                         }
                     }
                 )
@@ -75,11 +75,11 @@ impl ReqwestUtils {
             t.line();
 
             quote_in! { t =>
-                impl #display for Error {
-                    fn fmt(&self, fmt: &mut #formatter) -> #result {
+                impl $display for Error {
+                    fn fmt(&self, fmt: &mut $formatter) -> $result {
                         match self {
-                            #(for (_, variant) in &errors =>
-                                #<push>Error::#(*variant)(e) => e.fmt(fmt),
+                            $(for (_, variant) in &errors =>
+                                $['\r']Error::$(*variant)(e) => e.fmt(fmt),
                             )
                         }
                     }
@@ -99,12 +99,12 @@ impl ReqwestUtils {
             quote_in! { t =>
                 pub struct PathEncode<T>(pub T);
 
-                impl<T> #display for PathEncode<T>
+                impl<T> $display for PathEncode<T>
                 where
-                    T: #display
+                    T: $display
                 {
-                    fn fmt(&self, fmt: &mut #fmt) -> #result {
-                        write!(fmt, "{}", #encode(&self.0.to_string(), #ascii_set))
+                    fn fmt(&self, fmt: &mut $fmt) -> $result {
+                        write!(fmt, "{}", $encode(&self.0.to_string(), $ascii_set))
                     }
                 }
             };
@@ -152,31 +152,31 @@ impl ServiceCodegen for ReqwestService {
         let url_ty = &Type::from(rust::import("reqwest", "Url"));
 
         quote_in! { *container =>
-            #attributes
+            $attributes
             #[allow(non_camel_case_types)]
-            pub struct #name {
-                client: #(&self.client),
-                url: #url_ty,
+            pub struct $name {
+                client: $(&self.client),
+                url: $url_ty,
             }
 
-            impl #name {
-                #(Constructor {
+            impl $name {
+                $(Constructor {
                     result: &self.result,
                     client: &self.client,
                     body,
                     url_ty: &url_ty,
                 })
 
-                #(for e in &body.endpoints join (#<line>) =>
-                    #(ref tokens =>
+                $(for e in &body.endpoints join ($['\n']) =>
+                    $(ref tokens =>
                         let http = match e.http1.as_ref() {
                             Some(http) => http,
                             None => continue,
                         };
 
                         quote_in! { *tokens =>
-                            #(Comments(&e.comment))
-                            #(Endpoint {
+                            $(Comments(&e.comment))
+                            $(Endpoint {
                                 result: &self.result,
                                 path_encode: &self.path_encode,
                                 e,
@@ -216,13 +216,13 @@ impl<'el> FormatInto<Rust> for Constructor<'el> {
         };
 
         quote_in! { *t =>
-            pub fn new(client: #client, url: #(&option_url_ty)) -> #result<Self> {
-                #(ref t => {
+            pub fn new(client: $client, url: $(&option_url_ty)) -> $result<Self> {
+                $(ref t => {
                     if let Some(url) = &body.http.url {
                         quote_in! { *t =>
                             let url = match url {
                                 Some(url) => url,
-                                None => #(url_ty)::parse(#(quoted(&**url)))?,
+                                None => $(url_ty)::parse($(quoted(&**url)))?,
                             };
                         }
                     }
@@ -250,15 +250,15 @@ impl<'el> FormatInto<Rust> for WritePath<'el> {
         } = self;
 
         quote_in! { *tokens =>
-            #(for step in &path.steps join (#<push>) =>
-                #var.push_str("/");
-                #(for part in &step.parts join (#<push>) =>
-                    #(match part {
+            $(for step in &path.steps join ($['\r']) =>
+                $var.push_str("/");
+                $(for part in &step.parts join ($['\r']) =>
+                    $(match part {
                         RpPathPart::Variable(arg) => {
-                            write!(#var, "{}", #(path_encode)(#(arg.safe_ident())))?;
+                            write!($var, "{}", $(path_encode)($(arg.safe_ident())))?;
                         }
                         RpPathPart::Segment(s) => {
-                            #var.push_str(#(quoted(s.as_str())));
+                            $var.push_str($(quoted(s.as_str())));
                         }
                     })
                 )
@@ -288,15 +288,15 @@ impl<'el> FormatInto<Rust> for Endpoint<'el> {
         t.register(rust::import("std::fmt", "Write"));
 
         let res = if let Some(res) = &http.response {
-            quote!(#result<#res>)
+            quote!($result<$res>)
         } else {
-            quote!(#result<()>)
+            quote!($result<()>)
         };
 
         let args = e
             .arguments
             .iter()
-            .map(|a| quote!(#(a.safe_ident()): #(a.channel.ty())));
+            .map(|a| quote!($(a.safe_ident()): $(a.channel.ty())));
 
         let method = match http.method {
             RpHttpMethod::Get => "GET",
@@ -311,13 +311,13 @@ impl<'el> FormatInto<Rust> for Endpoint<'el> {
         let method_ty = rust::import("reqwest", "Method");
 
         quote_in! { *t =>
-            pub async fn #(e.safe_ident())(&self, #(for a in args join(, ) => #a)) -> #res {
+            pub async fn $(e.safe_ident())(&self, $(for a in args join(, ) => $a)) -> $res {
                 use std::fmt::Write as _;
 
-                #(if let Some(path) = &e.http.path {
+                $(if let Some(path) = &e.http.path {
                     let mut path_ = String::new();
 
-                    #(WritePath {
+                    $(WritePath {
                         var: "path_",
                         path,
                         path_encode,
@@ -328,16 +328,16 @@ impl<'el> FormatInto<Rust> for Endpoint<'el> {
                     let url_ = self.url.clone();
                 })
 
-                #(if let Some(req) = &e.request {
+                $(if let Some(req) = &e.request {
                     let req_ = self.client
-                        .request(#method_ty::#method, url_)
-                        .json(&#(req.safe_ident()));
+                        .request($method_ty::$method, url_)
+                        .json(&$(req.safe_ident()));
                 } else {
                     let req_ = self.client
-                        .request(#method_ty::#method, url_);
+                        .request($method_ty::$method, url_);
                 })
 
-                #(if e.response.is_some() {
+                $(if e.response.is_some() {
                     let res_ = req_.send().await?;
                     let body_ = res_.json().await?;
                     Ok(body_)

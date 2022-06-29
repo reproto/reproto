@@ -1,4 +1,4 @@
-//! C# flavor.
+//! C$ flavor.
 
 #![allow(unused)]
 
@@ -114,7 +114,7 @@ pub enum EnumType {
 impl<'a> FormatInto<Csharp> for &'a Type {
     fn format_into(self, t: &mut csharp::Tokens) {
         match self {
-            Type::Primitive(p) => quote_in!(*t => #(*p)),
+            Type::Primitive(p) => quote_in!(*t => $(*p)),
             Type::ByteArray => quote_in!(*t => byte[]),
             Type::String { import }
             | Type::DateTime { import }
@@ -126,9 +126,9 @@ impl<'a> FormatInto<Csharp> for &'a Type {
                 t.append(import);
             }
             Type::Dictionary { import, key, value } => {
-                quote_in!(*t => #(&**import)<#(&**key), #(&**value)>)
+                quote_in!(*t => $(&**import)<$(&**key), $(&**value)>)
             }
-            Type::List { import, argument } => quote_in!(*t => #(&**import)<#(&**argument)>),
+            Type::List { import, argument } => quote_in!(*t => $(&**import)<$(&**argument)>),
         }
     }
 }
@@ -149,10 +149,10 @@ impl Field {
     /// Resolve the type of the field.
     pub(crate) fn field_type(&self) -> impl FormatInto<Csharp> + '_ {
         quote_fn! {
-            #(if self.is_optional() && !self.ty.is_nullable() {
-                #(&self.ty)?
+            $(if self.is_optional() && !self.ty.is_nullable() {
+                $(&self.ty)?
             } else {
-                #(&self.ty)
+                $(&self.ty)
             })
         }
     }

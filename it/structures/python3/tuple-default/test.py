@@ -1,15 +1,23 @@
 class Entry:
-  def __init__(self, _tuple1, _tuple2):
-    self._tuple1 = _tuple1
-    self._tuple2 = _tuple2
+  def __init__(self, tuple1, tuple2):
+    self.__tuple1 = tuple1
+    self.__tuple2 = tuple2
 
   @property
   def tuple1(self):
-    return self._tuple1
+    return self.__tuple1
+
+  @tuple1.setter
+  def tuple1(self, tuple1):
+    self.__tuple1 = tuple1
 
   @property
   def tuple2(self):
-    return self._tuple2
+    return self.__tuple2
+
+  @tuple2.setter
+  def tuple2(self, tuple2):
+    self.__tuple2 = tuple2
 
   @staticmethod
   def decode(data):
@@ -34,29 +42,37 @@ class Entry:
   def encode(self):
     data = dict()
 
-    if self._tuple1 is not None:
-      data["tuple1"] = self._tuple1.encode()
+    if self.tuple1 is not None:
+      data["tuple1"] = self.tuple1.encode()
 
-    if self._tuple2 is not None:
-      data["tuple2"] = self._tuple2.encode()
+    if self.tuple2 is not None:
+      data["tuple2"] = self.tuple2.encode()
 
     return data
 
   def __repr__(self):
-    return "<Entry tuple1:{!r}, tuple2:{!r}>".format(self._tuple1, self._tuple2)
+    return "<Entry tuple1:{!r}, tuple2:{!r}>".format(self.tuple1, self.tuple2)
 
 class Tuple1:
-  def __init__(self, _a, _b):
-    self._a = _a
-    self._b = _b
+  def __init__(self, a, b):
+    self.__a = a
+    self.__b = b
 
   @property
   def a(self):
-    return self._a
+    return self.__a
+
+  @a.setter
+  def a(self, a):
+    self.__a = a
 
   @property
   def b(self):
-    return self._b
+    return self.__b
+
+  @b.setter
+  def b(self, b):
+    self.__b = b
 
   @staticmethod
   def decode(data):
@@ -73,29 +89,41 @@ class Tuple1:
     return Tuple1(f_a, f_b)
 
   def encode(self):
-    if self._a is None:
-      raise Exception("a: is a required field")
+    if self.a is None:
+      raise Exception("missing required field: a")
 
-    if self._b is None:
-      raise Exception("b: is a required field")
+    a = self.a
 
-    return (self._a, self._b)
+    if self.b is None:
+      raise Exception("missing required field: b")
+
+    b = self.b
+
+    return (a, b)
 
   def __repr__(self):
-    return "<Tuple1 a:{!r}, b:{!r}>".format(self._a, self._b)
+    return "<Tuple1 a:{!r}, b:{!r}>".format(self.a, self.b)
 
 class Tuple2:
-  def __init__(self, _a, _b):
-    self._a = _a
-    self._b = _b
+  def __init__(self, a, b):
+    self.__a = a
+    self.__b = b
 
   @property
   def a(self):
-    return self._a
+    return self.__a
+
+  @a.setter
+  def a(self, a):
+    self.__a = a
 
   @property
   def b(self):
-    return self._b
+    return self.__b
+
+  @b.setter
+  def b(self, b):
+    self.__b = b
 
   @staticmethod
   def decode(data):
@@ -111,24 +139,32 @@ class Tuple2:
     return Tuple2(f_a, f_b)
 
   def encode(self):
-    if self._a is None:
-      raise Exception("a: is a required field")
+    if self.a is None:
+      raise Exception("missing required field: a")
 
-    if self._b is None:
-      raise Exception("b: is a required field")
+    a = self.a
 
-    return (self._a, self._b.encode())
+    if self.b is None:
+      raise Exception("missing required field: b")
+
+    b = self.b.encode()
+
+    return (a, b)
 
   def __repr__(self):
-    return "<Tuple2 a:{!r}, b:{!r}>".format(self._a, self._b)
+    return "<Tuple2 a:{!r}, b:{!r}>".format(self.a, self.b)
 
 class Other:
-  def __init__(self, _a):
-    self._a = _a
+  def __init__(self, a):
+    self.__a = a
 
   @property
   def a(self):
-    return self._a
+    return self.__a
+
+  @a.setter
+  def a(self, a):
+    self.__a = a
 
   @staticmethod
   def decode(data):
@@ -142,12 +178,12 @@ class Other:
   def encode(self):
     data = dict()
 
-    if self._a is None:
-      raise Exception("a: is a required field")
+    if self.a is None:
+      raise Exception("missing required field: a")
 
-    data["a"] = self._a
+    data["a"] = self.a
 
     return data
 
   def __repr__(self):
-    return "<Other a:{!r}>".format(self._a)
+    return "<Other a:{!r}>".format(self.a)

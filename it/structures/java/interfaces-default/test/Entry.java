@@ -2,103 +2,113 @@ package test;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.Objects;
 import java.util.Optional;
 
 public class Entry {
-  @JsonProperty("tagged")
-  private final Optional<Tagged> tagged;
-  @JsonProperty("untagged")
-  private final Optional<Untagged> untagged;
+    @JsonProperty("tagged")
+    final Optional<Tagged> tagged;
+    @JsonProperty("untagged")
+    final Optional<Untagged> untagged;
 
-  @JsonCreator
-  public Entry(
-    @JsonProperty("tagged") final Optional<Tagged> tagged,
-    @JsonProperty("untagged") final Optional<Untagged> untagged
-  ) {
-    Objects.requireNonNull(tagged, "tagged");
-    this.tagged = tagged;
-    Objects.requireNonNull(untagged, "untagged");
-    this.untagged = untagged;
-  }
-
-  @JsonProperty("tagged")
-  public Optional<Tagged> getTagged() {
-    return this.tagged;
-  }
-
-  @JsonProperty("untagged")
-  public Optional<Untagged> getUntagged() {
-    return this.untagged;
-  }
-
-  @Override
-  public int hashCode() {
-    int result = 1;
-    result = result * 31 + this.tagged.hashCode();
-    result = result * 31 + this.untagged.hashCode();
-    return result;
-  }
-
-  @Override
-  public boolean equals(final Object other) {
-    if (other == null) {
-      return false;
+    @JsonCreator
+    public Entry(
+        @JsonProperty("tagged") Optional<Tagged> tagged,
+        @JsonProperty("untagged") Optional<Untagged> untagged
+    ) {
+        this.tagged = tagged;
+        this.untagged = untagged;
     }
 
-    if (!(other instanceof Entry)) {
-      return false;
+    @JsonProperty("tagged")
+    public Optional<Tagged> getTagged() {
+        return this.tagged;
     }
 
-    @SuppressWarnings("unchecked")
-    final Entry o = (Entry) other;
-
-    if (!this.tagged.equals(o.tagged)) {
-      return false;
+    @JsonProperty("untagged")
+    public Optional<Untagged> getUntagged() {
+        return this.untagged;
     }
 
-    if (!this.untagged.equals(o.untagged)) {
-      return false;
+    @Override
+    public String toString() {
+        final StringBuilder b = new StringBuilder();
+
+        b.append("Entry(");
+        b.append("tagged=");
+        b.append(this.tagged.toString());
+        b.append(", ");
+        b.append("untagged=");
+        b.append(this.untagged.toString());
+        b.append(")");
+
+        return b.toString();
     }
 
-    return true;
-  }
-
-  @Override
-  public String toString() {
-    final StringBuilder b = new StringBuilder();
-
-    b.append("Entry");
-    b.append("(");
-    b.append("tagged=");
-    b.append(this.tagged.toString());
-    b.append(", ");
-    b.append("untagged=");
-    b.append(this.untagged.toString());
-    b.append(")");
-
-    return b.toString();
-  }
-
-  public static class Builder {
-    private Optional<Tagged> tagged = Optional.empty();
-    private Optional<Untagged> untagged = Optional.empty();
-
-    public Builder tagged(final Tagged tagged) {
-      this.tagged = Optional.of(tagged);
-      return this;
+    @Override
+    public int hashCode() {
+        int result = 1;
+        final StringBuilder b = new StringBuilder();
+        result = result * 31 + this.tagged.hashCode();
+        result = result * 31 + this.untagged.hashCode();
+        return result;
     }
 
-    public Builder untagged(final Untagged untagged) {
-      this.untagged = Optional.of(untagged);
-      return this;
+    @Override
+    public boolean equals(final Object other_) {
+        if (other_ == null) {
+            return false;
+        }
+
+        if (!(other_ instanceof Entry)) {
+            return false;
+        }
+
+        @SuppressWarnings("unchecked")
+        final Entry o_ = (Entry)other_;
+
+        if (!this.tagged.equals(o_.tagged)) {
+            return false;
+        }
+
+        if (!this.untagged.equals(o_.untagged)) {
+            return false;
+        }
+
+        return true;
     }
 
-    public Entry build() {
-      final Optional<Tagged> tagged = this.tagged;
-      final Optional<Untagged> untagged = this.untagged;
+    public static class Builder {
+        private Optional<Tagged> tagged;
+        private Optional<Untagged> untagged;
 
-      return new Entry(tagged, untagged);
+        private Builder() {
+            this.tagged = Optional.empty();
+            this.untagged = Optional.empty();
+        }
+
+        public Entry build() {
+
+            return new Entry(
+                this.tagged,
+                this.untagged
+            );
+        }
+
+        public Builder tagged(final Tagged tagged) {
+            this.tagged = Optional.of(tagged);
+            return this;
+        }
+
+        public Builder untagged(final Untagged untagged) {
+            this.untagged = Optional.of(untagged);
+            return this;
+        }
     }
-  }
+
+    /**
+     * Construct a new builder.
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
 }

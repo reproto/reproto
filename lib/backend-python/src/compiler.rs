@@ -72,27 +72,27 @@ impl<'a> Compiler<'a> {
     ) {
         quote_in! { *t =>
             def encode(self):
-                data = #(builder.clone())()
+                data = $(builder.clone())()
 
-                #(if let Some(extra) = extra {
-                    #extra
+                $(if let Some(extra) = extra {
+                    $extra
                 })
 
-                #(for field in fields join (#<line>) =>
-                    #(ref t => {
-                        let v = &quote!(self.#(field.safe_ident()));
+                $(for field in fields join ($['\n']) =>
+                    $(ref t => {
+                        let v = &quote!(self.$(field.safe_ident()));
 
                         if field.is_optional() {
                             quote_in! { *t =>
-                                if #v is not None:
-                                    data[#(quoted(field.name()))] = #(field.ty.encode(v.clone()))
+                                if $v is not None:
+                                    data[$(quoted(field.name()))] = $(field.ty.encode(v.clone()))
                             }
                         } else {
                             quote_in! { *t =>
-                                if #v is None:
-                                    raise Exception(#(quoted(format!("missing required field: {}", field.ident))))
+                                if $v is None:
+                                    raise Exception($(quoted(format!("missing required field: {}", field.ident))))
 
-                                data[#(quoted(field.name()))] = #(field.ty.encode(v.clone()))
+                                data[$(quoted(field.name()))] = $(field.ty.encode(v.clone()))
                             }
                         }
                     })
@@ -110,15 +110,15 @@ impl<'a> Compiler<'a> {
 
         quote_in! { *t =>
             def encode(self):
-                #(for field in fields.into_iter() join (#<line>) {
-                    if self.#(field.safe_ident()) is None:
-                        raise Exception(#(quoted(format!("missing required field: {}", field.ident))))
+                $(for field in fields.into_iter() join ($['\n']) {
+                    if self.$(field.safe_ident()) is None:
+                        raise Exception($(quoted(format!("missing required field: {}", field.ident))))
 
-                    #(field.safe_ident()) = #(field.ty.encode(quote!(self.#(field.safe_ident()))))
-                    #(ref _ => args.push(field.safe_ident()))
+                    $(field.safe_ident()) = $(field.ty.encode(quote!(self.$(field.safe_ident()))))
+                    $(ref _ => args.push(field.safe_ident()))
                 })
 
-                return (#(for v in args join (, ) => #v))
+                return ($(for v in args join (, ) => $v))
         }
     }
 
@@ -130,7 +130,7 @@ impl<'a> Compiler<'a> {
         if it.peek().is_none() {
             quote_in! { *t =>
                 def __repr__(self):
-                    return #_(<#name>)
+                    return $[str](<$[const](name)>)
             };
 
             return;
@@ -143,7 +143,7 @@ impl<'a> Compiler<'a> {
 
         while let Some(field) = it.next() {
             write!(format, "{}:{{!r}}", field.ident).unwrap();
-            vars.push(quote!(self.#(field.safe_ident())));
+            vars.push(quote!(self.$(field.safe_ident())));
 
             if it.peek().is_some() {
                 format.push_str(", ");
@@ -154,7 +154,7 @@ impl<'a> Compiler<'a> {
 
         quote_in! { *t =>
             def __repr__(self):
-                return #(quoted(format)).format(#(for v in vars join (, ) => #v))
+                return $(quoted(format)).format($(for v in vars join (, ) => $v))
         };
     }
 
@@ -173,49 +173,49 @@ impl<'a> Compiler<'a> {
         quote_in! { *out =>
             @staticmethod
             def decode(data):
-                #(for (i, field) in fields.into_iter().enumerate() join (#<line>) =>
-                    #(ref t =>
+                $(for (i, field) in fields.into_iter().enumerate() join ($['\n']) =>
+                    $(ref t =>
                         let n = &format!("f_{}", field.ident);
                         let var = &variable_fn(i, field);
 
                         if field.is_optional() {
                             quote_in! { *t =>
-                                #n = None
+                                $n = None
 
-                                if #var in data:
-                                    #n = data[#var]
+                                if $var in data:
+                                    $n = data[$var]
 
-                                    #(if let Some(d) = field.ty.decode(n.clone(), 0) {
-                                        if #n is not None:
-                                            #d
+                                    $(if let Some(d) = field.ty.decode(n.clone(), 0) {
+                                        if $n is not None:
+                                            $d
                                     })
                             }
                         } else {
                             quote_in! { *t =>
-                                #n = data[#(variable_fn(i, field))]
+                                $n = data[$(variable_fn(i, field))]
 
-                                #(if let Some(d) = field.ty.decode(n.clone(), 0) {
-                                    #d
+                                $(if let Some(d) = field.ty.decode(n.clone(), 0) {
+                                    $d
                                 })
                             }
                         }
 
                         args.push(n.clone());
                     )
-                    #<line>
+                    $['\n']
                 )
-                return #name(#(for a in args join (, ) => #a))
+                return $name($(for a in args join (, ) => $a))
         }
     }
 
     fn build_constructor(&self, t: &mut python::Tokens, fields: &[Spanned<RpField>]) {
         quote_in! { *t =>
-            def __init__(self#(for f in fields => , #(f.safe_ident()))):
-                #(if fields.is_empty() {
+            def __init__(self$(for f in fields => , $(f.safe_ident()))):
+                $(if fields.is_empty() {
                     pass
                 } else {
-                    #(for f in fields join (#<push>) {
-                        self.__#(&f.ident) = #(f.safe_ident())
+                    $(for f in fields join ($['\r']) {
+                        self.__$(&f.ident) = $(f.safe_ident())
                     })
                 })
         }
@@ -226,20 +226,20 @@ impl<'a> Compiler<'a> {
     /// This allows documentation to be generated and be made accessible for the various fields.
     fn build_accessors(&self, t: &mut python::Tokens, fields: &[Spanned<RpField>]) {
         quote_in! { *t =>
-            #(for field in fields join (#<line>) {
-                #(ref t {
+            $(for field in fields join ($['\n']) {
+                $(ref t {
                     let var = field.safe_ident();
                     let name = &self.to_lower_snake.convert(var);
 
                     quote_in! { *t =>
                         @property
-                        def #name(self):
-                            #(BlockComment(&field.comment))
-                            return self.__#(&field.ident)
+                        def $name(self):
+                            $(BlockComment(&field.comment))
+                            return self.__$(&field.ident)
 
-                        @#name.setter
-                        def #name(self, #var):
-                            self.__#(&field.ident) = #var
+                        @$name.setter
+                        def $name(self, $var):
+                            self.__$(&field.ident) = $var
                     }
                 })
             })
@@ -253,12 +253,12 @@ impl<'a> Compiler<'a> {
 
         while let Some(v) = it.next() {
             quote_in! { args =>
-                (#(quoted(v.ident())), #(match &v.value {
+                ($(quoted(v.ident())), $(match &v.value {
                     RpVariantValue::String(string) => {
-                        #(quoted(*string))
+                        $(quoted(*string))
                     }
                     RpVariantValue::Number(number) => {
-                        #(number.to_string())
+                        $(number.to_string())
                     }
                 }))
             }
@@ -269,7 +269,7 @@ impl<'a> Compiler<'a> {
         }
 
         quote_in!( *t =>
-            #(&body.name) = #(&self.enum_enum)(#(quoted(&body.name)), [#args], type=#(&body.name))
+            $(&body.name) = $(&self.enum_enum)($(quoted(&body.name)), [$args], type=$(&body.name))
         )
     }
 }
@@ -292,19 +292,19 @@ impl<'a> PackageProcessor<'a, PythonFlavor> for Compiler<'a> {
 
     fn process_tuple(&self, out: &mut Self::Out, body: &RpTupleBody) -> Result<()> {
         quote_in! { *out =>
-            class #(&body.name):
-                #(ref t => self.build_constructor(t, &body.fields))
+            class $(&body.name):
+                $(ref t => self.build_constructor(t, &body.fields))
 
-                #(ref t => self.build_accessors(t, &body.fields))
+                $(ref t => self.build_accessors(t, &body.fields))
 
-                #(ref t => self.decode_method(t, &body.name, &body.fields, |i, _| quote!(#i)))
+                $(ref t => self.decode_method(t, &body.name, &body.fields, |i, _| quote!($i)))
 
-                #(ref t => self.encode_tuple_method(t, &body.fields))
+                $(ref t => self.encode_tuple_method(t, &body.fields))
 
-                #(ref t => self.repr_method(t, &body.name, &body.fields))
+                $(ref t => self.repr_method(t, &body.name, &body.fields))
 
-                #(if backend::code_contains!(&body.codes, RpContext::Python) =>
-                    #(ref t => backend::code_in!(t, &body.codes, RpContext::Python))
+                $(if backend::code_contains!(&body.codes, RpContext::Python) =>
+                    $(ref t => backend::code_in!(t, &body.codes, RpContext::Python))
                 )
         }
 
@@ -313,19 +313,19 @@ impl<'a> PackageProcessor<'a, PythonFlavor> for Compiler<'a> {
 
     fn process_enum(&self, out: &mut Self::Out, body: &RpEnumBody) -> Result<()> {
         quote_in! { *out =>
-            class #(&body.name):
-                #(ref t => self.build_constructor(t, slice::from_ref(&self.variant_field)))
+            class $(&body.name):
+                $(ref t => self.build_constructor(t, slice::from_ref(&self.variant_field)))
 
-                #(ref t => self.build_accessors(t, slice::from_ref(&self.variant_field)))
+                $(ref t => self.build_accessors(t, slice::from_ref(&self.variant_field)))
 
-                #(ref t => encode_method(t, &self.variant_field))
+                $(ref t => encode_method(t, &self.variant_field))
 
-                #(ref t => decode_method(t, &self.variant_field))
+                $(ref t => decode_method(t, &self.variant_field))
 
-                #(ref t => self.repr_method(t, &body.name, slice::from_ref(&self.variant_field)))
+                $(ref t => self.repr_method(t, &body.name, slice::from_ref(&self.variant_field)))
 
-                #(if backend::code_contains!(&body.codes, RpContext::Python) =>
-                    #(ref t => backend::code_in!(t, &body.codes, RpContext::Python))
+                $(if backend::code_contains!(&body.codes, RpContext::Python) =>
+                    $(ref t => backend::code_in!(t, &body.codes, RpContext::Python))
                 )
         }
 
@@ -334,7 +334,7 @@ impl<'a> PackageProcessor<'a, PythonFlavor> for Compiler<'a> {
         fn encode_method(t: &mut python::Tokens, field: &Spanned<RpField>) {
             quote_in! { *t =>
                 def encode(self):
-                    return self.#(field.safe_ident())
+                    return self.$(field.safe_ident())
             }
         }
 
@@ -343,7 +343,7 @@ impl<'a> PackageProcessor<'a, PythonFlavor> for Compiler<'a> {
                 @classmethod
                 def decode(cls, data):
                     for value in cls.__members__.values():
-                        if value.#(field.safe_ident()) == data:
+                        if value.$(field.safe_ident()) == data:
                             return value
 
                     raise Exception("data does not match enum")
@@ -353,21 +353,21 @@ impl<'a> PackageProcessor<'a, PythonFlavor> for Compiler<'a> {
 
     fn process_type(&self, out: &mut Self::Out, body: &RpTypeBody) -> Result<()> {
         quote_in! { *out =>
-            class #(&body.name):
-                #(ref t => self.build_constructor(t, &body.fields))
+            class $(&body.name):
+                $(ref t => self.build_constructor(t, &body.fields))
 
-                #(ref t => self.build_accessors(t, &body.fields))
+                $(ref t => self.build_accessors(t, &body.fields))
 
-                #(ref t => self.decode_method(t, &body.name, &body.fields, |_, field| {
-                    quote!(#(quoted(field.name())))
+                $(ref t => self.decode_method(t, &body.name, &body.fields, |_, field| {
+                    quote!($(quoted(field.name())))
                 }))
 
-                #(ref t => self.encode_method(t, &body.fields, quote!(dict), None))
+                $(ref t => self.encode_method(t, &body.fields, quote!(dict), None))
 
-                #(ref t => self.repr_method(t, &body.name, &body.fields))
+                $(ref t => self.repr_method(t, &body.name, &body.fields))
 
-                #(if backend::code_contains!(&body.codes, RpContext::Python) =>
-                    #(ref t => backend::code_in!(t, &body.codes, RpContext::Python))
+                $(if backend::code_contains!(&body.codes, RpContext::Python) =>
+                    $(ref t => backend::code_in!(t, &body.codes, RpContext::Python))
                 )
         }
 
@@ -376,22 +376,22 @@ impl<'a> PackageProcessor<'a, PythonFlavor> for Compiler<'a> {
 
     fn process_interface(&self, out: &mut Self::Out, body: &RpInterfaceBody) -> Result<()> {
         quote_in! { *out =>
-            class #(&body.name):
-                #(match &body.sub_type_strategy {
+            class $(&body.name):
+                $(match &body.sub_type_strategy {
                     RpSubTypeStrategy::Tagged { tag, .. } => {
-                        #(ref t => decode_from_tag(t, &body, tag))
+                        $(ref t => decode_from_tag(t, &body, tag))
                     }
                     RpSubTypeStrategy::Untagged => {
-                        #(ref t => decode_from_untagged(t, &body))
+                        $(ref t => decode_from_untagged(t, &body))
                     }
                 })
 
-                #(if backend::code_contains!(&body.codes, RpContext::Python) =>
-                    #(ref t => backend::code_in!(t, &body.codes, RpContext::Python))
+                $(if backend::code_contains!(&body.codes, RpContext::Python) =>
+                    $(ref t => backend::code_in!(t, &body.codes, RpContext::Python))
                 )
 
-            #(for sub_type in &body.sub_types join (#<line>) {
-                #(ref t {
+            $(for sub_type in &body.sub_types join ($['\n']) {
+                $(ref t {
                     let fields = body
                         .fields
                         .iter()
@@ -400,35 +400,35 @@ impl<'a> PackageProcessor<'a, PythonFlavor> for Compiler<'a> {
                         .collect::<Vec<_>>();
 
                     quote_in! { *t =>
-                        class #(&sub_type.name)(#(&body.name)):
-                            TYPE = #(quoted(sub_type.name()))
+                        class $(&sub_type.name)($(&body.name)):
+                            TYPE = $(quoted(sub_type.name()))
 
-                            #(ref t => self.build_constructor(t, &fields))
+                            $(ref t => self.build_constructor(t, &fields))
 
-                            #(ref t => self.build_accessors(t, &fields))
+                            $(ref t => self.build_accessors(t, &fields))
 
-                            #(ref t => self.decode_method(t, &sub_type.name, &fields, |_, field| {
-                                quote!(#(quoted(field.ident.clone())))
+                            $(ref t => self.decode_method(t, &sub_type.name, &fields, |_, field| {
+                                quote!($(quoted(field.ident.clone())))
                             }))
 
-                            #(match &body.sub_type_strategy {
+                            $(match &body.sub_type_strategy {
                                 RpSubTypeStrategy::Tagged { tag, .. } => {
-                                    #(ref t => self.encode_method(
+                                    $(ref t => self.encode_method(
                                         t,
                                         &fields,
                                         quote!(dict),
-                                        Some(quote!(data[#(quoted(tag.as_str()))] = #(quoted(sub_type.name())))),
+                                        Some(quote!(data[$(quoted(tag.as_str()))] = $(quoted(sub_type.name())))),
                                     ))
                                 }
                                 RpSubTypeStrategy::Untagged => {
-                                    #(ref t => self.encode_method(t, &fields, quote!(dict), None))
+                                    $(ref t => self.encode_method(t, &fields, quote!(dict), None))
                                 }
                             })
 
-                            #(ref t => self.repr_method(t, &sub_type.name, &fields))
+                            $(ref t => self.repr_method(t, &sub_type.name, &fields))
 
-                            #(if backend::code_contains!(&sub_type.codes, RpContext::Python) =>
-                                #(ref t => backend::code_in!(t, &sub_type.codes, RpContext::Python))
+                            $(if backend::code_contains!(&sub_type.codes, RpContext::Python) =>
+                                $(ref t => backend::code_in!(t, &sub_type.codes, RpContext::Python))
                             )
                     }
                 })
@@ -441,14 +441,14 @@ impl<'a> PackageProcessor<'a, PythonFlavor> for Compiler<'a> {
             quote_in! { *t =>
                 @staticmethod
                 def decode(data):
-                    if #(quoted(tag)) not in data:
-                        raise Exception(#_(missing tag field #(tag)))
+                    if $(quoted(tag)) not in data:
+                        raise Exception($[str](missing tag field $[const](tag)))
 
-                    f_tag = data[#(quoted(tag))]
+                    f_tag = data[$(quoted(tag))]
 
-                    #(for sub_type in &body.sub_types join (#<line>) =>
-                        if f_tag == #(quoted(sub_type.name())):
-                            return #(&sub_type.name).decode(data)
+                    $(for sub_type in &body.sub_types join ($['\n']) =>
+                        if f_tag == $(quoted(sub_type.name())):
+                            return $(&sub_type.name).decode(data)
                     )
 
                     raise Exception("no sub type matching tag: " + f_tag)
@@ -461,9 +461,9 @@ impl<'a> PackageProcessor<'a, PythonFlavor> for Compiler<'a> {
                 def decode(data):
                     keys = set(data.keys())
 
-                    #(for sub_type in &body.sub_types join (#<line>) =>
-                        if keys >= #(quoted_tags(sub_type.discriminating_fields())):
-                            return #(&sub_type.name).decode(data)
+                    $(for sub_type in &body.sub_types join ($['\n']) =>
+                        if keys >= $(quoted_tags(sub_type.discriminating_fields())):
+                            return $(&sub_type.name).decode(data)
                     )
 
                     raise Exception("no sub type matching the given fields: " + repr(keys))
@@ -493,8 +493,8 @@ impl<'a> PackageProcessor<'a, PythonFlavor> for Compiler<'a> {
 
             match c {
                 0 => quote![set()],
-                1 => quote![set((#tags,))],
-                _ => quote![set((#tags))],
+                1 => quote![set(($tags,))],
+                _ => quote![set(($tags))],
             }
         }
     }

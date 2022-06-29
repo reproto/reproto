@@ -1,4 +1,5 @@
-use _trait as t;
+use crate::_trait as t;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Entry {
@@ -208,4 +209,12 @@ pub struct Entry {
   #[serde(skip_serializing_if="Option::is_none")]
   #[serde(rename = "yield")]
   pub _yield: Option<String>,
+
+  #[serde(skip_serializing_if="Option::is_none")]
+  #[serde(rename = "try")]
+  pub _try: Option<String>,
+
+  #[serde(skip_serializing_if="Option::is_none")]
+  #[serde(rename = "await")]
+  pub _await: Option<String>,
 }

@@ -32,10 +32,14 @@ export class Foo {
   }
 
   static decode(data) {
-    const v_field = data["field"];
+    let v_field = data["field"];
 
     if (v_field === null || v_field === undefined) {
       throw new Error("field" + ": required field");
+    }
+
+    if (typeof v_field !== "string") {
+      throw Error("expected string");
     }
 
     return new Foo(v_field);
@@ -60,11 +64,13 @@ export class Bar {
   }
 
   static decode(data) {
-    const v_field = Bar_Inner.decode(data["field"]);
+    let v_field = data["field"];
 
     if (v_field === null || v_field === undefined) {
       throw new Error("field" + ": required field");
     }
+
+    v_field = Bar_Inner.decode(v_field);
 
     return new Bar(v_field);
   }
@@ -88,10 +94,14 @@ export class Bar_Inner {
   }
 
   static decode(data) {
-    const v_field = data["field"];
+    let v_field = data["field"];
 
     if (v_field === null || v_field === undefined) {
       throw new Error("field" + ": required field");
+    }
+
+    if (typeof v_field !== "string") {
+      throw Error("expected string");
     }
 
     return new Bar_Inner(v_field);

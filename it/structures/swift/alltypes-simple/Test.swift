@@ -12,9 +12,9 @@ public struct Test_Entry {
   let double_type: Double?
   let bytes_type: Data?
   let any_type: Any?
-  let array_type: Array<Test_Entry>?
-  let array_of_array_type: Array<Array<Test_Entry>>?
-  let map_type: Dictionary<String, Test_Entry>?
+  let array_type: [Test_Entry]?
+  let array_of_array_type: [[Test_Entry]]?
+  let map_type: [String: Test_Entry]?
 }
 
 public extension Test_Entry {
@@ -87,19 +87,19 @@ public extension Test_Entry {
       any_type = Optional.some(try decode_name(value, name: "any_type"))
     }
 
-    var array_type: Array<Test_Entry>? = Optional.none
+    var array_type: [Test_Entry]? = Optional.none
 
     if let value = json["array_type"] {
       array_type = Optional.some(try decode_array(value, name: "array_type", inner: { inner in try Test_Entry.decode(json: inner) }))
     }
 
-    var array_of_array_type: Array<Array<Test_Entry>>? = Optional.none
+    var array_of_array_type: [[Test_Entry]]? = Optional.none
 
     if let value = json["array_of_array_type"] {
       array_of_array_type = Optional.some(try decode_array(value, name: "array_of_array_type", inner: { inner in try decode_array(inner, name: "array_of_array_type", inner: { inner in try Test_Entry.decode(json: inner) }) }))
     }
 
-    var map_type: Dictionary<String, Test_Entry>? = Optional.none
+    var map_type: [String: Test_Entry]? = Optional.none
 
     if let value = json["map_type"] {
       map_type = Optional.some(try decode_map(value, name: "map_type", value: { value in try Test_Entry.decode(json: value) }))

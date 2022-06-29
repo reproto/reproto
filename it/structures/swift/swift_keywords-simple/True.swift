@@ -1,5 +1,4 @@
-public struct True_Empty {
-}
+public struct True_Empty {}
 
 public extension True_Empty {
   static func decode(json: Any) throws -> True_Empty {

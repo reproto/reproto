@@ -2,36 +2,29 @@ package test;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import java.util.Objects;
 
 public enum Enum {
-  VARIANT("Variant");
+    Variant("Variant");
 
-  private final String value;
+    String value;
 
-  private Enum(
-    final String value
-  ) {
-    Objects.requireNonNull(value, "value");
-    this.value = value;
-  }
-
-  @JsonCreator
-  public static Enum fromValue(final String value) {
-    for (final Enum v_value : values()) {
-      if (v_value.value.equals(value)) {
-        return v_value;
-      }
+    Enum(final String value) {
+        this.value = value;
     }
 
-    throw new IllegalArgumentException("value");
-  }
+    @JsonCreator
+    public static Enum fromValue(final String value) {
+        for (final Enum v : values()) {
+            if (v.value.equals(value)) {
+                return v;
+            }
+        }
 
-  @JsonValue
-  public String toValue() {
-    return this.value;
-  }
+        throw new IllegalArgumentException("value");
+    }
 
-  public void enumMethod() {
-  }
+    @JsonValue
+    public String toValue() {
+        return this.value;
+    }
 }

@@ -1,4 +1,4 @@
-use serde;
+use serde::{Deserialize, Serialize};
 use serde::de;
 use std::fmt;
 
@@ -34,10 +34,9 @@ pub enum EnumExplicit {
 
 impl EnumExplicit {
   pub fn value(&self) -> &'static str {
-    use self::EnumExplicit::*;
-    match *self {
-      A => "foo",
-      B => "bar",
+    match self {
+      Self::A => "foo",
+      Self::B => "bar",
     }
   }
 }
@@ -51,10 +50,9 @@ pub enum EnumImplicit {
 
 impl EnumImplicit {
   pub fn value(&self) -> &'static str {
-    use self::EnumImplicit::*;
-    match *self {
-      A => "A",
-      B => "B",
+    match self {
+      Self::A => "A",
+      Self::B => "B",
     }
   }
 }
@@ -68,10 +66,9 @@ pub enum EnumLongNames {
 
 impl EnumLongNames {
   pub fn value(&self) -> &'static str {
-    use self::EnumLongNames::*;
-    match *self {
-      FooBar => "FooBar",
-      Baz => "Baz",
+    match self {
+      Self::FooBar => "FooBar",
+      Self::Baz => "Baz",
     }
   }
 }
@@ -84,32 +81,34 @@ pub enum EnumU32 {
 
 impl EnumU32 {
   pub fn value(&self) -> u32 {
-    use self::EnumU32::*;
-    match *self {
-      Min => 0,
-      Max => 2147483647,
+    match self {
+      Self::Min => 0,
+      Self::Max => 2147483647,
     }
   }
 }
 
 impl serde::Serialize for EnumU32 {
   fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where S: serde::Serializer
+  where
+    S: serde::Serializer
   {
-  use self::EnumU32::*;
-    let o = match *self {
-      Min => 0u32,
-      Max => 2147483647u32,
+    let o = match self {
+      EnumU32::Min => 0u32,
+      EnumU32::Max => 2147483647u32,
     };
+
     s.serialize_u32(o)
   }
 }
 
 impl<'de> serde::Deserialize<'de> for EnumU32 {
   fn deserialize<D>(d: D) -> Result<EnumU32, D::Error>
-    where D: serde::Deserializer<'de>
+  where
+    D: serde::Deserializer<'de>
   {
     struct Visitor;
+
     impl<'de> de::Visitor<'de> for Visitor {
       type Value = EnumU32;
 
@@ -146,32 +145,34 @@ pub enum EnumU64 {
 
 impl EnumU64 {
   pub fn value(&self) -> u64 {
-    use self::EnumU64::*;
-    match *self {
-      Min => 0,
-      Max => 9007199254740991,
+    match self {
+      Self::Min => 0,
+      Self::Max => 9007199254740991,
     }
   }
 }
 
 impl serde::Serialize for EnumU64 {
   fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where S: serde::Serializer
+  where
+    S: serde::Serializer
   {
-  use self::EnumU64::*;
-    let o = match *self {
-      Min => 0u64,
-      Max => 9007199254740991u64,
+    let o = match self {
+      EnumU64::Min => 0u64,
+      EnumU64::Max => 9007199254740991u64,
     };
+
     s.serialize_u64(o)
   }
 }
 
 impl<'de> serde::Deserialize<'de> for EnumU64 {
   fn deserialize<D>(d: D) -> Result<EnumU64, D::Error>
-    where D: serde::Deserializer<'de>
+  where
+    D: serde::Deserializer<'de>
   {
     struct Visitor;
+
     impl<'de> de::Visitor<'de> for Visitor {
       type Value = EnumU64;
 
@@ -204,36 +205,38 @@ pub enum EnumI32 {
 
 impl EnumI32 {
   pub fn value(&self) -> i32 {
-    use self::EnumI32::*;
-    match *self {
-      Min => -2147483648,
-      NegativeOne => -1,
-      Zero => 0,
-      Max => 2147483647,
+    match self {
+      Self::Min => -2147483648,
+      Self::NegativeOne => -1,
+      Self::Zero => 0,
+      Self::Max => 2147483647,
     }
   }
 }
 
 impl serde::Serialize for EnumI32 {
   fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where S: serde::Serializer
+  where
+    S: serde::Serializer
   {
-  use self::EnumI32::*;
-    let o = match *self {
-      Min => -2147483648i32,
-      NegativeOne => -1i32,
-      Zero => 0i32,
-      Max => 2147483647i32,
+    let o = match self {
+      EnumI32::Min => -2147483648i32,
+      EnumI32::NegativeOne => -1i32,
+      EnumI32::Zero => 0i32,
+      EnumI32::Max => 2147483647i32,
     };
+
     s.serialize_i32(o)
   }
 }
 
 impl<'de> serde::Deserialize<'de> for EnumI32 {
   fn deserialize<D>(d: D) -> Result<EnumI32, D::Error>
-    where D: serde::Deserializer<'de>
+  where
+    D: serde::Deserializer<'de>
   {
     struct Visitor;
+
     impl<'de> de::Visitor<'de> for Visitor {
       type Value = EnumI32;
 
@@ -280,36 +283,38 @@ pub enum EnumI64 {
 
 impl EnumI64 {
   pub fn value(&self) -> i64 {
-    use self::EnumI64::*;
-    match *self {
-      Min => -9007199254740991,
-      NegativeOne => -1,
-      Zero => 0,
-      Max => 9007199254740991,
+    match self {
+      Self::Min => -9007199254740991,
+      Self::NegativeOne => -1,
+      Self::Zero => 0,
+      Self::Max => 9007199254740991,
     }
   }
 }
 
 impl serde::Serialize for EnumI64 {
   fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where S: serde::Serializer
+  where
+    S: serde::Serializer
   {
-  use self::EnumI64::*;
-    let o = match *self {
-      Min => -9007199254740991i64,
-      NegativeOne => -1i64,
-      Zero => 0i64,
-      Max => 9007199254740991i64,
+    let o = match self {
+      EnumI64::Min => -9007199254740991i64,
+      EnumI64::NegativeOne => -1i64,
+      EnumI64::Zero => 0i64,
+      EnumI64::Max => 9007199254740991i64,
     };
+
     s.serialize_i64(o)
   }
 }
 
 impl<'de> serde::Deserialize<'de> for EnumI64 {
   fn deserialize<D>(d: D) -> Result<EnumI64, D::Error>
-    where D: serde::Deserializer<'de>
+  where
+    D: serde::Deserializer<'de>
   {
     struct Visitor;
+
     impl<'de> de::Visitor<'de> for Visitor {
       type Value = EnumI64;
 

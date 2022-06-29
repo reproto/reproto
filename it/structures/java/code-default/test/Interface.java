@@ -6,58 +6,64 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 @JsonTypeInfo(use=JsonTypeInfo.Id.NAME, include=JsonTypeInfo.As.PROPERTY, property="type")
 @JsonSubTypes({
-  @JsonSubTypes.Type(name="SubType", value=Interface.SubType.class)
+    @JsonSubTypes.Type(name="SubType", value=Interface.SubType.class),
 })
 public interface Interface {
-  public void interfaceMethod();
 
-  public static class SubType implements Interface {
-    @JsonCreator
-    public SubType() {
-    }
+    public void interfaceMethod();
 
-    @Override
-    public int hashCode() {
-      int result = 1;
-      return result;
-    }
+    public static class SubType implements Interface {
 
-    @Override
-    public boolean equals(final Object other) {
-      if (other == null) {
-        return false;
-      }
+        @JsonCreator
+        public SubType() {}
 
-      if (!(other instanceof SubType)) {
-        return false;
-      }
+        @Override
+        public String toString() {
+            return "SubType()";
+        }
 
-      @SuppressWarnings("unchecked")
-      final SubType o = (SubType) other;
+        @Override
+        public int hashCode() {
+            int result = 1;
+            final StringBuilder b = new StringBuilder();
+            return result;
+        }
 
-      return true;
-    }
+        @Override
+        public boolean equals(final Object other_) {
+            if (other_ == null) {
+                return false;
+            }
 
-    @Override
-    public String toString() {
-      final StringBuilder b = new StringBuilder();
+            if (!(other_ instanceof SubType)) {
+                return false;
+            }
 
-      b.append("SubType");
-      b.append("(");
-      b.append(")");
+            @SuppressWarnings("unchecked")
+            final SubType o_ = (SubType)other_;
 
-      return b.toString();
-    }
+            return true;
+        }
 
-    @Override
-    public void interfaceMethod() {
-    }
+        public static class Builder {
 
-    public static class Builder {
-      public SubType build() {
+            private Builder() {}
 
-        return new SubType();
-      }
-    }
-  }
+            public SubType build() {
+
+                return new SubType();
+            }
+        }
+
+        /**
+         * Construct a new builder.
+         */
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        @Override
+        public void interfaceMethod() {
+        }
+    };
 }

@@ -18,7 +18,6 @@ public extension Test_Entry {
     if let value = json["tuple2"] {
       tuple2 = Optional.some(try Test_Tuple2.decode(json: value))
     }
-
     return Test_Entry(tuple1: tuple1, tuple2: tuple2)
   }
 
@@ -28,6 +27,7 @@ public extension Test_Entry {
     if let value = self.tuple1 {
       json["tuple1"] = try value.encode()
     }
+
     if let value = self.tuple2 {
       json["tuple2"] = try value.encode()
     }
@@ -41,6 +41,7 @@ public struct Test_Tuple1 {
   let a: String
   let b: UInt64
 }
+
 public extension Test_Tuple1 {
   static func decode(json: Any) throws -> Test_Tuple1 {
     let json = try decode_value(json as? [Any])
@@ -56,6 +57,7 @@ public extension Test_Tuple1 {
     }
 
     let b = try decode_name(unbox(f_b, as: UInt64.self), name: "[1]")
+
     return Test_Tuple1(a: a, b: b)
   }
 
@@ -74,6 +76,7 @@ public struct Test_Tuple2 {
   let a: String
   let b: Test_Other
 }
+
 public extension Test_Tuple2 {
   static func decode(json: Any) throws -> Test_Tuple2 {
     let json = try decode_value(json as? [Any])
@@ -89,6 +92,7 @@ public extension Test_Tuple2 {
     }
 
     let b = try Test_Other.decode(json: f_b)
+
     return Test_Tuple2(a: a, b: b)
   }
 
@@ -116,7 +120,6 @@ public extension Test_Other {
     }
 
     let a = try decode_name(unbox(f_a, as: String.self), name: "a")
-
     return Test_Other(a: a)
   }
 

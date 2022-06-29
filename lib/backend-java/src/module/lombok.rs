@@ -35,7 +35,7 @@ impl Lombok {
 impl class::Codegen for Lombok {
     fn generate(&self, e: class::Args<'_>) {
         e.annotations.push(quote! {
-            @#(&*self.data)
+            @$(&*self.data)
         });
     }
 }

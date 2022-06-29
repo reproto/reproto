@@ -2,34 +2,33 @@ package test;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import java.util.Objects;
 
+/**
+ * Explicitly assigned strings
+ */
 public enum EnumExplicit {
-  A("foo"),
-  B("bar");
+    A("foo"),
+    B("bar");
 
-  private final String value;
+    String value;
 
-  private EnumExplicit(
-    final String value
-  ) {
-    Objects.requireNonNull(value, "value");
-    this.value = value;
-  }
-
-  @JsonCreator
-  public static EnumExplicit fromValue(final String value) {
-    for (final EnumExplicit v_value : values()) {
-      if (v_value.value.equals(value)) {
-        return v_value;
-      }
+    EnumExplicit(final String value) {
+        this.value = value;
     }
 
-    throw new IllegalArgumentException("value");
-  }
+    @JsonCreator
+    public static EnumExplicit fromValue(final String value) {
+        for (final EnumExplicit v : values()) {
+            if (v.value.equals(value)) {
+                return v;
+            }
+        }
 
-  @JsonValue
-  public String toValue() {
-    return this.value;
-  }
+        throw new IllegalArgumentException("value");
+    }
+
+    @JsonValue
+    public String toValue() {
+        return this.value;
+    }
 }

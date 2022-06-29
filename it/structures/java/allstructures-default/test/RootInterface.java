@@ -14,386 +14,375 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.io.IOException;
-import java.util.Objects;
 
 @JsonTypeInfo(use=JsonTypeInfo.Id.NAME, include=JsonTypeInfo.As.PROPERTY, property="type")
 @JsonSubTypes({
-  @JsonSubTypes.Type(name="Foo", value=RootInterface.Foo.class)
+    @JsonSubTypes.Type(name="Foo", value=RootInterface.Foo.class),
 })
 public interface RootInterface {
-  public static class Foo implements RootInterface {
-    @JsonCreator
-    public Foo() {
-    }
 
-    @Override
-    public int hashCode() {
-      int result = 1;
-      return result;
-    }
+    public static class Foo implements RootInterface {
 
-    @Override
-    public boolean equals(final Object other) {
-      if (other == null) {
-        return false;
-      }
-
-      if (!(other instanceof Foo)) {
-        return false;
-      }
-
-      @SuppressWarnings("unchecked")
-      final Foo o = (Foo) other;
-
-      return true;
-    }
-
-    @Override
-    public String toString() {
-      final StringBuilder b = new StringBuilder();
-
-      b.append("Foo");
-      b.append("(");
-      b.append(")");
-
-      return b.toString();
-    }
-
-    public static class Builder {
-      public Foo build() {
-
-        return new Foo();
-      }
-    }
-
-    public static class NestedType {
-      @JsonCreator
-      public NestedType() {
-      }
-
-      @Override
-      public int hashCode() {
-        int result = 1;
-        return result;
-      }
-
-      @Override
-      public boolean equals(final Object other) {
-        if (other == null) {
-          return false;
-        }
-
-        if (!(other instanceof NestedType)) {
-          return false;
-        }
-
-        @SuppressWarnings("unchecked")
-        final NestedType o = (NestedType) other;
-
-        return true;
-      }
-
-      @Override
-      public String toString() {
-        final StringBuilder b = new StringBuilder();
-
-        b.append("NestedType");
-        b.append("(");
-        b.append(")");
-
-        return b.toString();
-      }
-
-      public static class Builder {
-        public NestedType build() {
-
-          return new NestedType();
-        }
-      }
-    }
-
-    @JsonTypeInfo(use=JsonTypeInfo.Id.NAME, include=JsonTypeInfo.As.PROPERTY, property="type")
-    @JsonSubTypes({
-      @JsonSubTypes.Type(name="NestedFoo", value=NestedInterface.NestedFoo.class)
-    })
-    public interface NestedInterface {
-      public static class NestedFoo implements NestedInterface {
         @JsonCreator
-        public NestedFoo() {
+        public Foo() {}
+
+        @Override
+        public String toString() {
+            return "Foo()";
         }
 
         @Override
         public int hashCode() {
-          int result = 1;
-          return result;
-        }
-
-        @Override
-        public boolean equals(final Object other) {
-          if (other == null) {
-            return false;
-          }
-
-          if (!(other instanceof NestedFoo)) {
-            return false;
-          }
-
-          @SuppressWarnings("unchecked")
-          final NestedFoo o = (NestedFoo) other;
-
-          return true;
-        }
-
-        @Override
-        public String toString() {
-          final StringBuilder b = new StringBuilder();
-
-          b.append("NestedFoo");
-          b.append("(");
-          b.append(")");
-
-          return b.toString();
-        }
-
-        public static class Builder {
-          public NestedFoo build() {
-
-            return new NestedFoo();
-          }
-        }
-
-        public static class Nested {
-          @JsonCreator
-          public Nested() {
-          }
-
-          @Override
-          public int hashCode() {
             int result = 1;
+            final StringBuilder b = new StringBuilder();
             return result;
-          }
+        }
 
-          @Override
-          public boolean equals(final Object other) {
-            if (other == null) {
-              return false;
+        @Override
+        public boolean equals(final Object other_) {
+            if (other_ == null) {
+                return false;
             }
 
-            if (!(other instanceof Nested)) {
-              return false;
+            if (!(other_ instanceof Foo)) {
+                return false;
             }
 
             @SuppressWarnings("unchecked")
-            final Nested o = (Nested) other;
+            final Foo o_ = (Foo)other_;
 
             return true;
-          }
+        }
 
-          @Override
-          public String toString() {
-            final StringBuilder b = new StringBuilder();
+        public static class Builder {
 
-            b.append("Nested");
-            b.append("(");
-            b.append(")");
+            private Builder() {}
 
-            return b.toString();
-          }
+            public Foo build() {
 
-          public static class Builder {
-            public Nested build() {
-
-              return new Nested();
+                return new Foo();
             }
-          }
-        }
-      }
-    }
-
-    public static enum NestedEnum {
-      FOO("Foo");
-
-      private final String value;
-
-      private NestedEnum(
-        final String value
-      ) {
-        Objects.requireNonNull(value, "value");
-        this.value = value;
-      }
-
-      @JsonCreator
-      public static NestedEnum fromValue(final String value) {
-        for (final NestedEnum v_value : values()) {
-          if (v_value.value.equals(value)) {
-            return v_value;
-          }
         }
 
-        throw new IllegalArgumentException("value");
-      }
-
-      @JsonValue
-      public String toValue() {
-        return this.value;
-      }
-    }
-
-    @JsonSerialize(using = NestedTuple.Serializer.class)
-    @JsonDeserialize(using = NestedTuple.Deserializer.class)
-    public static class NestedTuple {
-      public NestedTuple() {
-      }
-
-      @Override
-      public int hashCode() {
-        int result = 1;
-        return result;
-      }
-
-      @Override
-      public boolean equals(final Object other) {
-        if (other == null) {
-          return false;
+        /**
+         * Construct a new builder.
+         */
+        public static Builder builder() {
+            return new Builder();
         }
 
-        if (!(other instanceof NestedTuple)) {
-          return false;
+        public static class NestedType {
+
+            @JsonCreator
+            public NestedType() {}
+
+            @Override
+            public String toString() {
+                return "NestedType()";
+            }
+
+            @Override
+            public int hashCode() {
+                int result = 1;
+                final StringBuilder b = new StringBuilder();
+                return result;
+            }
+
+            @Override
+            public boolean equals(final Object other_) {
+                if (other_ == null) {
+                    return false;
+                }
+
+                if (!(other_ instanceof NestedType)) {
+                    return false;
+                }
+
+                @SuppressWarnings("unchecked")
+                final NestedType o_ = (NestedType)other_;
+
+                return true;
+            }
+
+            public static class Builder {
+
+                private Builder() {}
+
+                public NestedType build() {
+
+                    return new NestedType();
+                }
+            }
+
+            /**
+             * Construct a new builder.
+             */
+            public static Builder builder() {
+                return new Builder();
+            }
         }
 
-        @SuppressWarnings("unchecked")
-        final NestedTuple o = (NestedTuple) other;
+        @JsonTypeInfo(use=JsonTypeInfo.Id.NAME, include=JsonTypeInfo.As.PROPERTY, property="type")
+        @JsonSubTypes({
+            @JsonSubTypes.Type(name="NestedFoo", value=NestedInterface.NestedFoo.class),
+        })
+        public static interface NestedInterface {
 
-        return true;
-      }
+            public static class NestedFoo implements NestedInterface {
 
-      @Override
-      public String toString() {
-        final StringBuilder b = new StringBuilder();
+                @JsonCreator
+                public NestedFoo() {}
 
-        b.append("NestedTuple");
-        b.append("(");
-        b.append(")");
+                @Override
+                public String toString() {
+                    return "NestedFoo()";
+                }
 
-        return b.toString();
-      }
+                @Override
+                public int hashCode() {
+                    int result = 1;
+                    final StringBuilder b = new StringBuilder();
+                    return result;
+                }
 
-      public static class Serializer extends JsonSerializer<NestedTuple> {
-        @Override
-        public void serialize(final NestedTuple value, final JsonGenerator jgen, final SerializerProvider provider) throws IOException {
-          jgen.writeStartArray();
-          jgen.writeEndArray();
-        }
-      }
+                @Override
+                public boolean equals(final Object other_) {
+                    if (other_ == null) {
+                        return false;
+                    }
 
-      public static class Deserializer extends JsonDeserializer<NestedTuple> {
-        @Override
-        public NestedTuple deserialize(final JsonParser parser, final DeserializationContext ctxt) throws IOException {
-          if (parser.getCurrentToken() != JsonToken.START_ARRAY) {
-            throw ctxt.wrongTokenException(parser, JsonToken.START_ARRAY, null);
-          }
+                    if (!(other_ instanceof NestedFoo)) {
+                        return false;
+                    }
 
-          if (parser.nextToken() != JsonToken.END_ARRAY) {
-            throw ctxt.wrongTokenException(parser, JsonToken.END_ARRAY, null);
-          }
+                    @SuppressWarnings("unchecked")
+                    final NestedFoo o_ = (NestedFoo)other_;
 
-          return new NestedTuple();
-        }
-      }
+                    return true;
+                }
 
-      public static class Nested {
-        @JsonCreator
-        public Nested() {
-        }
+                public static class Builder {
 
-        @Override
-        public int hashCode() {
-          int result = 1;
-          return result;
-        }
+                    private Builder() {}
 
-        @Override
-        public boolean equals(final Object other) {
-          if (other == null) {
-            return false;
-          }
+                    public NestedFoo build() {
 
-          if (!(other instanceof Nested)) {
-            return false;
-          }
+                        return new NestedFoo();
+                    }
+                }
 
-          @SuppressWarnings("unchecked")
-          final Nested o = (Nested) other;
+                /**
+                 * Construct a new builder.
+                 */
+                public static Builder builder() {
+                    return new Builder();
+                }
 
-          return true;
-        }
+                public static class Nested {
 
-        @Override
-        public String toString() {
-          final StringBuilder b = new StringBuilder();
+                    @JsonCreator
+                    public Nested() {}
 
-          b.append("Nested");
-          b.append("(");
-          b.append(")");
+                    @Override
+                    public String toString() {
+                        return "Nested()";
+                    }
 
-          return b.toString();
-        }
+                    @Override
+                    public int hashCode() {
+                        int result = 1;
+                        final StringBuilder b = new StringBuilder();
+                        return result;
+                    }
 
-        public static class Builder {
-          public Nested build() {
+                    @Override
+                    public boolean equals(final Object other_) {
+                        if (other_ == null) {
+                            return false;
+                        }
 
-            return new Nested();
-          }
-        }
-      }
-    }
+                        if (!(other_ instanceof Nested)) {
+                            return false;
+                        }
 
-    public static interface NestedService {
-      public static class Nested {
-        @JsonCreator
-        public Nested() {
-        }
+                        @SuppressWarnings("unchecked")
+                        final Nested o_ = (Nested)other_;
 
-        @Override
-        public int hashCode() {
-          int result = 1;
-          return result;
-        }
+                        return true;
+                    }
 
-        @Override
-        public boolean equals(final Object other) {
-          if (other == null) {
-            return false;
-          }
+                    public static class Builder {
 
-          if (!(other instanceof Nested)) {
-            return false;
-          }
+                        private Builder() {}
 
-          @SuppressWarnings("unchecked")
-          final Nested o = (Nested) other;
+                        public Nested build() {
 
-          return true;
+                            return new Nested();
+                        }
+                    }
+
+                    /**
+                     * Construct a new builder.
+                     */
+                    public static Builder builder() {
+                        return new Builder();
+                    }
+                }
+            };
         }
 
-        @Override
-        public String toString() {
-          final StringBuilder b = new StringBuilder();
+        public static enum NestedEnum {
+            Foo("Foo");
 
-          b.append("Nested");
-          b.append("(");
-          b.append(")");
+            String value;
 
-          return b.toString();
+            NestedEnum(final String value) {
+                this.value = value;
+            }
+
+            @JsonCreator
+            public static NestedEnum fromValue(final String value) {
+                for (final NestedEnum v : values()) {
+                    if (v.value.equals(value)) {
+                        return v;
+                    }
+                }
+
+                throw new IllegalArgumentException("value");
+            }
+
+            @JsonValue
+            public String toValue() {
+                return this.value;
+            }
         }
 
-        public static class Builder {
-          public Nested build() {
+        @JsonSerialize(using = NestedTuple.Serializer.class)
+        @JsonDeserialize(using = NestedTuple.Deserializer.class)
+        public static class NestedTuple {
 
-            return new Nested();
-          }
+            @JsonCreator
+            public NestedTuple() {}
+
+            @Override
+            public String toString() {
+                return "NestedTuple()";
+            }
+
+            @Override
+            public int hashCode() {
+                int result = 1;
+                final StringBuilder b = new StringBuilder();
+                return result;
+            }
+
+            @Override
+            public boolean equals(final Object other_) {
+                if (other_ == null) {
+                    return false;
+                }
+
+                if (!(other_ instanceof NestedTuple)) {
+                    return false;
+                }
+
+                @SuppressWarnings("unchecked")
+                final NestedTuple o_ = (NestedTuple)other_;
+
+                return true;
+            }
+
+            public static class Builder {
+
+                private Builder() {}
+
+                public NestedTuple build() {
+
+                    return new NestedTuple();
+                }
+            }
+
+            /**
+             * Construct a new builder.
+             */
+            public static Builder builder() {
+                return new Builder();
+            }
+
+            public static class Serializer extends JsonSerializer<NestedTuple> {
+                @Override
+                public void serialize(final NestedTuple value_, final JsonGenerator gen_, final SerializerProvider provider_) throws IOException {
+                    gen_.writeStartArray();
+
+                    gen_.writeEndArray();
+                }
+            }
+
+            public static class Deserializer extends JsonDeserializer<NestedTuple> {
+                @Override
+                public NestedTuple deserialize(final JsonParser parser_, final DeserializationContext ctxt_) throws IOException {
+                    if (parser_.getCurrentToken() != JsonToken.START_ARRAY) {
+                        throw ctxt_.wrongTokenException(parser_, JsonToken.START_ARRAY, null);
+                    }
+
+                    if (parser_.nextToken() != JsonToken.END_ARRAY) {
+                        throw ctxt_.wrongTokenException(parser_, JsonToken.END_ARRAY, null);
+                    }
+
+                    return new NestedTuple();
+                }
+            }
+
+            public static class Nested {
+
+                @JsonCreator
+                public Nested() {}
+
+                @Override
+                public String toString() {
+                    return "Nested()";
+                }
+
+                @Override
+                public int hashCode() {
+                    int result = 1;
+                    final StringBuilder b = new StringBuilder();
+                    return result;
+                }
+
+                @Override
+                public boolean equals(final Object other_) {
+                    if (other_ == null) {
+                        return false;
+                    }
+
+                    if (!(other_ instanceof Nested)) {
+                        return false;
+                    }
+
+                    @SuppressWarnings("unchecked")
+                    final Nested o_ = (Nested)other_;
+
+                    return true;
+                }
+
+                public static class Builder {
+
+                    private Builder() {}
+
+                    public Nested build() {
+
+                        return new Nested();
+                    }
+                }
+
+                /**
+                 * Construct a new builder.
+                 */
+                public static Builder builder() {
+                    return new Builder();
+                }
+            }
         }
-      }
-    }
-  }
+    };
 }

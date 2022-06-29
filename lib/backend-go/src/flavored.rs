@@ -83,19 +83,19 @@ impl<'a> FormatInto<Go> for &'a Type {
                 quote_in!(*t => string);
             }
             Type::Array { argument } => {
-                quote_in!(*t => []#(&**argument));
+                quote_in!(*t => []$(&**argument));
             }
             Type::Map { key, value } => {
-                quote_in!(*t => map[#(&**key)]#(&**value));
+                quote_in!(*t => map[$(&**key)]$(&**value));
             }
             Type::Interface => {
                 quote_in!(*t => interface{});
             }
             Type::Import { import } => {
-                quote_in!(*t => #import);
+                quote_in!(*t => $import);
             }
             Type::Local { ident } => {
-                quote_in!(*t => #ident);
+                quote_in!(*t => $ident);
             }
         }
     }

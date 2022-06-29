@@ -6,51 +6,56 @@ import java.util.List;
 import java.util.Map;
 
 public class Type {
-  @JsonCreator
-  public Type() {
-  }
 
-  @Override
-  public int hashCode() {
-    int result = 1;
-    return result;
-  }
+    @JsonCreator
+    public Type() {}
 
-  @Override
-  public boolean equals(final Object other) {
-    if (other == null) {
-      return false;
+    @Override
+    public String toString() {
+        return "Type()";
     }
 
-    if (!(other instanceof Type)) {
-      return false;
+    @Override
+    public int hashCode() {
+        int result = 1;
+        final StringBuilder b = new StringBuilder();
+        return result;
     }
 
-    @SuppressWarnings("unchecked")
-    final Type o = (Type) other;
+    @Override
+    public boolean equals(final Object other_) {
+        if (other_ == null) {
+            return false;
+        }
 
-    return true;
-  }
+        if (!(other_ instanceof Type)) {
+            return false;
+        }
 
-  @Override
-  public String toString() {
-    final StringBuilder b = new StringBuilder();
+        @SuppressWarnings("unchecked")
+        final Type o_ = (Type)other_;
 
-    b.append("Type");
-    b.append("(");
-    b.append(")");
-
-    return b.toString();
-  }
-
-  public List<Map<String, String>> typeMethod() {
-    return new ArrayList<>();
-  }
-
-  public static class Builder {
-    public Type build() {
-
-      return new Type();
+        return true;
     }
-  }
+
+    public static class Builder {
+
+        private Builder() {}
+
+        public Type build() {
+
+            return new Type();
+        }
+    }
+
+    /**
+     * Construct a new builder.
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public List<Map<String, String>> typeMethod() {
+      return new ArrayList<>();
+    }
 }

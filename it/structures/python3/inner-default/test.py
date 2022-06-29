@@ -1,15 +1,23 @@
 class Entry:
-  def __init__(self, _a, _b):
-    self._a = _a
-    self._b = _b
+  def __init__(self, a, b):
+    self.__a = a
+    self.__b = b
 
   @property
   def a(self):
-    return self._a
+    return self.__a
+
+  @a.setter
+  def a(self, a):
+    self.__a = a
 
   @property
   def b(self):
-    return self._b
+    return self.__b
+
+  @b.setter
+  def b(self, b):
+    self.__b = b
 
   @staticmethod
   def decode(data):
@@ -34,24 +42,28 @@ class Entry:
   def encode(self):
     data = dict()
 
-    if self._a is not None:
-      data["a"] = self._a.encode()
+    if self.a is not None:
+      data["a"] = self.a.encode()
 
-    if self._b is not None:
-      data["b"] = self._b.encode()
+    if self.b is not None:
+      data["b"] = self.b.encode()
 
     return data
 
   def __repr__(self):
-    return "<Entry a:{!r}, b:{!r}>".format(self._a, self._b)
+    return "<Entry a:{!r}, b:{!r}>".format(self.a, self.b)
 
 class A:
-  def __init__(self, _b):
-    self._b = _b
+  def __init__(self, b):
+    self.__b = b
 
   @property
   def b(self):
-    return self._b
+    return self.__b
+
+  @b.setter
+  def b(self, b):
+    self.__b = b
 
   @staticmethod
   def decode(data):
@@ -64,23 +76,27 @@ class A:
   def encode(self):
     data = dict()
 
-    if self._b is None:
-      raise Exception("b: is a required field")
+    if self.b is None:
+      raise Exception("missing required field: b")
 
-    data["b"] = self._b.encode()
+    data["b"] = self.b.encode()
 
     return data
 
   def __repr__(self):
-    return "<A b:{!r}>".format(self._b)
+    return "<A b:{!r}>".format(self.b)
 
 class A_B:
-  def __init__(self, _field):
-    self._field = _field
+  def __init__(self, field):
+    self.__field = field
 
   @property
   def field(self):
-    return self._field
+    return self.__field
+
+  @field.setter
+  def field(self, field):
+    self.__field = field
 
   @staticmethod
   def decode(data):
@@ -94,12 +110,12 @@ class A_B:
   def encode(self):
     data = dict()
 
-    if self._field is None:
-      raise Exception("field: is a required field")
+    if self.field is None:
+      raise Exception("missing required field: field")
 
-    data["field"] = self._field
+    data["field"] = self.field
 
     return data
 
   def __repr__(self):
-    return "<A_B field:{!r}>".format(self._field)
+    return "<A_B field:{!r}>".format(self.field)

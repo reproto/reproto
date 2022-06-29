@@ -6,84 +6,91 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class Foo {
-  /**
-   * <pre>
-   * The field.
-   * </pre>
-   */
-  @JsonProperty("field")
-  private final String field;
+    @JsonProperty("field")
+    final String field;
 
-  @JsonCreator
-  public Foo(
-    @JsonProperty("field") final String field
-  ) {
-    Objects.requireNonNull(field, "field");
-    this.field = field;
-  }
-
-  /**
-   * <pre>
-   * The field.
-   * </pre>
-   */
-  @JsonProperty("field")
-  public String getField() {
-    return this.field;
-  }
-
-  @Override
-  public int hashCode() {
-    int result = 1;
-    result = result * 31 + this.field.hashCode();
-    return result;
-  }
-
-  @Override
-  public boolean equals(final Object other) {
-    if (other == null) {
-      return false;
+    @JsonCreator
+    public Foo(
+        @JsonProperty("field") String field
+    ) {
+        Objects.requireNonNull(field, "field: must not be null");
+        this.field = field;
     }
 
-    if (!(other instanceof Foo)) {
-      return false;
+    /**
+     * The field.
+     */
+    @JsonProperty("field")
+    public String getField() {
+        return this.field;
     }
 
-    @SuppressWarnings("unchecked")
-    final Foo o = (Foo) other;
+    @Override
+    public String toString() {
+        final StringBuilder b = new StringBuilder();
 
-    if (!this.field.equals(o.field)) {
-      return false;
+        b.append("Foo(");
+        b.append("field=");
+        b.append(this.field.toString());
+        b.append(")");
+
+        return b.toString();
     }
 
-    return true;
-  }
-
-  @Override
-  public String toString() {
-    final StringBuilder b = new StringBuilder();
-
-    b.append("Foo");
-    b.append("(");
-    b.append("field=");
-    b.append(this.field.toString());
-    b.append(")");
-
-    return b.toString();
-  }
-
-  public static class Builder {
-    private Optional<String> field = Optional.empty();
-
-    public Builder field(final String field) {
-      this.field = Optional.of(field);
-      return this;
+    @Override
+    public int hashCode() {
+        int result = 1;
+        final StringBuilder b = new StringBuilder();
+        result = result * 31 + this.field.hashCode();
+        return result;
     }
 
-    public Foo build() {
-      final String field = this.field.orElseThrow(() -> new RuntimeException("field: is required"));
+    @Override
+    public boolean equals(final Object other_) {
+        if (other_ == null) {
+            return false;
+        }
 
-      return new Foo(field);
+        if (!(other_ instanceof Foo)) {
+            return false;
+        }
+
+        @SuppressWarnings("unchecked")
+        final Foo o_ = (Foo)other_;
+
+        if (!this.field.equals(o_.field)) {
+            return false;
+        }
+
+        return true;
     }
-  }
+
+    public static class Builder {
+        private Optional<String> field;
+
+        private Builder() {
+            this.field = Optional.empty();
+        }
+
+        public Foo build() {
+            final String field = this.field
+                .orElseThrow(() -> new RuntimeException("field: missing required value"));
+
+            return new Foo(
+                field
+            );
+        }
+
+        public Builder field(final String field) {
+            this.field = Optional.of(field);
+            return this;
+        }
+    }
+
+    /**
+     * Construct a new builder.
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
 }

@@ -54,21 +54,21 @@ impl<'a> Compiler<'a> {
         let extends = match (extends, &self.opt.struct_model_extends) {
             (false, _) => None,
             (true, extends) if extends.is_empty() => None,
-            (true, extends) => Some(quote!(: #(for e in extends join (, ) => #e))),
+            (true, extends) => Some(quote!(: $(for e in extends join (, ) => $e))),
         };
 
         let mut container = Vec::new();
         self.opt.gen.struct_model_added(&mut container, fields);
 
         quote_in! { *t =>
-            #(Comments(comment))
-            public struct #(&name.name)#extends {
-                #(for field in fields join (#<push>) {
-                    #(Comments(&field.comment))
-                    let #(field.safe_ident()): #(field.field_type())
+            $(Comments(comment))
+            public struct $(&name.name)$extends {
+                $(for field in fields join ($['\r']) {
+                    $(Comments(&field.comment))
+                    let $(field.safe_ident()): $(field.field_type())
                 })
 
-                #(for c in container join (#<line>) => #c)
+                $(for c in container join ($['\n']) => $c)
             }
         };
 
@@ -170,7 +170,7 @@ impl<'a> PackageProcessor<'a, SwiftFlavor> for Compiler<'a> {
             .tuple_added(&mut containers, &body.name, &body.fields);
 
         quote_in! { *out =>
-            #(ref o => self.model_struct(
+            $(ref o => self.model_struct(
                 o,
                 &body.name,
                 &body.comment,
@@ -178,7 +178,7 @@ impl<'a> PackageProcessor<'a, SwiftFlavor> for Compiler<'a> {
                 false,
             )?)
 
-            #(for c in containers join (#<line>) => #c)
+            $(for c in containers join ($['\n']) => $c)
         }
 
         Ok(())
@@ -189,14 +189,14 @@ impl<'a> PackageProcessor<'a, SwiftFlavor> for Compiler<'a> {
         self.opt.gen.enum_added(&mut containers, &body.name, body);
 
         quote_in! { *out =>
-            public enum #(&body.name.name) {
-                #(for v in &body.variants join (#<push>) {
-                    #(Comments(v.comment))
-                    case #(v.ident())
+            public enum $(&body.name.name) {
+                $(for v in &body.variants join ($['\r']) {
+                    $(Comments(v.comment))
+                    case $(v.ident())
                 })
             }
 
-            #(for c in containers join (#<line>) => #c)
+            $(for c in containers join ($['\n']) => $c)
         }
 
         Ok(())
@@ -210,18 +210,18 @@ impl<'a> PackageProcessor<'a, SwiftFlavor> for Compiler<'a> {
         self.opt.gen.interface_added(&mut extra, &body.name, body);
 
         quote_in! { *out =>
-            #(Comments(&body.comment))
-            public enum #(body.name.name.clone()) {
-                #(for sub_type in &body.sub_types join (#<push>) {
-                    case #(&sub_type.ident)(#(sub_type.name.name.clone()))
+            $(Comments(&body.comment))
+            public enum $(body.name.name.clone()) {
+                $(for sub_type in &body.sub_types join ($['\r']) {
+                    case $(&sub_type.ident)($(sub_type.name.name.clone()))
                 })
 
-                #(for c in inner join (#<line>) => #c)
+                $(for c in inner join ($['\n']) => $c)
             }
 
-            #(for c in extra join (#<line>) => #c)
+            $(for c in extra join ($['\n']) => $c)
 
-            #(ref o => for sub_type in &body.sub_types {
+            $(ref o => for sub_type in &body.sub_types {
                 let fields = body
                     .fields
                     .iter()

@@ -9,40 +9,43 @@ class Entry {
   upper_camel.Value upperCamel;
   upper_snake.Value upperSnake;
 
-  Entry(
-    this.lowerCamel,
-    this.lowerSnake,
-    this.upperCamel,
-    this.upperSnake
-  );
+  Entry(this.lowerCamel, this.lowerSnake, this.upperCamel, this.upperSnake);
 
-  static Entry decode(dynamic _dataDyn) {
-    if (!(_dataDyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
+  static Entry decode(dynamic data) {
+    if (!(data is Map<String, dynamic>)) {
+      throw "expected Map<String, dynamic> but got $data";
     }
 
-    Map<String, dynamic> _data = _dataDyn;
+    Map<String, dynamic> _data = data;
 
     var lowerCamel_dyn = _data["lower_camel"];
+
     lower_camel.Value lowerCamel = null;
+
     if (lowerCamel_dyn != null) {
       lowerCamel = lower_camel.Value.decode(lowerCamel_dyn);
     }
 
     var lowerSnake_dyn = _data["lower_snake"];
+
     lower_snake.Value lowerSnake = null;
+
     if (lowerSnake_dyn != null) {
       lowerSnake = lower_snake.Value.decode(lowerSnake_dyn);
     }
 
     var upperCamel_dyn = _data["upper_camel"];
+
     upper_camel.Value upperCamel = null;
+
     if (upperCamel_dyn != null) {
       upperCamel = upper_camel.Value.decode(upperCamel_dyn);
     }
 
     var upperSnake_dyn = _data["upper_snake"];
+
     upper_snake.Value upperSnake = null;
+
     if (upperSnake_dyn != null) {
       upperSnake = upper_snake.Value.decode(upperSnake_dyn);
     }

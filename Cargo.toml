@@ -40,3 +40,6 @@ exclude = [
   "eval",
   "examples",
 ]
+
+[patch.crates-io]
+genco = {path = "../genco"}

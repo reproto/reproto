@@ -1,2 +1,1 @@
-public struct True_Empty: Codable {
-}
+public struct True_Empty: Codable {}

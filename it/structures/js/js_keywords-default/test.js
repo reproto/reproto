@@ -1,4 +1,4 @@
-import * as t from "true.js";
+import {Empty as t} from "true.js";
 
 export class Entry {
   constructor(_abstract, _await, _boolean, _break, _byte, _case, _catch, _char, _class, _const, _continue, _debugger, _default, _delete, _do, _double, _else, _enum, _export, _extends, _false, _final, _finally, _float, _for, _function, _goto, _if, _implements, _import, imported, _in, _instanceof, _int, _interface, _let, _long, _native, _new, _package, _private, _protected, _public, _return, _short, _static, _super, _switch, _synchronized, _this, _throw, _throws, _transient, _true, _try, _typeof, _var, _void, _volatile, _while, _with, _yield) {
@@ -70,7 +70,9 @@ export class Entry {
     let v_abstract = data["abstract"];
 
     if (v_abstract !== null && v_abstract !== undefined) {
-      v_abstract = v_abstract;
+      if (typeof v_abstract !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_abstract = null;
     }
@@ -78,7 +80,9 @@ export class Entry {
     let v_await = data["await"];
 
     if (v_await !== null && v_await !== undefined) {
-      v_await = v_await;
+      if (typeof v_await !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_await = null;
     }
@@ -86,7 +90,9 @@ export class Entry {
     let v_boolean = data["boolean"];
 
     if (v_boolean !== null && v_boolean !== undefined) {
-      v_boolean = v_boolean;
+      if (typeof v_boolean !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_boolean = null;
     }
@@ -94,7 +100,9 @@ export class Entry {
     let v_break = data["break"];
 
     if (v_break !== null && v_break !== undefined) {
-      v_break = v_break;
+      if (typeof v_break !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_break = null;
     }
@@ -102,7 +110,9 @@ export class Entry {
     let v_byte = data["byte"];
 
     if (v_byte !== null && v_byte !== undefined) {
-      v_byte = v_byte;
+      if (typeof v_byte !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_byte = null;
     }
@@ -110,7 +120,9 @@ export class Entry {
     let v_case = data["case"];
 
     if (v_case !== null && v_case !== undefined) {
-      v_case = v_case;
+      if (typeof v_case !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_case = null;
     }
@@ -118,7 +130,9 @@ export class Entry {
     let v_catch = data["catch"];
 
     if (v_catch !== null && v_catch !== undefined) {
-      v_catch = v_catch;
+      if (typeof v_catch !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_catch = null;
     }
@@ -126,7 +140,9 @@ export class Entry {
     let v_char = data["char"];
 
     if (v_char !== null && v_char !== undefined) {
-      v_char = v_char;
+      if (typeof v_char !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_char = null;
     }
@@ -134,7 +150,9 @@ export class Entry {
     let v_class = data["class"];
 
     if (v_class !== null && v_class !== undefined) {
-      v_class = v_class;
+      if (typeof v_class !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_class = null;
     }
@@ -142,7 +160,9 @@ export class Entry {
     let v_const = data["const"];
 
     if (v_const !== null && v_const !== undefined) {
-      v_const = v_const;
+      if (typeof v_const !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_const = null;
     }
@@ -150,7 +170,9 @@ export class Entry {
     let v_continue = data["continue"];
 
     if (v_continue !== null && v_continue !== undefined) {
-      v_continue = v_continue;
+      if (typeof v_continue !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_continue = null;
     }
@@ -158,7 +180,9 @@ export class Entry {
     let v_debugger = data["debugger"];
 
     if (v_debugger !== null && v_debugger !== undefined) {
-      v_debugger = v_debugger;
+      if (typeof v_debugger !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_debugger = null;
     }
@@ -166,7 +190,9 @@ export class Entry {
     let v_default = data["default"];
 
     if (v_default !== null && v_default !== undefined) {
-      v_default = v_default;
+      if (typeof v_default !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_default = null;
     }
@@ -174,7 +200,9 @@ export class Entry {
     let v_delete = data["delete"];
 
     if (v_delete !== null && v_delete !== undefined) {
-      v_delete = v_delete;
+      if (typeof v_delete !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_delete = null;
     }
@@ -182,7 +210,9 @@ export class Entry {
     let v_do = data["do"];
 
     if (v_do !== null && v_do !== undefined) {
-      v_do = v_do;
+      if (typeof v_do !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_do = null;
     }
@@ -190,7 +220,9 @@ export class Entry {
     let v_double = data["double"];
 
     if (v_double !== null && v_double !== undefined) {
-      v_double = v_double;
+      if (typeof v_double !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_double = null;
     }
@@ -198,7 +230,9 @@ export class Entry {
     let v_else = data["else"];
 
     if (v_else !== null && v_else !== undefined) {
-      v_else = v_else;
+      if (typeof v_else !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_else = null;
     }
@@ -206,7 +240,9 @@ export class Entry {
     let v_enum = data["enum"];
 
     if (v_enum !== null && v_enum !== undefined) {
-      v_enum = v_enum;
+      if (typeof v_enum !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_enum = null;
     }
@@ -214,7 +250,9 @@ export class Entry {
     let v_export = data["export"];
 
     if (v_export !== null && v_export !== undefined) {
-      v_export = v_export;
+      if (typeof v_export !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_export = null;
     }
@@ -222,7 +260,9 @@ export class Entry {
     let v_extends = data["extends"];
 
     if (v_extends !== null && v_extends !== undefined) {
-      v_extends = v_extends;
+      if (typeof v_extends !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_extends = null;
     }
@@ -230,7 +270,9 @@ export class Entry {
     let v_false = data["false"];
 
     if (v_false !== null && v_false !== undefined) {
-      v_false = v_false;
+      if (typeof v_false !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_false = null;
     }
@@ -238,7 +280,9 @@ export class Entry {
     let v_final = data["final"];
 
     if (v_final !== null && v_final !== undefined) {
-      v_final = v_final;
+      if (typeof v_final !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_final = null;
     }
@@ -246,7 +290,9 @@ export class Entry {
     let v_finally = data["finally"];
 
     if (v_finally !== null && v_finally !== undefined) {
-      v_finally = v_finally;
+      if (typeof v_finally !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_finally = null;
     }
@@ -254,7 +300,9 @@ export class Entry {
     let v_float = data["float"];
 
     if (v_float !== null && v_float !== undefined) {
-      v_float = v_float;
+      if (typeof v_float !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_float = null;
     }
@@ -262,7 +310,9 @@ export class Entry {
     let v_for = data["for"];
 
     if (v_for !== null && v_for !== undefined) {
-      v_for = v_for;
+      if (typeof v_for !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_for = null;
     }
@@ -270,7 +320,9 @@ export class Entry {
     let v_function = data["function"];
 
     if (v_function !== null && v_function !== undefined) {
-      v_function = v_function;
+      if (typeof v_function !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_function = null;
     }
@@ -278,7 +330,9 @@ export class Entry {
     let v_goto = data["goto"];
 
     if (v_goto !== null && v_goto !== undefined) {
-      v_goto = v_goto;
+      if (typeof v_goto !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_goto = null;
     }
@@ -286,7 +340,9 @@ export class Entry {
     let v_if = data["if"];
 
     if (v_if !== null && v_if !== undefined) {
-      v_if = v_if;
+      if (typeof v_if !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_if = null;
     }
@@ -294,7 +350,9 @@ export class Entry {
     let v_implements = data["implements"];
 
     if (v_implements !== null && v_implements !== undefined) {
-      v_implements = v_implements;
+      if (typeof v_implements !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_implements = null;
     }
@@ -302,7 +360,9 @@ export class Entry {
     let v_import = data["import"];
 
     if (v_import !== null && v_import !== undefined) {
-      v_import = v_import;
+      if (typeof v_import !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_import = null;
     }
@@ -310,7 +370,7 @@ export class Entry {
     let v_imported = data["imported"];
 
     if (v_imported !== null && v_imported !== undefined) {
-      v_imported = t.Empty.decode(v_imported);
+      v_imported = t.decode(v_imported);
     } else {
       v_imported = null;
     }
@@ -318,7 +378,9 @@ export class Entry {
     let v_in = data["in"];
 
     if (v_in !== null && v_in !== undefined) {
-      v_in = v_in;
+      if (typeof v_in !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_in = null;
     }
@@ -326,7 +388,9 @@ export class Entry {
     let v_instanceof = data["instanceof"];
 
     if (v_instanceof !== null && v_instanceof !== undefined) {
-      v_instanceof = v_instanceof;
+      if (typeof v_instanceof !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_instanceof = null;
     }
@@ -334,7 +398,9 @@ export class Entry {
     let v_int = data["int"];
 
     if (v_int !== null && v_int !== undefined) {
-      v_int = v_int;
+      if (typeof v_int !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_int = null;
     }
@@ -342,7 +408,9 @@ export class Entry {
     let v_interface = data["interface"];
 
     if (v_interface !== null && v_interface !== undefined) {
-      v_interface = v_interface;
+      if (typeof v_interface !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_interface = null;
     }
@@ -350,7 +418,9 @@ export class Entry {
     let v_let = data["let"];
 
     if (v_let !== null && v_let !== undefined) {
-      v_let = v_let;
+      if (typeof v_let !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_let = null;
     }
@@ -358,7 +428,9 @@ export class Entry {
     let v_long = data["long"];
 
     if (v_long !== null && v_long !== undefined) {
-      v_long = v_long;
+      if (typeof v_long !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_long = null;
     }
@@ -366,7 +438,9 @@ export class Entry {
     let v_native = data["native"];
 
     if (v_native !== null && v_native !== undefined) {
-      v_native = v_native;
+      if (typeof v_native !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_native = null;
     }
@@ -374,7 +448,9 @@ export class Entry {
     let v_new = data["new"];
 
     if (v_new !== null && v_new !== undefined) {
-      v_new = v_new;
+      if (typeof v_new !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_new = null;
     }
@@ -382,7 +458,9 @@ export class Entry {
     let v_package = data["package"];
 
     if (v_package !== null && v_package !== undefined) {
-      v_package = v_package;
+      if (typeof v_package !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_package = null;
     }
@@ -390,7 +468,9 @@ export class Entry {
     let v_private = data["private"];
 
     if (v_private !== null && v_private !== undefined) {
-      v_private = v_private;
+      if (typeof v_private !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_private = null;
     }
@@ -398,7 +478,9 @@ export class Entry {
     let v_protected = data["protected"];
 
     if (v_protected !== null && v_protected !== undefined) {
-      v_protected = v_protected;
+      if (typeof v_protected !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_protected = null;
     }
@@ -406,7 +488,9 @@ export class Entry {
     let v_public = data["public"];
 
     if (v_public !== null && v_public !== undefined) {
-      v_public = v_public;
+      if (typeof v_public !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_public = null;
     }
@@ -414,7 +498,9 @@ export class Entry {
     let v_return = data["return"];
 
     if (v_return !== null && v_return !== undefined) {
-      v_return = v_return;
+      if (typeof v_return !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_return = null;
     }
@@ -422,7 +508,9 @@ export class Entry {
     let v_short = data["short"];
 
     if (v_short !== null && v_short !== undefined) {
-      v_short = v_short;
+      if (typeof v_short !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_short = null;
     }
@@ -430,7 +518,9 @@ export class Entry {
     let v_static = data["static"];
 
     if (v_static !== null && v_static !== undefined) {
-      v_static = v_static;
+      if (typeof v_static !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_static = null;
     }
@@ -438,7 +528,9 @@ export class Entry {
     let v_super = data["super"];
 
     if (v_super !== null && v_super !== undefined) {
-      v_super = v_super;
+      if (typeof v_super !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_super = null;
     }
@@ -446,7 +538,9 @@ export class Entry {
     let v_switch = data["switch"];
 
     if (v_switch !== null && v_switch !== undefined) {
-      v_switch = v_switch;
+      if (typeof v_switch !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_switch = null;
     }
@@ -454,7 +548,9 @@ export class Entry {
     let v_synchronized = data["synchronized"];
 
     if (v_synchronized !== null && v_synchronized !== undefined) {
-      v_synchronized = v_synchronized;
+      if (typeof v_synchronized !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_synchronized = null;
     }
@@ -462,7 +558,9 @@ export class Entry {
     let v_this = data["this"];
 
     if (v_this !== null && v_this !== undefined) {
-      v_this = v_this;
+      if (typeof v_this !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_this = null;
     }
@@ -470,7 +568,9 @@ export class Entry {
     let v_throw = data["throw"];
 
     if (v_throw !== null && v_throw !== undefined) {
-      v_throw = v_throw;
+      if (typeof v_throw !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_throw = null;
     }
@@ -478,7 +578,9 @@ export class Entry {
     let v_throws = data["throws"];
 
     if (v_throws !== null && v_throws !== undefined) {
-      v_throws = v_throws;
+      if (typeof v_throws !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_throws = null;
     }
@@ -486,7 +588,9 @@ export class Entry {
     let v_transient = data["transient"];
 
     if (v_transient !== null && v_transient !== undefined) {
-      v_transient = v_transient;
+      if (typeof v_transient !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_transient = null;
     }
@@ -494,7 +598,9 @@ export class Entry {
     let v_true = data["true"];
 
     if (v_true !== null && v_true !== undefined) {
-      v_true = v_true;
+      if (typeof v_true !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_true = null;
     }
@@ -502,7 +608,9 @@ export class Entry {
     let v_try = data["try"];
 
     if (v_try !== null && v_try !== undefined) {
-      v_try = v_try;
+      if (typeof v_try !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_try = null;
     }
@@ -510,7 +618,9 @@ export class Entry {
     let v_typeof = data["typeof"];
 
     if (v_typeof !== null && v_typeof !== undefined) {
-      v_typeof = v_typeof;
+      if (typeof v_typeof !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_typeof = null;
     }
@@ -518,7 +628,9 @@ export class Entry {
     let v_var = data["var"];
 
     if (v_var !== null && v_var !== undefined) {
-      v_var = v_var;
+      if (typeof v_var !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_var = null;
     }
@@ -526,7 +638,9 @@ export class Entry {
     let v_void = data["void"];
 
     if (v_void !== null && v_void !== undefined) {
-      v_void = v_void;
+      if (typeof v_void !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_void = null;
     }
@@ -534,7 +648,9 @@ export class Entry {
     let v_volatile = data["volatile"];
 
     if (v_volatile !== null && v_volatile !== undefined) {
-      v_volatile = v_volatile;
+      if (typeof v_volatile !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_volatile = null;
     }
@@ -542,7 +658,9 @@ export class Entry {
     let v_while = data["while"];
 
     if (v_while !== null && v_while !== undefined) {
-      v_while = v_while;
+      if (typeof v_while !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_while = null;
     }
@@ -550,7 +668,9 @@ export class Entry {
     let v_with = data["with"];
 
     if (v_with !== null && v_with !== undefined) {
-      v_with = v_with;
+      if (typeof v_with !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_with = null;
     }
@@ -558,7 +678,9 @@ export class Entry {
     let v_yield = data["yield"];
 
     if (v_yield !== null && v_yield !== undefined) {
-      v_yield = v_yield;
+      if (typeof v_yield !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_yield = null;
     }

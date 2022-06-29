@@ -1,7 +1,8 @@
-use lower_camel as lower_camel;
-use lower_snake as lower_snake;
-use upper_camel as upper_camel;
-use upper_snake as upper_snake;
+use crate::lower_camel as lower_camel;
+use crate::lower_snake as lower_snake;
+use crate::upper_camel as upper_camel;
+use crate::upper_snake as upper_snake;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Entry {

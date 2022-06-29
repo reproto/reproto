@@ -31,7 +31,7 @@ impl ConstructorProperties {
 impl class_constructor::Codegen for ConstructorProperties {
     fn generate(&self, e: class_constructor::Args<'_>) {
         e.annotations.push(quote! {
-            @#(&*self.annotation)({#(for f in e.fields => #_(#(&f.ident)))})
+            @$(&*self.annotation)({$(for f in e.fields => $[str]($[const](&f.ident)))})
         });
     }
 }

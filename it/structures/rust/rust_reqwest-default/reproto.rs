@@ -1,16 +1,14 @@
-use reqwest;
-use reqwest::header::parsing;
 use std::fmt;
 use std::result;
 
 #[derive(Debug)]
 pub enum Error {
   ReqwestError(reqwest::Error),
-  UrlError(reqwest::UrlError),
-  FormatError(fmt::Error),
+  UrlParseError(url::ParseError),
+  FormatError(fmt::Error)
 }
 
-pub type Result<T> = result::Result<T, Error>;
+pub type Result<T, E = Error> = result::Result<T, E>;
 
 impl From<reqwest::Error> for Error {
   fn from(value: reqwest::Error) -> Self {
@@ -18,9 +16,9 @@ impl From<reqwest::Error> for Error {
   }
 }
 
-impl From<reqwest::UrlError> for Error {
-  fn from(value: reqwest::UrlError) -> Self {
-    Error::UrlError(value)
+impl From<url::ParseError> for Error {
+  fn from(value: url::ParseError) -> Self {
+    Error::UrlParseError(value)
   }
 }
 
@@ -32,10 +30,10 @@ impl From<fmt::Error> for Error {
 
 impl fmt::Display for Error {
   fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-    match *self {
-      Error::ReqwestError(ref e) => e.fmt(fmt),
-      Error::UrlError(ref e) => e.fmt(fmt),
-      Error::FormatError(ref e) => e.fmt(fmt),
+    match self {
+      Error::ReqwestError(e) => e.fmt(fmt),
+      Error::UrlParseError(e) => e.fmt(fmt),
+      Error::FormatError(e) => e.fmt(fmt),
     }
   }
 }
@@ -47,6 +45,6 @@ where
   T: fmt::Display
 {
   fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-    parsing::http_percent_encode(fmt, self.0.to_string().as_bytes())
+    write!(fmt, "{}", percent_encoding::utf8_percent_encode(&self.0.to_string(), percent_encoding::NON_ALPHANUMERIC))
   }
 }

@@ -5,7 +5,7 @@ use crate::utils::Comments;
 use crate::{EXT, TYPE_SEP};
 use backend::PackageProcessor;
 use genco::prelude::*;
-use genco::tokens::ItemStr;
+use genco::tokens::{static_literal, ItemStr};
 use reproto_core::errors::Result;
 use reproto_core::{Handle, Spanned};
 use trans::Translated;
@@ -66,9 +66,9 @@ impl<'a> Compiler<'a> {
     /// Build field declarations for the given fields.
     fn type_fields(&self, t: &mut dart::Tokens, fields: &[Spanned<RpField>]) {
         quote_in! { *t =>
-            #(for field in fields join (#<push>) {
-                #(Comments(&field.comment))
-                #(&field.ty) #(field.safe_ident());
+            $(for field in fields join ($['\r']) {
+                $(Comments(&field.comment))
+                $(&field.ty) $(field.safe_ident());
             })
         }
     }
@@ -76,46 +76,47 @@ impl<'a> Compiler<'a> {
     /// Build a decode function.
     fn decode_fn(&self, t: &mut dart::Tokens, name: &ItemStr, fields: &[Spanned<RpField>]) {
         let mut vars = Vec::new();
+        let data = static_literal("data");
 
         quote_in! { *t =>
-            static #name decode(dynamic _dataDyn) {
-                if (!(_dataDyn is #(&self.map_of_strings))) {
-                    throw #_(expected #(&self.map_of_strings) but got $_dataDyn);
+            static $name decode(dynamic $data) {
+                if (!($data is $(&self.map_of_strings))) {
+                    throw $[str](expected $[const](&self.map_of_strings) but got $($data));
                 }
 
-                #(&self.map_of_strings) _data = _dataDyn;
+                $(&self.map_of_strings) _data = $data;
 
-                #(for field in fields join (#<line>) {
-                    #(ref t {
+                $(for field in fields join ($['\n']) {
+                    $(ref t {
                         let id = field.safe_ident();
                         let id_dyn = &format!("{}_dyn", field.safe_ident());
                         vars.push(id);
 
-                        let (d, e) = field.ty.decode(quote!(#id_dyn));
+                        let (d, e) = field.ty.decode(quote!($id_dyn));
 
                         quote_in!{ *t =>
-                            var #id_dyn = _data[#(quoted(field.name()))];
+                            var $id_dyn = _data[$(quoted(field.name()))];
 
-                            #(if field.is_optional() {
-                                #(&field.ty) #id = null;
+                            $(if field.is_optional() {
+                                $(&field.ty) $id = null;
 
-                                if (#id_dyn != null) {
-                                    #e
-                                    #id = #d;
+                                if ($id_dyn != null) {
+                                    $e
+                                    $id = $d;
                                 }
                             } else {
-                                if (#id_dyn == null) {
+                                if ($id_dyn == null) {
                                     throw "expected value but was null";
                                 }
 
-                                #e
-                                final #(&field.ty) #id = #d;
+                                $e
+                                final $(&field.ty) $id = $d;
                             })
                         }
                     })
                 })
 
-                return #name(#(for v in vars join (, ) => #v));
+                return $name($(for v in vars join (, ) => $v));
             }
         }
     }
@@ -125,44 +126,45 @@ impl<'a> Compiler<'a> {
         let mut vars = Vec::new();
 
         let len = fields.clone().into_iter().count();
+        let data = static_literal("data");
 
         quote_in! { *t =>
-            static #name decode(dynamic _dataDyn) {
-                if (!(_dataDyn is #(&self.list_of_dynamic))) {
-                    throw #_(expected #(&self.list_of_dynamic) but got $_dataDyn);
+            static $name decode(dynamic $data) {
+                if (!($data is $(&self.list_of_dynamic))) {
+                    throw $[str](expected $[const](&self.list_of_dynamic) but got $($data));
                 }
 
-                #(&self.list_of_dynamic) _data = _dataDyn;
+                $(&self.list_of_dynamic) _data = $data;
 
-                if (_data.length != #len) {
-                    throw #_(expected array of length #len, but was $(_data.length));
+                if (_data.length != $len) {
+                    throw $[str](expected array of length $[const](len), but was $(_data.length));
                 }
 
-                #(for (i, field) in fields.into_iter().enumerate() join (#<line>) {
-                    #(ref t {
+                $(for (i, field) in fields.into_iter().enumerate() join ($['\n']) {
+                    $(ref t {
                         let id = field.safe_ident();
                         let id_dyn = &format!("{}_dyn", field.safe_ident());
                         let i = i.to_string();
 
-                        let (d, e) = field.ty.decode(quote!(#id_dyn));
+                        let (d, e) = field.ty.decode(quote!($id_dyn));
 
                         quote_in!{ *t =>
-                            var #id_dyn = _data[#i];
+                            var $id_dyn = _data[$i];
 
-                            #(if field.is_optional() {
-                                #(&field.ty) #id = null;
+                            $(if field.is_optional() {
+                                $(&field.ty) $id = null;
 
-                                if (#id_dyn != null) {
-                                    #e
-                                    #id = #d;
+                                if ($id_dyn != null) {
+                                    $e
+                                    $id = $d;
                                 }
                             } else {
-                                if (#id_dyn == null) {
+                                if ($id_dyn == null) {
                                     throw "expected value but was null";
                                 }
 
-                                #e
-                                final #(&field.ty) #id = #d;
+                                $e
+                                final $(&field.ty) $id = $d;
                             })
                         }
 
@@ -170,44 +172,46 @@ impl<'a> Compiler<'a> {
                     })
                 })
 
-                return #name(#(for v in vars join (, ) => #v));
+                return $name($(for v in vars join (, ) => $v));
             }
         }
     }
 
     /// Build a decode function for an interface.
     fn decode_interface_fn(&self, t: &mut dart::Tokens, name: &str, body: &RpInterfaceBody) {
+        let data = static_literal("data");
+
         quote_in! { *t =>
-            static #name decode(dynamic _dataDyn) {
-                if (!(_dataDyn is #(&self.map_of_strings))) {
-                    throw #_(expected #(&self.map_of_strings) but got $_dataDyn);
+            static $name decode(dynamic $data) {
+                if (!($data is $(&self.map_of_strings))) {
+                    throw $[str](expected $[const](&self.map_of_strings) but got $($data));
                 }
 
-                #(&self.map_of_strings) _data = _dataDyn;
+                $(&self.map_of_strings) _data = $data;
 
-                #(match &body.sub_type_strategy {
+                $(match &body.sub_type_strategy {
                     RpSubTypeStrategy::Tagged { tag, .. } => {
-                        var tag = _data[#(quoted(tag.as_str()))];
+                        var tag = _data[$(quoted(tag.as_str()))];
 
                         switch (tag) {
-                            #(for s in &body.sub_types {
-                                case #(quoted(s.name())):
-                                    return #(self.convert_type_name(&s.name)).decode(_data);
+                            $(for s in &body.sub_types {
+                                case $(quoted(s.name())):
+                                    return $(self.convert_type_name(&s.name)).decode(_data);
                             })
                             default:
-                                throw #_(bad tag: $tag);
+                                throw $[str](bad tag: $tag);
                         }
                     }
                     RpSubTypeStrategy::Untagged => {
                         var keys = Set.of(_data.keys);
 
-                        #(for s in &body.sub_types {
-                            #(ref t {
+                        $(for s in &body.sub_types {
+                            $(ref t {
                                 quote_in!{ *t =>
-                                    if (keys.containsAll(<String>[#(
-                                        for f in s.discriminating_fields() join (, ) => #(quoted(f.name()))
+                                    if (keys.containsAll(<String>[$(
+                                        for f in s.discriminating_fields() join (, ) => $(quoted(f.name()))
                                     )])) {
-                                        return #(self.convert_type_name(&s.name)).decode(_data);
+                                        return $(self.convert_type_name(&s.name)).decode(_data);
                                     }
                                 }
                             })
@@ -227,25 +231,25 @@ impl<'a> Compiler<'a> {
         tag: Option<&str>,
     ) {
         quote_in! { *t =>
-            #(&self.map_of_strings) encode() {
-                #(&self.map_of_strings) _data = Map();
+            $(&self.map_of_strings) encode() {
+                $(&self.map_of_strings) _data = Map();
 
-                #(if let Some(tag) = tag {
-                    _data[#(quoted(tag))] = #(quoted(name));
+                $(if let Some(tag) = tag {
+                    _data[$(quoted(tag))] = $(quoted(name));
                 })
 
-                #(for field in fields join (#<line>) {
-                    #(ref t {
-                        let id = &quote!(this.#(field.safe_ident()));
+                $(for field in fields join ($['\n']) {
+                    $(ref t {
+                        let id = &quote!(this.$(field.safe_ident()));
                         let encoded = field.ty.encode(id.clone());
 
                         quote_in!{ *t =>
-                            #(if field.is_optional() {
-                                if (#id != null) {
-                                    _data[#(quoted(field.name()))] = #encoded;
+                            $(if field.is_optional() {
+                                if ($id != null) {
+                                    _data[$(quoted(field.name()))] = $encoded;
                                 }
                             } else {
-                                _data[#(quoted(field.name()))] = #encoded;
+                                _data[$(quoted(field.name()))] = $encoded;
                             })
                         }
                     })
@@ -259,11 +263,11 @@ impl<'a> Compiler<'a> {
     /// Build an encode function to encode tuples.
     fn encode_tuple_fn(&self, t: &mut dart::Tokens, fields: &[Spanned<RpField>]) {
         quote_in! { *t =>
-            #(&self.list_of_dynamic) encode() {
-                #(&self.list_of_dynamic) _data = List();
+            $(&self.list_of_dynamic) encode() {
+                $(&self.list_of_dynamic) _data = List();
 
-                #(for field in fields {
-                    _data.add(#(field.ty.encode(quote!(this.#(field.safe_ident())))));
+                $(for field in fields {
+                    _data.add($(field.ty.encode(quote!(this.$(field.safe_ident())))));
                 })
 
                 return _data;
@@ -274,8 +278,8 @@ impl<'a> Compiler<'a> {
     /// Setup a constructor based on the number of fields.
     fn constructor(&self, t: &mut dart::Tokens, name: &ItemStr, fields: &[Spanned<RpField>]) {
         quote_in! { *t =>
-            #name(#(for field in fields join (, ) {
-                this.#(field.safe_ident())
+            $name($(for field in fields join (, ) {
+                this.$(field.safe_ident())
             }));
         }
     }
@@ -305,15 +309,15 @@ impl<'el> PackageProcessor<'el, DartFlavor> for Compiler<'el> {
         let name = &self.convert_type_name(&body.name);
 
         quote_in! { *out =>
-            #(Comments(&body.comment))
-            class #name {
-                #(ref t => self.type_fields(t, &body.fields))
+            $(Comments(&body.comment))
+            class $name {
+                $(ref t => self.type_fields(t, &body.fields))
 
-                #(ref t => self.constructor(t, name, &body.fields))
+                $(ref t => self.constructor(t, name, &body.fields))
 
-                #(ref t => self.decode_tuple_fn(t, name, &body.fields))
+                $(ref t => self.decode_tuple_fn(t, name, &body.fields))
 
-                #(ref t => self.encode_tuple_fn(t, &body.fields))
+                $(ref t => self.encode_tuple_fn(t, &body.fields))
             }
         }
 
@@ -322,47 +326,49 @@ impl<'el> PackageProcessor<'el, DartFlavor> for Compiler<'el> {
 
     fn process_enum(&self, out: &mut Self::Out, body: &RpEnumBody) -> Result<()> {
         let name = &self.convert_type_name(&body.name);
+        let value = static_literal("_value");
+        let data = static_literal("data");
 
         quote_in! { *out =>
-            #(Comments(&body.comment))
-            class #name {
-                final _value;
-                const #name._new(this._value);
+            $(Comments(&body.comment))
+            class $name {
+                final $value;
+                const $name._new(this.$value);
 
-                toString() => #_(#name.$_value);
+                toString() => $[str]($[const](name).$[const](value));
 
-                #(for v in &body.variants join (#<push>) {
-                    #(Comments(v.comment))
-                    #(match v.value {
+                $(for v in &body.variants join ($['\r']) {
+                    $(Comments(v.comment))
+                    $(match v.value {
                         RpVariantValue::String(string) => {
-                            static const #(v.ident()) = const #name._new(#(quoted(string)));
+                            static const $(v.ident()) = const $name._new($(quoted(string)));
                         }
                         RpVariantValue::Number(number) => {
-                            static const #(v.ident()) = const #name._new(#(display(number)));
+                            static const $(v.ident()) = const $name._new($(display(number)));
                         }
                     })
                 })
 
-                static #name decode(dynamic data) {
-                    if (!(data is #(&body.enum_type))) {
-                        throw #_(expected $(#(&body.enum_type)) but got $data);
+                static $name decode(dynamic $data) {
+                    if (!($data is $(&body.enum_type))) {
+                        throw $[str](expected $[const](&body.enum_type) but got $($data));
                     }
 
-                    switch (data as #(&body.enum_type)) {
-                        #(for v in &body.variants join (#<push>) {
-                            case #(match v.value {
-                                RpVariantValue::String(string) => #(quoted(string)),
-                                RpVariantValue::Number(number) => #(display(number)),
+                    switch ($data as $(&body.enum_type)) {
+                        $(for v in &body.variants join ($['\r']) {
+                            case $(match v.value {
+                                RpVariantValue::String(string) => $(quoted(string)),
+                                RpVariantValue::Number(number) => $(display(number)),
                             }):
-                                return #name.#(v.ident());
+                                return $name.$(v.ident());
                         })
                         default:
-                          throw #_(unexpected #name value: $data);
+                            throw $[str](unexpected $[const](name) value: $data);
                     }
                 }
 
-                #(&body.enum_type) encode() {
-                    return _value;
+                $(&body.enum_type) encode() {
+                    return $value;
                 }
             }
         };
@@ -374,15 +380,15 @@ impl<'el> PackageProcessor<'el, DartFlavor> for Compiler<'el> {
         let name = &self.convert_type_name(&body.name);
 
         quote_in! { *out =>
-            #(Comments(&body.comment))
-            class #name {
-                #(ref t => self.type_fields(t, &body.fields))
+            $(Comments(&body.comment))
+            class $name {
+                $(ref t => self.type_fields(t, &body.fields))
 
-                #(ref t => self.constructor(t, name, &body.fields))
+                $(ref t => self.constructor(t, name, &body.fields))
 
-                #(ref t => self.decode_fn(t, name, &body.fields))
+                $(ref t => self.decode_fn(t, name, &body.fields))
 
-                #(ref t => self.encode_fn(t, name, &body.fields, None))
+                $(ref t => self.encode_fn(t, name, &body.fields, None))
             }
         };
 
@@ -393,34 +399,34 @@ impl<'el> PackageProcessor<'el, DartFlavor> for Compiler<'el> {
         let super_name = &self.convert_type_name(&body.name);
 
         quote_in! { *out =>
-            #(Comments(&body.comment))
-            abstract class #super_name {
-                #(ref t => self.decode_interface_fn(t, super_name, body))
+            $(Comments(&body.comment))
+            abstract class $super_name {
+                $(ref t => self.decode_interface_fn(t, super_name, body))
 
-                #(&self.map_of_strings) encode();
+                $(&self.map_of_strings) encode();
 
-                #(if backend::code_contains!(&body.codes, RpContext::Dart) {
-                    #(ref t => backend::code_in!(t, &body.codes, RpContext::Dart))
+                $(if backend::code_contains!(&body.codes, RpContext::Dart) {
+                    $(ref t => backend::code_in!(t, &body.codes, RpContext::Dart))
                 })
             }
 
-            #(for s in &body.sub_types join (#<line>) {
-                #(ref t {
+            $(for s in &body.sub_types join ($['\n']) {
+                $(ref t {
                     let name = &self.convert_type_name(&s.name);
                     let fields = body.fields.iter().chain(s.fields.iter()).cloned().collect::<Vec<_>>();
 
                     quote_in! { *t =>
-                        #(Comments(&s.comment))
-                        class #name extends #super_name {
-                            #(ref t => self.type_fields(t, &fields))
+                        $(Comments(&s.comment))
+                        class $name extends $super_name {
+                            $(ref t => self.type_fields(t, &fields))
 
-                            #(ref t => self.constructor(t, name, &fields))
+                            $(ref t => self.constructor(t, name, &fields))
 
-                            #(ref t => self.decode_fn(t, name, &fields))
+                            $(ref t => self.decode_fn(t, name, &fields))
 
-                            #(match &body.sub_type_strategy {
+                            $(match &body.sub_type_strategy {
                                 RpSubTypeStrategy::Tagged { tag, .. } => {
-                                    #(ref t => self.encode_fn(
+                                    $(ref t => self.encode_fn(
                                         t,
                                         s.name(),
                                         &fields,
@@ -428,12 +434,12 @@ impl<'el> PackageProcessor<'el, DartFlavor> for Compiler<'el> {
                                     ))
                                 }
                                 RpSubTypeStrategy::Untagged => {
-                                    #(ref t => self.encode_fn(t, s.name(), &fields, None))
+                                    $(ref t => self.encode_fn(t, s.name(), &fields, None))
                                 }
                             })
 
-                            #(if backend::code_contains!(&s.codes, RpContext::Dart) {
-                                #(ref t => backend::code_in!(t, &s.codes, RpContext::Dart))
+                            $(if backend::code_contains!(&s.codes, RpContext::Dart) {
+                                $(ref t => backend::code_in!(t, &s.codes, RpContext::Dart))
                             })
                         }
                     }

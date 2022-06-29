@@ -18,7 +18,6 @@ public extension Test_Entry {
     if let value = json["untagged"] {
       untagged = Optional.some(try Test_Untagged.decode(json: value))
     }
-
     return Test_Entry(tagged: tagged, untagged: untagged)
   }
 
@@ -28,6 +27,7 @@ public extension Test_Entry {
     if let value = self.tagged {
       json["tagged"] = try value.encode()
     }
+
     if let value = self.untagged {
       json["untagged"] = try value.encode()
     }
@@ -46,45 +46,43 @@ public enum Test_Tagged {
 public extension Test_Tagged {
   static func decode(json: Any) throws -> Test_Tagged {
     let json = try decode_value(json as? [String: Any])
-
     let type = try decode_name(json["@type"] as? String, name: "@type")
 
     switch type {
-      case "foo":
-        let v = try Test_Tagged_A.decode(json: json)
-        return Test_Tagged.A(v)
-      case "b":
-        let v = try Test_Tagged_B.decode(json: json)
-        return Test_Tagged.B(v)
-      case "Bar":
-        let v = try Test_Tagged_Bar.decode(json: json)
-        return Test_Tagged.Bar(v)
-      case "Baz":
-        let v = try Test_Tagged_Baz.decode(json: json)
-        return Test_Tagged.Baz(v)
-      default:
-        throw SerializationError.invalid(type)
+    case "foo":
+      let v = try Test_Tagged_A.decode(json: json)
+      return Test_Tagged.A(v)
+    case "b":
+      let v = try Test_Tagged_B.decode(json: json)
+      return Test_Tagged.B(v)
+    case "Bar":
+      let v = try Test_Tagged_Bar.decode(json: json)
+      return Test_Tagged.Bar(v)
+    case "Baz":
+      let v = try Test_Tagged_Baz.decode(json: json)
+      return Test_Tagged.Baz(v)
+    default:
+      throw SerializationError.invalid(type)
     }
   }
-
   func encode() throws -> [String: Any] {
     switch self {
-      case .A(let s):
-        var json = try s.encode()
-        json["@type"] = "foo"
-        return json
-      case .B(let s):
-        var json = try s.encode()
-        json["@type"] = "b"
-        return json
-      case .Bar(let s):
-        var json = try s.encode()
-        json["@type"] = "Bar"
-        return json
-      case .Baz(let s):
-        var json = try s.encode()
-        json["@type"] = "Baz"
-        return json
+    case .A(let s):
+      var json = try s.encode()
+      json["@type"] = "foo"
+      return json
+    case .B(let s):
+      var json = try s.encode()
+      json["@type"] = "b"
+      return json
+    case .Bar(let s):
+      var json = try s.encode()
+      json["@type"] = "Bar"
+      return json
+    case .Baz(let s):
+      var json = try s.encode()
+      json["@type"] = "Baz"
+      return json
     }
   }
 }
@@ -92,6 +90,7 @@ public extension Test_Tagged {
 public struct Test_Tagged_A {
   let shared: String
 }
+
 public extension Test_Tagged_A {
   static func decode(json: Any) throws -> Test_Tagged_A {
     let json = try decode_value(json as? [String: Any])
@@ -101,7 +100,6 @@ public extension Test_Tagged_A {
     }
 
     let shared = try decode_name(unbox(f_shared, as: String.self), name: "shared")
-
     return Test_Tagged_A(shared: shared)
   }
 
@@ -117,6 +115,7 @@ public extension Test_Tagged_A {
 public struct Test_Tagged_B {
   let shared: String
 }
+
 public extension Test_Tagged_B {
   static func decode(json: Any) throws -> Test_Tagged_B {
     let json = try decode_value(json as? [String: Any])
@@ -126,7 +125,6 @@ public extension Test_Tagged_B {
     }
 
     let shared = try decode_name(unbox(f_shared, as: String.self), name: "shared")
-
     return Test_Tagged_B(shared: shared)
   }
 
@@ -142,6 +140,7 @@ public extension Test_Tagged_B {
 public struct Test_Tagged_Bar {
   let shared: String
 }
+
 public extension Test_Tagged_Bar {
   static func decode(json: Any) throws -> Test_Tagged_Bar {
     let json = try decode_value(json as? [String: Any])
@@ -151,7 +150,6 @@ public extension Test_Tagged_Bar {
     }
 
     let shared = try decode_name(unbox(f_shared, as: String.self), name: "shared")
-
     return Test_Tagged_Bar(shared: shared)
   }
 
@@ -167,6 +165,7 @@ public extension Test_Tagged_Bar {
 public struct Test_Tagged_Baz {
   let shared: String
 }
+
 public extension Test_Tagged_Baz {
   static func decode(json: Any) throws -> Test_Tagged_Baz {
     let json = try decode_value(json as? [String: Any])
@@ -176,7 +175,6 @@ public extension Test_Tagged_Baz {
     }
 
     let shared = try decode_name(unbox(f_shared, as: String.self), name: "shared")
-
     return Test_Tagged_Baz(shared: shared)
   }
 
@@ -215,15 +213,14 @@ public extension Test_Untagged {
 
     throw SerializationError.invalid("no legal field combinations")
   }
-
   func encode() throws -> [String: Any] {
     switch self {
-      case .A(let s):
-        return try s.encode()
-      case .B(let s):
-        return try s.encode()
-      case .C(let s):
-        return try s.encode()
+    case .A(let s):
+      return try s.encode()
+    case .B(let s):
+      return try s.encode()
+    case .C(let s):
+      return try s.encode()
     }
   }
 }
@@ -237,6 +234,7 @@ public struct Test_Untagged_A {
   let b: String
   let ignore: String?
 }
+
 public extension Test_Untagged_A {
   static func decode(json: Any) throws -> Test_Untagged_A {
     let json = try decode_value(json as? [String: Any])
@@ -270,7 +268,6 @@ public extension Test_Untagged_A {
     if let value = json["ignore"] {
       ignore = Optional.some(try decode_name(unbox(value, as: String.self), name: "ignore"))
     }
-
     return Test_Untagged_A(shared: shared, shared_ignore: shared_ignore, a: a, b: b, ignore: ignore)
   }
 
@@ -278,11 +275,15 @@ public extension Test_Untagged_A {
     var json = [String: Any]()
 
     json["shared"] = self.shared
+
     if let value = self.shared_ignore {
       json["shared_ignore"] = value
     }
+
     json["a"] = self.a
+
     json["b"] = self.b
+
     if let value = self.ignore {
       json["ignore"] = value
     }
@@ -297,6 +298,7 @@ public struct Test_Untagged_B {
   let a: String
   let ignore: String?
 }
+
 public extension Test_Untagged_B {
   static func decode(json: Any) throws -> Test_Untagged_B {
     let json = try decode_value(json as? [String: Any])
@@ -324,7 +326,6 @@ public extension Test_Untagged_B {
     if let value = json["ignore"] {
       ignore = Optional.some(try decode_name(unbox(value, as: String.self), name: "ignore"))
     }
-
     return Test_Untagged_B(shared: shared, shared_ignore: shared_ignore, a: a, ignore: ignore)
   }
 
@@ -332,10 +333,13 @@ public extension Test_Untagged_B {
     var json = [String: Any]()
 
     json["shared"] = self.shared
+
     if let value = self.shared_ignore {
       json["shared_ignore"] = value
     }
+
     json["a"] = self.a
+
     if let value = self.ignore {
       json["ignore"] = value
     }
@@ -350,6 +354,7 @@ public struct Test_Untagged_C {
   let b: String
   let ignore: String?
 }
+
 public extension Test_Untagged_C {
   static func decode(json: Any) throws -> Test_Untagged_C {
     let json = try decode_value(json as? [String: Any])
@@ -377,7 +382,6 @@ public extension Test_Untagged_C {
     if let value = json["ignore"] {
       ignore = Optional.some(try decode_name(unbox(value, as: String.self), name: "ignore"))
     }
-
     return Test_Untagged_C(shared: shared, shared_ignore: shared_ignore, b: b, ignore: ignore)
   }
 
@@ -385,10 +389,13 @@ public extension Test_Untagged_C {
     var json = [String: Any]()
 
     json["shared"] = self.shared
+
     if let value = self.shared_ignore {
       json["shared_ignore"] = value
     }
+
     json["b"] = self.b
+
     if let value = self.ignore {
       json["ignore"] = value
     }

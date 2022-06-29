@@ -1,8 +1,6 @@
-public struct Test_Entry: Codable {
-}
+public struct Test_Entry: Codable {}
 
-public struct Test_Type: Codable {
-}
+public struct Test_Type: Codable {}
 
 public enum Test_Interface {
   case SubType(Test_Interface_SubType)
@@ -38,8 +36,7 @@ extension Test_Interface: Encodable {
   }
 }
 
-public struct Test_Interface_SubType: Codable {
-}
+public struct Test_Interface_SubType: Codable {}
 
 public enum Test_Enum {
   case Variant
@@ -53,7 +50,11 @@ extension Test_Enum: Decodable {
     case "Variant":
       self = .Variant
     default:
-      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
+      let context = DecodingError.Context(
+        codingPath: decoder.codingPath,
+        debugDescription: "enum variant"
+      )
+
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -70,17 +71,16 @@ extension Test_Enum: Encodable {
   }
 }
 
-public struct Test_Tuple {
-}
+public struct Test_Tuple {}
+
 extension Test_Tuple: Decodable {
   public init(from decoder: Decoder) throws {
     var values = try decoder.unkeyedContainer()
-
   }
 }
+
 extension Test_Tuple: Encodable {
   public func encode(to encoder: Encoder) throws {
     var values = encoder.unkeyedContainer()
-
   }
 }

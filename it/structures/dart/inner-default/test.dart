@@ -2,26 +2,27 @@ class Entry {
   A a;
   A_B b;
 
-  Entry(
-    this.a,
-    this.b
-  );
+  Entry(this.a, this.b);
 
-  static Entry decode(dynamic _dataDyn) {
-    if (!(_dataDyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
+  static Entry decode(dynamic data) {
+    if (!(data is Map<String, dynamic>)) {
+      throw "expected Map<String, dynamic> but got $data";
     }
 
-    Map<String, dynamic> _data = _dataDyn;
+    Map<String, dynamic> _data = data;
 
     var a_dyn = _data["a"];
+
     A a = null;
+
     if (a_dyn != null) {
       a = A.decode(a_dyn);
     }
 
     var b_dyn = _data["b"];
+
     A_B b = null;
+
     if (b_dyn != null) {
       b = A_B.decode(b_dyn);
     }
@@ -47,21 +48,21 @@ class Entry {
 class A {
   A_B b;
 
-  A(
-    this.b
-  );
+  A(this.b);
 
-  static A decode(dynamic _dataDyn) {
-    if (!(_dataDyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
+  static A decode(dynamic data) {
+    if (!(data is Map<String, dynamic>)) {
+      throw "expected Map<String, dynamic> but got $data";
     }
 
-    Map<String, dynamic> _data = _dataDyn;
+    Map<String, dynamic> _data = data;
 
     var b_dyn = _data["b"];
+
     if (b_dyn == null) {
       throw "expected value but was null";
     }
+
     final A_B b = A_B.decode(b_dyn);
 
     return A(b);
@@ -79,23 +80,23 @@ class A {
 class A_B {
   String field;
 
-  A_B(
-    this.field
-  );
+  A_B(this.field);
 
-  static A_B decode(dynamic _dataDyn) {
-    if (!(_dataDyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
+  static A_B decode(dynamic data) {
+    if (!(data is Map<String, dynamic>)) {
+      throw "expected Map<String, dynamic> but got $data";
     }
 
-    Map<String, dynamic> _data = _dataDyn;
+    Map<String, dynamic> _data = data;
 
     var field_dyn = _data["field"];
+
     if (field_dyn == null) {
       throw "expected value but was null";
     }
+
     if (!(field_dyn is String)) {
-      throw 'expected String, but was: $field_dyn';
+      throw "expected String, but was: field_dyn";
     }
     final String field = field_dyn;
 

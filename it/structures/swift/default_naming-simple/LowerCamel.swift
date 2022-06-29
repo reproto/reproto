@@ -11,7 +11,6 @@ public extension LowerCamel_Value {
     }
 
     let foo_bar = try decode_name(unbox(f_foo_bar, as: String.self), name: "fooBar")
-
     return LowerCamel_Value(foo_bar: foo_bar)
   }
 

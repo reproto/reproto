@@ -2,26 +2,27 @@ class Entry {
   Tagged tagged;
   Untagged untagged;
 
-  Entry(
-    this.tagged,
-    this.untagged
-  );
+  Entry(this.tagged, this.untagged);
 
-  static Entry decode(dynamic _dataDyn) {
-    if (!(_dataDyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
+  static Entry decode(dynamic data) {
+    if (!(data is Map<String, dynamic>)) {
+      throw "expected Map<String, dynamic> but got $data";
     }
 
-    Map<String, dynamic> _data = _dataDyn;
+    Map<String, dynamic> _data = data;
 
     var tagged_dyn = _data["tagged"];
+
     Tagged tagged = null;
+
     if (tagged_dyn != null) {
       tagged = Tagged.decode(tagged_dyn);
     }
 
     var untagged_dyn = _data["untagged"];
+
     Untagged untagged = null;
+
     if (untagged_dyn != null) {
       untagged = Untagged.decode(untagged_dyn);
     }
@@ -45,26 +46,27 @@ class Entry {
 }
 
 abstract class Tagged {
-  static Tagged decode(dynamic _dataDyn) {
-  if (!(_dataDyn is Map<String, dynamic>)) {
-    throw 'expected Map<String, dynamic>, but got: $_dataDyn';
-  }
-  Map<String, dynamic> _data = _dataDyn;
+  static Tagged decode(dynamic data) {
+    if (!(data is Map<String, dynamic>)) {
+      throw "expected Map<String, dynamic> but got $data";
+    }
 
-  var tag = _data["@type"];
+    Map<String, dynamic> _data = data;
 
-  switch (tag) {
-  case "foo":
-    return Tagged_A.decode(_data);
-  case "b":
-    return Tagged_B.decode(_data);
-  case "Bar":
-    return Tagged_Bar.decode(_data);
-  case "Baz":
-    return Tagged_Baz.decode(_data);
-  default:
-    throw 'bad tag: $tag';
-  }
+    var tag = _data["@type"];
+
+    switch (tag) {
+      case "foo":
+        return Tagged_A.decode(_data);
+      case "b":
+        return Tagged_B.decode(_data);
+      case "Bar":
+        return Tagged_Bar.decode(_data);
+      case "Baz":
+        return Tagged_Baz.decode(_data);
+      default:
+        throw "bad tag: $tag";
+    }
   }
 
   Map<String, dynamic> encode();
@@ -73,23 +75,23 @@ abstract class Tagged {
 class Tagged_A extends Tagged {
   String shared;
 
-  Tagged_A(
-    this.shared
-  );
+  Tagged_A(this.shared);
 
-  static Tagged_A decode(dynamic _dataDyn) {
-    if (!(_dataDyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
+  static Tagged_A decode(dynamic data) {
+    if (!(data is Map<String, dynamic>)) {
+      throw "expected Map<String, dynamic> but got $data";
     }
 
-    Map<String, dynamic> _data = _dataDyn;
+    Map<String, dynamic> _data = data;
 
     var shared_dyn = _data["shared"];
+
     if (shared_dyn == null) {
       throw "expected value but was null";
     }
+
     if (!(shared_dyn is String)) {
-      throw 'expected String, but was: $shared_dyn';
+      throw "expected String, but was: shared_dyn";
     }
     final String shared = shared_dyn;
 
@@ -110,23 +112,23 @@ class Tagged_A extends Tagged {
 class Tagged_B extends Tagged {
   String shared;
 
-  Tagged_B(
-    this.shared
-  );
+  Tagged_B(this.shared);
 
-  static Tagged_B decode(dynamic _dataDyn) {
-    if (!(_dataDyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
+  static Tagged_B decode(dynamic data) {
+    if (!(data is Map<String, dynamic>)) {
+      throw "expected Map<String, dynamic> but got $data";
     }
 
-    Map<String, dynamic> _data = _dataDyn;
+    Map<String, dynamic> _data = data;
 
     var shared_dyn = _data["shared"];
+
     if (shared_dyn == null) {
       throw "expected value but was null";
     }
+
     if (!(shared_dyn is String)) {
-      throw 'expected String, but was: $shared_dyn';
+      throw "expected String, but was: shared_dyn";
     }
     final String shared = shared_dyn;
 
@@ -147,23 +149,23 @@ class Tagged_B extends Tagged {
 class Tagged_Bar extends Tagged {
   String shared;
 
-  Tagged_Bar(
-    this.shared
-  );
+  Tagged_Bar(this.shared);
 
-  static Tagged_Bar decode(dynamic _dataDyn) {
-    if (!(_dataDyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
+  static Tagged_Bar decode(dynamic data) {
+    if (!(data is Map<String, dynamic>)) {
+      throw "expected Map<String, dynamic> but got $data";
     }
 
-    Map<String, dynamic> _data = _dataDyn;
+    Map<String, dynamic> _data = data;
 
     var shared_dyn = _data["shared"];
+
     if (shared_dyn == null) {
       throw "expected value but was null";
     }
+
     if (!(shared_dyn is String)) {
-      throw 'expected String, but was: $shared_dyn';
+      throw "expected String, but was: shared_dyn";
     }
     final String shared = shared_dyn;
 
@@ -184,23 +186,23 @@ class Tagged_Bar extends Tagged {
 class Tagged_Baz extends Tagged {
   String shared;
 
-  Tagged_Baz(
-    this.shared
-  );
+  Tagged_Baz(this.shared);
 
-  static Tagged_Baz decode(dynamic _dataDyn) {
-    if (!(_dataDyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
+  static Tagged_Baz decode(dynamic data) {
+    if (!(data is Map<String, dynamic>)) {
+      throw "expected Map<String, dynamic> but got $data";
     }
 
-    Map<String, dynamic> _data = _dataDyn;
+    Map<String, dynamic> _data = data;
 
     var shared_dyn = _data["shared"];
+
     if (shared_dyn == null) {
       throw "expected value but was null";
     }
+
     if (!(shared_dyn is String)) {
-      throw 'expected String, but was: $shared_dyn';
+      throw "expected String, but was: shared_dyn";
     }
     final String shared = shared_dyn;
 
@@ -219,25 +221,22 @@ class Tagged_Baz extends Tagged {
 }
 
 abstract class Untagged {
-  static Untagged decode(dynamic _dataDyn) {
-  if (!(_dataDyn is Map<String, dynamic>)) {
-    throw 'expected Map<String, dynamic>, but got: $_dataDyn';
-  }
-  Map<String, dynamic> _data = _dataDyn;
+  static Untagged decode(dynamic data) {
+    if (!(data is Map<String, dynamic>)) {
+      throw "expected Map<String, dynamic> but got $data";
+    }
 
-  var keys = Set.of(_data.keys);
+    Map<String, dynamic> _data = data;
 
-  if (keys.containsAll(<String>["a", "b"])) {
-    return Untagged_A.decode(_data);
-  }
+    var keys = Set.of(_data.keys);
 
-  if (keys.containsAll(<String>["a"])) {
-    return Untagged_B.decode(_data);
-  }
-
-  if (keys.containsAll(<String>["b"])) {
-    return Untagged_C.decode(_data);
-  }
+    if (keys.containsAll(<String>["a", "b"])) {
+      return Untagged_A.decode(_data);
+    }if (keys.containsAll(<String>["a"])) {
+      return Untagged_B.decode(_data);
+    }if (keys.containsAll(<String>["b"])) {
+      return Untagged_C.decode(_data);
+    }
   }
 
   Map<String, dynamic> encode();
@@ -252,62 +251,66 @@ class Untagged_A extends Untagged {
   String b;
   String ignore;
 
-  Untagged_A(
-    this.shared,
-    this.sharedIgnore,
-    this.a,
-    this.b,
-    this.ignore
-  );
+  Untagged_A(this.shared, this.sharedIgnore, this.a, this.b, this.ignore);
 
-  static Untagged_A decode(dynamic _dataDyn) {
-    if (!(_dataDyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
+  static Untagged_A decode(dynamic data) {
+    if (!(data is Map<String, dynamic>)) {
+      throw "expected Map<String, dynamic> but got $data";
     }
 
-    Map<String, dynamic> _data = _dataDyn;
+    Map<String, dynamic> _data = data;
 
     var shared_dyn = _data["shared"];
+
     if (shared_dyn == null) {
       throw "expected value but was null";
     }
+
     if (!(shared_dyn is String)) {
-      throw 'expected String, but was: $shared_dyn';
+      throw "expected String, but was: shared_dyn";
     }
     final String shared = shared_dyn;
 
     var sharedIgnore_dyn = _data["shared_ignore"];
+
     String sharedIgnore = null;
+
     if (sharedIgnore_dyn != null) {
       if (!(sharedIgnore_dyn is String)) {
-        throw 'expected String, but was: $sharedIgnore_dyn';
+        throw "expected String, but was: sharedIgnore_dyn";
       }
       sharedIgnore = sharedIgnore_dyn;
     }
 
     var a_dyn = _data["a"];
+
     if (a_dyn == null) {
       throw "expected value but was null";
     }
+
     if (!(a_dyn is String)) {
-      throw 'expected String, but was: $a_dyn';
+      throw "expected String, but was: a_dyn";
     }
     final String a = a_dyn;
 
     var b_dyn = _data["b"];
+
     if (b_dyn == null) {
       throw "expected value but was null";
     }
+
     if (!(b_dyn is String)) {
-      throw 'expected String, but was: $b_dyn';
+      throw "expected String, but was: b_dyn";
     }
     final String b = b_dyn;
 
     var ignore_dyn = _data["ignore"];
+
     String ignore = null;
+
     if (ignore_dyn != null) {
       if (!(ignore_dyn is String)) {
-        throw 'expected String, but was: $ignore_dyn';
+        throw "expected String, but was: ignore_dyn";
       }
       ignore = ignore_dyn;
     }
@@ -342,52 +345,55 @@ class Untagged_B extends Untagged {
   String a;
   String ignore;
 
-  Untagged_B(
-    this.shared,
-    this.sharedIgnore,
-    this.a,
-    this.ignore
-  );
+  Untagged_B(this.shared, this.sharedIgnore, this.a, this.ignore);
 
-  static Untagged_B decode(dynamic _dataDyn) {
-    if (!(_dataDyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
+  static Untagged_B decode(dynamic data) {
+    if (!(data is Map<String, dynamic>)) {
+      throw "expected Map<String, dynamic> but got $data";
     }
 
-    Map<String, dynamic> _data = _dataDyn;
+    Map<String, dynamic> _data = data;
 
     var shared_dyn = _data["shared"];
+
     if (shared_dyn == null) {
       throw "expected value but was null";
     }
+
     if (!(shared_dyn is String)) {
-      throw 'expected String, but was: $shared_dyn';
+      throw "expected String, but was: shared_dyn";
     }
     final String shared = shared_dyn;
 
     var sharedIgnore_dyn = _data["shared_ignore"];
+
     String sharedIgnore = null;
+
     if (sharedIgnore_dyn != null) {
       if (!(sharedIgnore_dyn is String)) {
-        throw 'expected String, but was: $sharedIgnore_dyn';
+        throw "expected String, but was: sharedIgnore_dyn";
       }
       sharedIgnore = sharedIgnore_dyn;
     }
 
     var a_dyn = _data["a"];
+
     if (a_dyn == null) {
       throw "expected value but was null";
     }
+
     if (!(a_dyn is String)) {
-      throw 'expected String, but was: $a_dyn';
+      throw "expected String, but was: a_dyn";
     }
     final String a = a_dyn;
 
     var ignore_dyn = _data["ignore"];
+
     String ignore = null;
+
     if (ignore_dyn != null) {
       if (!(ignore_dyn is String)) {
-        throw 'expected String, but was: $ignore_dyn';
+        throw "expected String, but was: ignore_dyn";
       }
       ignore = ignore_dyn;
     }
@@ -420,52 +426,55 @@ class Untagged_C extends Untagged {
   String b;
   String ignore;
 
-  Untagged_C(
-    this.shared,
-    this.sharedIgnore,
-    this.b,
-    this.ignore
-  );
+  Untagged_C(this.shared, this.sharedIgnore, this.b, this.ignore);
 
-  static Untagged_C decode(dynamic _dataDyn) {
-    if (!(_dataDyn is Map<String, dynamic>)) {
-      throw 'expected Map<String, dynamic>, but got: $_dataDyn';
+  static Untagged_C decode(dynamic data) {
+    if (!(data is Map<String, dynamic>)) {
+      throw "expected Map<String, dynamic> but got $data";
     }
 
-    Map<String, dynamic> _data = _dataDyn;
+    Map<String, dynamic> _data = data;
 
     var shared_dyn = _data["shared"];
+
     if (shared_dyn == null) {
       throw "expected value but was null";
     }
+
     if (!(shared_dyn is String)) {
-      throw 'expected String, but was: $shared_dyn';
+      throw "expected String, but was: shared_dyn";
     }
     final String shared = shared_dyn;
 
     var sharedIgnore_dyn = _data["shared_ignore"];
+
     String sharedIgnore = null;
+
     if (sharedIgnore_dyn != null) {
       if (!(sharedIgnore_dyn is String)) {
-        throw 'expected String, but was: $sharedIgnore_dyn';
+        throw "expected String, but was: sharedIgnore_dyn";
       }
       sharedIgnore = sharedIgnore_dyn;
     }
 
     var b_dyn = _data["b"];
+
     if (b_dyn == null) {
       throw "expected value but was null";
     }
+
     if (!(b_dyn is String)) {
-      throw 'expected String, but was: $b_dyn';
+      throw "expected String, but was: b_dyn";
     }
     final String b = b_dyn;
 
     var ignore_dyn = _data["ignore"];
+
     String ignore = null;
+
     if (ignore_dyn != null) {
       if (!(ignore_dyn is String)) {
-        throw 'expected String, but was: $ignore_dyn';
+        throw "expected String, but was: ignore_dyn";
       }
       ignore = ignore_dyn;
     }

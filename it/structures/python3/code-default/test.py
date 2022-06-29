@@ -14,7 +14,7 @@ class Entry:
     return data
 
   def __repr__(self):
-    return "<Entry>".format()
+    return "<Entry>"
 
 class Type:
   def __init__(self):
@@ -30,7 +30,7 @@ class Type:
     return data
 
   def __repr__(self):
-    return "<Type>".format()
+    return "<Type>"
 
   def type_method(self):
     pass
@@ -38,17 +38,20 @@ class Type:
 class Interface:
   @staticmethod
   def decode(data):
+    if "type" not in data:
+      raise Exception("missing tag field type")
+
     f_tag = data["type"]
 
     if f_tag == "SubType":
       return Interface_SubType.decode(data)
 
-    raise Exception("bad type: " + f_tag)
+    raise Exception("no sub type matching tag: " + f_tag)
 
   def interface_method(self):
     pass
 
-class Interface_SubType:
+class Interface_SubType(Interface):
   TYPE = "SubType"
 
   def __init__(self):
@@ -66,21 +69,22 @@ class Interface_SubType:
     return data
 
   def __repr__(self):
-    return "<Interface_SubType>".format()
+    return "<Interface_SubType>"
 
   def subtype_method(self):
     pass
 
 class Enum:
   def __init__(self, _ordinal):
-    self._ordinal = _ordinal
+    self.__ordinal = _ordinal
 
   @property
-  def ordinal(self):
-    return self._ordinal
+  def _ordinal(self):
+    return self.__ordinal
 
-  def enum_method(self):
-    pass
+  @_ordinal.setter
+  def _ordinal(self, _ordinal):
+    self.__ordinal = _ordinal
 
   def encode(self):
     return self._ordinal
@@ -96,11 +100,11 @@ class Enum:
   def __repr__(self):
     return "<Enum ordinal:{!r}>".format(self._ordinal)
 
-class Tuple:
-  def __init__(self):
+  def enum_method(self):
     pass
 
-  def tuple_method(self):
+class Tuple:
+  def __init__(self):
     pass
 
   @staticmethod
@@ -108,9 +112,13 @@ class Tuple:
     return Tuple()
 
   def encode(self):
+
     return ()
 
   def __repr__(self):
-    return "<Tuple>".format()
+    return "<Tuple>"
+
+  def tuple_method(self):
+    pass
 
 Enum = enum.Enum("Enum", [("Variant", "Variant")], type=Enum)

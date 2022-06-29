@@ -32,7 +32,6 @@ public extension Test_Entry {
     if let value = json["upper_snake"] {
       upper_snake = Optional.some(try UpperSnake_Value.decode(json: value))
     }
-
     return Test_Entry(lower_camel: lower_camel, lower_snake: lower_snake, upper_camel: upper_camel, upper_snake: upper_snake)
   }
 
@@ -42,12 +41,15 @@ public extension Test_Entry {
     if let value = self.lower_camel {
       json["lower_camel"] = try value.encode()
     }
+
     if let value = self.lower_snake {
       json["lower_snake"] = try value.encode()
     }
+
     if let value = self.upper_camel {
       json["upper_camel"] = try value.encode()
     }
+
     if let value = self.upper_snake {
       json["upper_snake"] = try value.encode()
     }

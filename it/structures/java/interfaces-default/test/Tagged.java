@@ -9,307 +9,363 @@ import java.util.Optional;
 
 @JsonTypeInfo(use=JsonTypeInfo.Id.NAME, include=JsonTypeInfo.As.PROPERTY, property="@type")
 @JsonSubTypes({
-  @JsonSubTypes.Type(name="foo", value=Tagged.A.class),
-  @JsonSubTypes.Type(name="b", value=Tagged.B.class),
-  @JsonSubTypes.Type(name="Bar", value=Tagged.Bar.class),
-  @JsonSubTypes.Type(name="Baz", value=Tagged.Baz.class)
+    @JsonSubTypes.Type(name="foo", value=Tagged.A.class),
+    @JsonSubTypes.Type(name="b", value=Tagged.B.class),
+    @JsonSubTypes.Type(name="Bar", value=Tagged.Bar.class),
+    @JsonSubTypes.Type(name="Baz", value=Tagged.Baz.class),
 })
 public interface Tagged {
-  String getShared();
+    public String getShared();
 
-  public static class A implements Tagged {
-    @JsonProperty("shared")
-    private final String shared;
+    public static class A implements Tagged {
+        @JsonProperty("shared")
+        final String shared;
 
-    @JsonCreator
-    public A(
-      @JsonProperty("shared") final String shared
-    ) {
-      Objects.requireNonNull(shared, "shared");
-      this.shared = shared;
+        @JsonCreator
+        public A(
+            @JsonProperty("shared") String shared
+        ) {
+            Objects.requireNonNull(shared, "shared: must not be null");
+            this.shared = shared;
+        }
+
+        @JsonProperty("shared")
+        @Override
+        public String getShared() {
+            return this.shared;
+        }
+
+        @Override
+        public String toString() {
+            final StringBuilder b = new StringBuilder();
+
+            b.append("A(");
+            b.append("shared=");
+            b.append(this.shared.toString());
+            b.append(")");
+
+            return b.toString();
+        }
+
+        @Override
+        public int hashCode() {
+            int result = 1;
+            final StringBuilder b = new StringBuilder();
+            result = result * 31 + this.shared.hashCode();
+            return result;
+        }
+
+        @Override
+        public boolean equals(final Object other_) {
+            if (other_ == null) {
+                return false;
+            }
+
+            if (!(other_ instanceof A)) {
+                return false;
+            }
+
+            @SuppressWarnings("unchecked")
+            final A o_ = (A)other_;
+
+            if (!this.shared.equals(o_.shared)) {
+                return false;
+            }
+
+            return true;
+        }
+
+        public static class Builder {
+            private Optional<String> shared;
+
+            private Builder() {
+                this.shared = Optional.empty();
+            }
+
+            public A build() {
+                final String shared = this.shared
+                    .orElseThrow(() -> new RuntimeException("shared: missing required value"));
+
+                return new A(
+                    shared
+                );
+            }
+
+            public Builder shared(final String shared) {
+                this.shared = Optional.of(shared);
+                return this;
+            }
+        }
+
+        /**
+         * Construct a new builder.
+         */
+        public static Builder builder() {
+            return new Builder();
+        }
     }
 
-    @Override
-    @JsonProperty("shared")
-    public String getShared() {
-      return this.shared;
+    public static class B implements Tagged {
+        @JsonProperty("shared")
+        final String shared;
+
+        @JsonCreator
+        public B(
+            @JsonProperty("shared") String shared
+        ) {
+            Objects.requireNonNull(shared, "shared: must not be null");
+            this.shared = shared;
+        }
+
+        @JsonProperty("shared")
+        @Override
+        public String getShared() {
+            return this.shared;
+        }
+
+        @Override
+        public String toString() {
+            final StringBuilder b = new StringBuilder();
+
+            b.append("B(");
+            b.append("shared=");
+            b.append(this.shared.toString());
+            b.append(")");
+
+            return b.toString();
+        }
+
+        @Override
+        public int hashCode() {
+            int result = 1;
+            final StringBuilder b = new StringBuilder();
+            result = result * 31 + this.shared.hashCode();
+            return result;
+        }
+
+        @Override
+        public boolean equals(final Object other_) {
+            if (other_ == null) {
+                return false;
+            }
+
+            if (!(other_ instanceof B)) {
+                return false;
+            }
+
+            @SuppressWarnings("unchecked")
+            final B o_ = (B)other_;
+
+            if (!this.shared.equals(o_.shared)) {
+                return false;
+            }
+
+            return true;
+        }
+
+        public static class Builder {
+            private Optional<String> shared;
+
+            private Builder() {
+                this.shared = Optional.empty();
+            }
+
+            public B build() {
+                final String shared = this.shared
+                    .orElseThrow(() -> new RuntimeException("shared: missing required value"));
+
+                return new B(
+                    shared
+                );
+            }
+
+            public Builder shared(final String shared) {
+                this.shared = Optional.of(shared);
+                return this;
+            }
+        }
+
+        /**
+         * Construct a new builder.
+         */
+        public static Builder builder() {
+            return new Builder();
+        }
     }
 
-    @Override
-    public int hashCode() {
-      int result = 1;
-      result = result * 31 + this.shared.hashCode();
-      return result;
+    public static class Bar implements Tagged {
+        @JsonProperty("shared")
+        final String shared;
+
+        @JsonCreator
+        public Bar(
+            @JsonProperty("shared") String shared
+        ) {
+            Objects.requireNonNull(shared, "shared: must not be null");
+            this.shared = shared;
+        }
+
+        @JsonProperty("shared")
+        @Override
+        public String getShared() {
+            return this.shared;
+        }
+
+        @Override
+        public String toString() {
+            final StringBuilder b = new StringBuilder();
+
+            b.append("Bar(");
+            b.append("shared=");
+            b.append(this.shared.toString());
+            b.append(")");
+
+            return b.toString();
+        }
+
+        @Override
+        public int hashCode() {
+            int result = 1;
+            final StringBuilder b = new StringBuilder();
+            result = result * 31 + this.shared.hashCode();
+            return result;
+        }
+
+        @Override
+        public boolean equals(final Object other_) {
+            if (other_ == null) {
+                return false;
+            }
+
+            if (!(other_ instanceof Bar)) {
+                return false;
+            }
+
+            @SuppressWarnings("unchecked")
+            final Bar o_ = (Bar)other_;
+
+            if (!this.shared.equals(o_.shared)) {
+                return false;
+            }
+
+            return true;
+        }
+
+        public static class Builder {
+            private Optional<String> shared;
+
+            private Builder() {
+                this.shared = Optional.empty();
+            }
+
+            public Bar build() {
+                final String shared = this.shared
+                    .orElseThrow(() -> new RuntimeException("shared: missing required value"));
+
+                return new Bar(
+                    shared
+                );
+            }
+
+            public Builder shared(final String shared) {
+                this.shared = Optional.of(shared);
+                return this;
+            }
+        }
+
+        /**
+         * Construct a new builder.
+         */
+        public static Builder builder() {
+            return new Builder();
+        }
     }
 
-    @Override
-    public boolean equals(final Object other) {
-      if (other == null) {
-        return false;
-      }
+    public static class Baz implements Tagged {
+        @JsonProperty("shared")
+        final String shared;
 
-      if (!(other instanceof A)) {
-        return false;
-      }
+        @JsonCreator
+        public Baz(
+            @JsonProperty("shared") String shared
+        ) {
+            Objects.requireNonNull(shared, "shared: must not be null");
+            this.shared = shared;
+        }
 
-      @SuppressWarnings("unchecked")
-      final A o = (A) other;
+        @JsonProperty("shared")
+        @Override
+        public String getShared() {
+            return this.shared;
+        }
 
-      if (!this.shared.equals(o.shared)) {
-        return false;
-      }
+        @Override
+        public String toString() {
+            final StringBuilder b = new StringBuilder();
 
-      return true;
-    }
+            b.append("Baz(");
+            b.append("shared=");
+            b.append(this.shared.toString());
+            b.append(")");
 
-    @Override
-    public String toString() {
-      final StringBuilder b = new StringBuilder();
+            return b.toString();
+        }
 
-      b.append("A");
-      b.append("(");
-      b.append("shared=");
-      b.append(this.shared.toString());
-      b.append(")");
+        @Override
+        public int hashCode() {
+            int result = 1;
+            final StringBuilder b = new StringBuilder();
+            result = result * 31 + this.shared.hashCode();
+            return result;
+        }
 
-      return b.toString();
-    }
+        @Override
+        public boolean equals(final Object other_) {
+            if (other_ == null) {
+                return false;
+            }
 
-    public static class Builder {
-      private Optional<String> shared = Optional.empty();
+            if (!(other_ instanceof Baz)) {
+                return false;
+            }
 
-      public Builder shared(final String shared) {
-        this.shared = Optional.of(shared);
-        return this;
-      }
+            @SuppressWarnings("unchecked")
+            final Baz o_ = (Baz)other_;
 
-      public A build() {
-        final String shared = this.shared.orElseThrow(() -> new RuntimeException("shared: is required"));
+            if (!this.shared.equals(o_.shared)) {
+                return false;
+            }
 
-        return new A(shared);
-      }
-    }
-  }
+            return true;
+        }
 
-  public static class B implements Tagged {
-    @JsonProperty("shared")
-    private final String shared;
+        public static class Builder {
+            private Optional<String> shared;
 
-    @JsonCreator
-    public B(
-      @JsonProperty("shared") final String shared
-    ) {
-      Objects.requireNonNull(shared, "shared");
-      this.shared = shared;
-    }
+            private Builder() {
+                this.shared = Optional.empty();
+            }
 
-    @Override
-    @JsonProperty("shared")
-    public String getShared() {
-      return this.shared;
-    }
+            public Baz build() {
+                final String shared = this.shared
+                    .orElseThrow(() -> new RuntimeException("shared: missing required value"));
 
-    @Override
-    public int hashCode() {
-      int result = 1;
-      result = result * 31 + this.shared.hashCode();
-      return result;
-    }
+                return new Baz(
+                    shared
+                );
+            }
 
-    @Override
-    public boolean equals(final Object other) {
-      if (other == null) {
-        return false;
-      }
+            public Builder shared(final String shared) {
+                this.shared = Optional.of(shared);
+                return this;
+            }
+        }
 
-      if (!(other instanceof B)) {
-        return false;
-      }
-
-      @SuppressWarnings("unchecked")
-      final B o = (B) other;
-
-      if (!this.shared.equals(o.shared)) {
-        return false;
-      }
-
-      return true;
-    }
-
-    @Override
-    public String toString() {
-      final StringBuilder b = new StringBuilder();
-
-      b.append("B");
-      b.append("(");
-      b.append("shared=");
-      b.append(this.shared.toString());
-      b.append(")");
-
-      return b.toString();
-    }
-
-    public static class Builder {
-      private Optional<String> shared = Optional.empty();
-
-      public Builder shared(final String shared) {
-        this.shared = Optional.of(shared);
-        return this;
-      }
-
-      public B build() {
-        final String shared = this.shared.orElseThrow(() -> new RuntimeException("shared: is required"));
-
-        return new B(shared);
-      }
-    }
-  }
-
-  public static class Bar implements Tagged {
-    @JsonProperty("shared")
-    private final String shared;
-
-    @JsonCreator
-    public Bar(
-      @JsonProperty("shared") final String shared
-    ) {
-      Objects.requireNonNull(shared, "shared");
-      this.shared = shared;
-    }
-
-    @Override
-    @JsonProperty("shared")
-    public String getShared() {
-      return this.shared;
-    }
-
-    @Override
-    public int hashCode() {
-      int result = 1;
-      result = result * 31 + this.shared.hashCode();
-      return result;
-    }
-
-    @Override
-    public boolean equals(final Object other) {
-      if (other == null) {
-        return false;
-      }
-
-      if (!(other instanceof Bar)) {
-        return false;
-      }
-
-      @SuppressWarnings("unchecked")
-      final Bar o = (Bar) other;
-
-      if (!this.shared.equals(o.shared)) {
-        return false;
-      }
-
-      return true;
-    }
-
-    @Override
-    public String toString() {
-      final StringBuilder b = new StringBuilder();
-
-      b.append("Bar");
-      b.append("(");
-      b.append("shared=");
-      b.append(this.shared.toString());
-      b.append(")");
-
-      return b.toString();
-    }
-
-    public static class Builder {
-      private Optional<String> shared = Optional.empty();
-
-      public Builder shared(final String shared) {
-        this.shared = Optional.of(shared);
-        return this;
-      }
-
-      public Bar build() {
-        final String shared = this.shared.orElseThrow(() -> new RuntimeException("shared: is required"));
-
-        return new Bar(shared);
-      }
-    }
-  }
-
-  public static class Baz implements Tagged {
-    @JsonProperty("shared")
-    private final String shared;
-
-    @JsonCreator
-    public Baz(
-      @JsonProperty("shared") final String shared
-    ) {
-      Objects.requireNonNull(shared, "shared");
-      this.shared = shared;
-    }
-
-    @Override
-    @JsonProperty("shared")
-    public String getShared() {
-      return this.shared;
-    }
-
-    @Override
-    public int hashCode() {
-      int result = 1;
-      result = result * 31 + this.shared.hashCode();
-      return result;
-    }
-
-    @Override
-    public boolean equals(final Object other) {
-      if (other == null) {
-        return false;
-      }
-
-      if (!(other instanceof Baz)) {
-        return false;
-      }
-
-      @SuppressWarnings("unchecked")
-      final Baz o = (Baz) other;
-
-      if (!this.shared.equals(o.shared)) {
-        return false;
-      }
-
-      return true;
-    }
-
-    @Override
-    public String toString() {
-      final StringBuilder b = new StringBuilder();
-
-      b.append("Baz");
-      b.append("(");
-      b.append("shared=");
-      b.append(this.shared.toString());
-      b.append(")");
-
-      return b.toString();
-    }
-
-    public static class Builder {
-      private Optional<String> shared = Optional.empty();
-
-      public Builder shared(final String shared) {
-        this.shared = Optional.of(shared);
-        return this;
-      }
-
-      public Baz build() {
-        final String shared = this.shared.orElseThrow(() -> new RuntimeException("shared: is required"));
-
-        return new Baz(shared);
-      }
-    }
-  }
+        /**
+         * Construct a new builder.
+         */
+        public static Builder builder() {
+            return new Builder();
+        }
+    };
 }

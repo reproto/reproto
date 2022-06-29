@@ -28,7 +28,7 @@ struct Python2VersionHelper {}
 
 impl VersionHelper for Python2VersionHelper {
     fn is_string(&self, var: &ItemStr) -> Tokens<Python> {
-        quote!(isinstance(#var, unicode))
+        quote!(isinstance($var, unicode))
     }
 }
 

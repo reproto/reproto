@@ -1,10 +1,10 @@
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Entry {
-}
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootType {
-}
+pub struct Entry {}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct RootType {}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -14,8 +14,7 @@ pub enum RootInterface {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
-pub struct RootInterface_Foo {
-}
+pub struct RootInterface_Foo {}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum RootEnum {
@@ -24,9 +23,8 @@ pub enum RootEnum {
 
 impl RootEnum {
   pub fn value(&self) -> &'static str {
-    use self::RootEnum::*;
-    match *self {
-      Foo => "Foo",
+    match self {
+      Self::Foo => "Foo",
     }
   }
 }
@@ -36,8 +34,7 @@ pub struct RootTuple();
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootType_NestedType {
-}
+pub struct RootType_NestedType {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -48,8 +45,7 @@ pub enum RootType_NestedInterface {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
-pub struct RootType_NestedInterface_Foo {
-}
+pub struct RootType_NestedInterface_Foo {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -59,9 +55,8 @@ pub enum RootType_NestedEnum {
 
 impl RootType_NestedEnum {
   pub fn value(&self) -> &'static str {
-    use self::RootType_NestedEnum::*;
-    match *self {
-      Foo => "Foo",
+    match self {
+      Self::Foo => "Foo",
     }
   }
 }
@@ -72,8 +67,7 @@ pub struct RootType_NestedTuple();
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootInterface_Foo_NestedType {
-}
+pub struct RootInterface_Foo_NestedType {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -84,8 +78,7 @@ pub enum RootInterface_Foo_NestedInterface {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
-pub struct RootInterface_Foo_NestedInterface_NestedFoo {
-}
+pub struct RootInterface_Foo_NestedInterface_NestedFoo {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -95,9 +88,8 @@ pub enum RootInterface_Foo_NestedEnum {
 
 impl RootInterface_Foo_NestedEnum {
   pub fn value(&self) -> &'static str {
-    use self::RootInterface_Foo_NestedEnum::*;
-    match *self {
-      Foo => "Foo",
+    match self {
+      Self::Foo => "Foo",
     }
   }
 }
@@ -108,8 +100,7 @@ pub struct RootInterface_Foo_NestedTuple();
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootTuple_NestedType {
-}
+pub struct RootTuple_NestedType {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -120,8 +111,7 @@ pub enum RootTuple_NestedInterface {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
-pub struct RootTuple_NestedInterface_Foo {
-}
+pub struct RootTuple_NestedInterface_Foo {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -131,9 +121,8 @@ pub enum RootTuple_NestedEnum {
 
 impl RootTuple_NestedEnum {
   pub fn value(&self) -> &'static str {
-    use self::RootTuple_NestedEnum::*;
-    match *self {
-      Foo => "Foo",
+    match self {
+      Self::Foo => "Foo",
     }
   }
 }
@@ -144,8 +133,7 @@ pub struct RootTuple_NestedTuple();
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootService_NestedType {
-}
+pub struct RootService_NestedType {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -156,8 +144,7 @@ pub enum RootService_NestedInterface {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
-pub struct RootService_NestedInterface_Foo {
-}
+pub struct RootService_NestedInterface_Foo {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -167,9 +154,8 @@ pub enum RootService_NestedEnum {
 
 impl RootService_NestedEnum {
   pub fn value(&self) -> &'static str {
-    use self::RootService_NestedEnum::*;
-    match *self {
-      Foo => "Foo",
+    match self {
+      Self::Foo => "Foo",
     }
   }
 }
@@ -180,60 +166,48 @@ pub struct RootService_NestedTuple();
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootType_NestedInterface_Foo_Nested {
-}
+pub struct RootType_NestedInterface_Foo_Nested {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootType_NestedTuple_Nested {
-}
+pub struct RootType_NestedTuple_Nested {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootType_NestedService_Nested {
-}
+pub struct RootType_NestedService_Nested {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootInterface_Foo_NestedInterface_NestedFoo_Nested {
-}
+pub struct RootInterface_Foo_NestedInterface_NestedFoo_Nested {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootInterface_Foo_NestedTuple_Nested {
-}
+pub struct RootInterface_Foo_NestedTuple_Nested {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootInterface_Foo_NestedService_Nested {
-}
+pub struct RootInterface_Foo_NestedService_Nested {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootTuple_NestedInterface_Foo_Nested {
-}
+pub struct RootTuple_NestedInterface_Foo_Nested {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootTuple_NestedTuple_Nested {
-}
+pub struct RootTuple_NestedTuple_Nested {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootTuple_NestedService_Nested {
-}
+pub struct RootTuple_NestedService_Nested {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootService_NestedInterface_Foo_Nested {
-}
+pub struct RootService_NestedInterface_Foo_Nested {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootService_NestedTuple_Nested {
-}
+pub struct RootService_NestedTuple_Nested {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RootService_NestedService_Nested {
-}
+pub struct RootService_NestedService_Nested {}

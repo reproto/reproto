@@ -1,8 +1,8 @@
 export class Entry {
-  constructor() {
-  }
+  constructor() {}
 
   static decode(data) {
+
     return new Entry();
   }
 
@@ -14,10 +14,10 @@ export class Entry {
 }
 
 export class Type {
-  constructor() {
-  }
+  constructor() {}
 
   static decode(data) {
+
     return new Type();
   }
 
@@ -33,13 +33,17 @@ export class Type {
 
 export class Interface {
   static decode(data) {
-    const f_tag = data["type"]
+    const f_tag = data["type"];
+
+    if (f_tag === null || f_tag === undefined) {
+      throw new Error("missing tag field: type");
+    }
 
     if (f_tag === "SubType") {
       return Interface_SubType.decode(data);
     }
 
-    throw new Error("bad type: " + f_tag);
+    throw new Error("bad sub-type: " + f_tag);
   }
 
   interfaceMethod() {
@@ -47,10 +51,10 @@ export class Interface {
 }
 
 export class Interface_SubType {
-  constructor() {
-  }
+  constructor() {}
 
   static decode(data) {
+
     return new Interface_SubType();
   }
 
@@ -75,18 +79,17 @@ export class Enum {
   encode() {
     return this.value;
   }
+
   static decode(data) {
     for (let i = 0, l = Enum.values.length; i < l; i++) {
-      const member = Enum.values[i]
-
-
+      const member = Enum.values[i];
 
       if (member.value === data) {
         return member;
       }
     }
 
-    throw new Error("no matching value: " + data);
+    throw new Error("no value matching: " + data);
   }
 
   enumMethod() {
@@ -98,14 +101,15 @@ Enum.Variant = new Enum("Variant", "Variant");
 Enum.values = [Enum.Variant];
 
 export class Tuple {
-  constructor() {
-  }
+  constructor() {}
 
   static decode(data) {
+
     return new Tuple();
   }
 
   encode() {
+
     return [];
   }
 

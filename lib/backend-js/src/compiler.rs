@@ -76,8 +76,8 @@ impl<'a> Compiler<'a> {
         T: Copy + FormatInto<JavaScript>,
     {
         quote_in! { *out =>
-            if (#(is_not_defined(toks))) {
-                throw new Error(#(quoted(format!("{}: is a required field", field.name()))));
+            if ($(is_not_defined(toks))) {
+                throw new Error($(quoted(format!("{}: is a required field", field.name()))));
             }
         }
     }
@@ -94,27 +94,27 @@ impl<'a> Compiler<'a> {
     {
         quote_in! { *out =>
             encode() {
-                const data = #builder;
+                const data = $builder;
 
-                #(if let Some(extra) = extra {
-                    #extra
+                $(if let Some(extra) = extra {
+                    $extra
                 })
 
-                #(for field in fields join (#<line>) {
-                    #(ref out => {
-                        let field_toks = quote!(this.#(field.safe_ident()));
+                $(for field in fields join ($['\n']) {
+                    $(ref out => {
+                        let field_toks = quote!(this.$(field.safe_ident()));
 
                         if field.is_optional() {
                             quote_in! { *out =>
-                                if (#(is_defined(&field_toks))) {
-                                    data[#(quoted(field.name()))] = #(field.ty.encode(field_toks));
+                                if ($(is_defined(&field_toks))) {
+                                    data[$(quoted(field.name()))] = $(field.ty.encode(field_toks));
                                 }
                             }
                         } else {
                             quote_in! { *out =>
-                                #(ref o => self.throw_if_null(o, &field_toks, field))
+                                $(ref o => self.throw_if_null(o, &field_toks, field))
 
-                                data[#(quoted(field.name()))] = #(field.ty.encode(field_toks));
+                                data[$(quoted(field.name()))] = $(field.ty.encode(field_toks));
                             }
                         }
                     })
@@ -133,33 +133,33 @@ impl<'a> Compiler<'a> {
 
         quote_in! { *out =>
             encode() {
-                #(for field in fields join (#<line>) {
-                    #(ref out => {
-                        let access = quote!(this.#(field.safe_ident()));
+                $(for field in fields join ($['\n']) {
+                    $(ref out => {
+                        let access = quote!(this.$(field.safe_ident()));
                         self.throw_if_null(out, &access, field);
                         values.push(field.ty.encode(access));
                     })
                 })
 
-                return [#(for v in values join (, ) => #v)];
+                return [$(for v in values join (, ) => $v)];
             }
         }
     }
 
     fn decode_enum_method(&self, out: &mut js::Tokens, name: &Name, field: &Spanned<RpField>) {
-        let members = &quote!(#name.#(&self.values));
+        let members = &quote!($name.$(&self.values));
 
         quote_in! { *out =>
             static decode(data) {
-                for (let i = 0, l = #members.length; i < l; i++) {
-                    const member = #members[i];
+                for (let i = 0, l = $members.length; i < l; i++) {
+                    const member = $members[i];
 
-                    if (member.#(field.safe_ident()) === data) {
+                    if (member.$(field.safe_ident()) === data) {
                         return member;
                     }
                 }
 
-                throw new Error(#(quoted(format!("no value matching: "))) + data);
+                throw new Error($(quoted(format!("no value matching: "))) + data);
             }
         }
     }
@@ -174,8 +174,8 @@ impl<'a> Compiler<'a> {
 
         quote_in! { *out =>
             static decode(data) {
-                #(for (i, field) in fields.into_iter().enumerate() join (#<line>) {
-                    #(ref o {
+                $(for (i, field) in fields.into_iter().enumerate() join ($['\n']) {
+                    $(ref o {
                         let var_name = &Rc::new(format!("v_{}", field.ident));
                         arguments.push(var_name.clone());
 
@@ -183,29 +183,29 @@ impl<'a> Compiler<'a> {
 
                         if field.is_optional() {
                             quote_in! { *o =>
-                                let #var_name = data[#var];
+                                let $var_name = data[$var];
 
-                                if (#(is_defined(var_name))) {
-                                    #(ref t => field.ty.decode(t, quote!(#var_name)))
+                                if ($(is_defined(var_name))) {
+                                    $(ref t => field.ty.decode(t, quote!($var_name)))
                                 } else {
-                                    #var_name = null;
+                                    $var_name = null;
                                 }
                             }
                         } else {
                             quote_in! { *o =>
-                                let #var_name = data[#var];
+                                let $var_name = data[$var];
 
-                                if (#(is_not_defined(var_name))) {
-                                    throw new Error(#var + ": required field");
+                                if ($(is_not_defined(var_name))) {
+                                    throw new Error($var + ": required field");
                                 }
 
-                                #(ref t => field.ty.decode(t, quote!(#var_name)))
+                                $(ref t => field.ty.decode(t, quote!($var_name)))
                             }
                         }
                     })
                 })
 
-                return new #name(#(for a in arguments join (, ) => #a));
+                return new $name($(for a in arguments join (, ) => $a));
             }
         }
     }
@@ -230,21 +230,21 @@ impl<'a> Compiler<'a> {
 
         for field in fields {
             arguments.push(field.safe_ident());
-            assign.push(quote!(this.#(field.safe_ident()) = #(field.safe_ident());));
+            assign.push(quote!(this.$(field.safe_ident()) = $(field.safe_ident());));
         }
 
         quote_in! { *out =>
-            constructor(#(for a in arguments join (, ) => #a)) {
-                #<push>#(for a in assign join (#<push>) => #a)
+            constructor($(for a in arguments join (, ) => $a)) {
+                $['\r']$(for a in assign join ($['\r']) => $a)
             }
         }
     }
 
     fn build_enum_constructor(&self, out: &mut js::Tokens, field: &RpField) {
         quote_in! { *out =>
-            constructor(#(&self.enum_name), #(field.safe_ident())) {
-                this.#(&self.enum_name) = #(&self.enum_name);
-                this.#(field.safe_ident()) = #(field.safe_ident());
+            constructor($(&self.enum_name), $(field.safe_ident())) {
+                this.$(&self.enum_name) = $(&self.enum_name);
+                this.$(field.safe_ident()) = $(field.safe_ident());
             }
         }
     }
@@ -252,7 +252,7 @@ impl<'a> Compiler<'a> {
     fn enum_encode(&self, out: &mut js::Tokens, field: &Spanned<RpField>) {
         quote_in! { *out =>
             encode() {
-                return this.#(field.safe_ident());
+                return this.$(field.safe_ident());
             }
         }
     }
@@ -267,8 +267,8 @@ impl<'a> Compiler<'a> {
             let name = &Rc::new(self.to_lower_snake.convert(&field.ident));
 
             result.push(quote! {
-                function get_#(name)() {
-                    return this.#name;
+                function get_$(name)() {
+                    return this.$name;
                 }
             });
         }
@@ -295,21 +295,21 @@ impl<'a> PackageProcessor<'a, JavaScriptFlavor> for Compiler<'a> {
 
     fn process_tuple(&self, out: &mut Self::Out, body: &RpTupleBody) -> Result<()> {
         quote_in! { out.0 =>
-            export class #(&body.name) {
-                #(ref o => self.build_constructor(o, &body.fields))
+            export class $(&body.name) {
+                $(ref o => self.build_constructor(o, &body.fields))
 
-                #(if false {
-                    #(for getter in self.build_getters(&body.fields) join (#<line>) {
-                        #getter
+                $(if false {
+                    $(for getter in self.build_getters(&body.fields) join ($['\n']) {
+                        $getter
                     })
                 })
 
-                #(ref o => self.decode_method(o, &body.fields, &body.name, Self::field_by_index))
+                $(ref o => self.decode_method(o, &body.fields, &body.name, Self::field_by_index))
 
-                #(ref o => self.encode_tuple_method(o, &body.fields))
+                $(ref o => self.encode_tuple_method(o, &body.fields))
 
-                #(if backend::code_contains!(&body.codes, RpContext::Js) {
-                    #(ref o => backend::code_in!(o, &body.codes, RpContext::Js))
+                $(if backend::code_contains!(&body.codes, RpContext::Js) {
+                    $(ref o => backend::code_in!(o, &body.codes, RpContext::Js))
                 })
             }
         }
@@ -324,35 +324,35 @@ impl<'a> PackageProcessor<'a, JavaScriptFlavor> for Compiler<'a> {
             Spanned::new(RpField::new("value", body.enum_type.clone()), Span::empty());
 
         quote_in! { out.0 =>
-            export class #(&body.name) {
-                #(ref o => self.build_enum_constructor(o, &variant_field))
+            export class $(&body.name) {
+                $(ref o => self.build_enum_constructor(o, &variant_field))
 
-                #(ref o => self.enum_encode(o, &variant_field))
+                $(ref o => self.enum_encode(o, &variant_field))
 
-                #(ref o => self.decode_enum_method(o, &body.name, &variant_field))
+                $(ref o => self.decode_enum_method(o, &body.name, &variant_field))
 
-                #(if backend::code_contains!(&body.codes, RpContext::Js) {
-                    #(ref o => backend::code_in!(o, &body.codes, RpContext::Js))
+                $(if backend::code_contains!(&body.codes, RpContext::Js) {
+                    $(ref o => backend::code_in!(o, &body.codes, RpContext::Js))
                 })
             }
 
-            #(ref o => for v in body.variants.iter() {
-                values.push(quote!(#(&body.name).#(v.ident())));
+            $(ref o => for v in body.variants.iter() {
+                values.push(quote!($(&body.name).$(v.ident())));
 
                 quote_in! { *o =>
-                    #<push>
-                    #(&body.name).#(v.ident()) = new #(&body.name)(#(quoted(v.ident())), #(match v.value {
+                    $['\r']
+                    $(&body.name).$(v.ident()) = new $(&body.name)($(quoted(v.ident())), $(match v.value {
                         RpVariantValue::String(string) => {
-                            #(quoted(string))
+                            $(quoted(string))
                         }
                         RpVariantValue::Number(number) => {
-                            #(display(number))
+                            $(display(number))
                         }
                     }));
                 }
             })
 
-            #(&body.name).#(&self.values) = [#(for v in values join (, ) => #v)];
+            $(&body.name).$(&self.values) = [$(for v in values join (, ) => $v)];
         }
 
         Ok(())
@@ -360,21 +360,21 @@ impl<'a> PackageProcessor<'a, JavaScriptFlavor> for Compiler<'a> {
 
     fn process_type(&self, out: &mut Self::Out, body: &RpTypeBody) -> Result<()> {
         quote_in! { out.0 =>
-            export class #(&body.name) {
-                #(ref o => self.build_constructor(o, &body.fields))
+            export class $(&body.name) {
+                $(ref o => self.build_constructor(o, &body.fields))
 
-                #(if false {
-                    #(for getter in self.build_getters(&body.fields) {
-                        #getter
+                $(if false {
+                    $(for getter in self.build_getters(&body.fields) {
+                        $getter
                     })
                 })
 
-                #(ref o => self.decode_method(o, &body.fields, &body.name, Self::field_by_name))
+                $(ref o => self.decode_method(o, &body.fields, &body.name, Self::field_by_name))
 
-                #(ref o => self.encode_method(o, &body.fields, "{}", None))
+                $(ref o => self.encode_method(o, &body.fields, "{}", None))
 
-                #(if backend::code_contains!(&body.codes, RpContext::Js) {
-                    #(ref o => backend::code_in!(o, &body.codes, RpContext::Js))
+                $(if backend::code_contains!(&body.codes, RpContext::Js) {
+                    $(ref o => backend::code_in!(o, &body.codes, RpContext::Js))
                 })
             }
         }
@@ -384,32 +384,32 @@ impl<'a> PackageProcessor<'a, JavaScriptFlavor> for Compiler<'a> {
 
     fn process_interface(&self, out: &mut Self::Out, body: &RpInterfaceBody) -> Result<()> {
         quote_in! { out.0 =>
-            export class #(&body.name) {
-                #(match &body.sub_type_strategy {
+            export class $(&body.name) {
+                $(match &body.sub_type_strategy {
                     RpSubTypeStrategy::Tagged { tag, .. } => {
-                        #(ref o => decode(o, &body, tag.as_str()))
+                        $(ref o => decode(o, &body, tag.as_str()))
                     }
                     RpSubTypeStrategy::Untagged => {
-                        #(ref o => decode_untagged(o, body))
+                        $(ref o => decode_untagged(o, body))
                     }
                 })
 
-                #(if backend::code_contains!(&body.codes, RpContext::Js) {
-                    #(ref o => backend::code_in!(o, &body.codes, RpContext::Js))
+                $(if backend::code_contains!(&body.codes, RpContext::Js) {
+                    $(ref o => backend::code_in!(o, &body.codes, RpContext::Js))
                 })
             }
 
-            #(for sub_type in &body.sub_types {
-                export class #(&sub_type.name) {
-                    #(ref o => self.build_constructor(o, body.fields.iter().chain(sub_type.fields.iter())))
+            $(for sub_type in &body.sub_types {
+                export class $(&sub_type.name) {
+                    $(ref o => self.build_constructor(o, body.fields.iter().chain(sub_type.fields.iter())))
 
-                    #(if false {
-                        #(for getter in self.build_getters(body.fields.iter().chain(sub_type.fields.iter())) {
-                            #getter
+                    $(if false {
+                        $(for getter in self.build_getters(body.fields.iter().chain(sub_type.fields.iter())) {
+                            $getter
                         })
                     })
 
-                    #(ref o => {
+                    $(ref o => {
                         self.decode_method(
                             o,
                             body.fields.iter().chain(sub_type.fields.iter()),
@@ -418,26 +418,26 @@ impl<'a> PackageProcessor<'a, JavaScriptFlavor> for Compiler<'a> {
                         )
                     })
 
-                    #(match &body.sub_type_strategy {
+                    $(match &body.sub_type_strategy {
                         RpSubTypeStrategy::Tagged { tag, .. } => {
-                            #(ref o => {
+                            $(ref o => {
                                 self.encode_method(
                                     o,
                                     body.fields.iter().chain(sub_type.fields.iter()),
                                     "{}",
-                                    Some(quote!(data[#(quoted(tag))] = #(quoted(sub_type.name()));))
+                                    Some(quote!(data[$(quoted(tag))] = $(quoted(sub_type.name()));))
                                 )
                             })
                         }
                         RpSubTypeStrategy::Untagged => {
-                            #(ref o => {
+                            $(ref o => {
                                 self.encode_method(o, body.fields.iter().chain(sub_type.fields.iter()), "{}", None)
                             })
                         }
                     })
 
-                    #(if backend::code_contains!(&sub_type.codes, RpContext::Js) {
-                        #(ref o => backend::code_in!(o, &sub_type.codes, RpContext::Js))
+                    $(if backend::code_contains!(&sub_type.codes, RpContext::Js) {
+                        $(ref o => backend::code_in!(o, &sub_type.codes, RpContext::Js))
                     })
                 }
             })
@@ -448,15 +448,15 @@ impl<'a> PackageProcessor<'a, JavaScriptFlavor> for Compiler<'a> {
         fn decode(out: &mut js::Tokens, body: &RpInterfaceBody, tag: &str) {
             quote_in! { *out =>
                 static decode(data) {
-                    const f_tag = data[#(quoted(tag))];
+                    const f_tag = data[$(quoted(tag))];
 
-                    if (#(is_not_defined("f_tag"))) {
-                        throw new Error(#(quoted(format!("missing tag field: {}", tag))));
+                    if ($(is_not_defined("f_tag"))) {
+                        throw new Error($(quoted(format!("missing tag field: {}", tag))));
                     }
 
-                    #(for sub_type in body.sub_types.iter() {
-                        if (f_tag === #(quoted(sub_type.name()))) {
-                            return #(&sub_type.name).decode(data);
+                    $(for sub_type in body.sub_types.iter() {
+                        if (f_tag === $(quoted(sub_type.name()))) {
+                            return $(&sub_type.name).decode(data);
                         }
                     })
 
@@ -475,9 +475,9 @@ impl<'a> PackageProcessor<'a, JavaScriptFlavor> for Compiler<'a> {
                         keys[k] = true;
                     }
 
-                    #(for sub_type in body.sub_types.iter() {
-                        if (#(for f in sub_type.discriminating_fields() join ( && ) => (#(quoted(f.name())) in keys))) {
-                            return #(&sub_type.name).decode(data);
+                    $(for sub_type in body.sub_types.iter() {
+                        if ($(for f in sub_type.discriminating_fields() join ( && ) => ($(quoted(f.name())) in keys))) {
+                            return $(&sub_type.name).decode(data);
                         }
                     })
 

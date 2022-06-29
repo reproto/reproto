@@ -2,88 +2,91 @@ package test;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.Objects;
 import java.util.Optional;
 
 public class Entry {
-  /**
-   * <pre>
-   * The foo field.
-   * </pre>
-   */
-  @JsonProperty("foo")
-  private final Optional<Foo> foo;
+    @JsonProperty("foo")
+    final Optional<Foo> foo;
 
-  @JsonCreator
-  public Entry(
-    @JsonProperty("foo") final Optional<Foo> foo
-  ) {
-    Objects.requireNonNull(foo, "foo");
-    this.foo = foo;
-  }
-
-  /**
-   * <pre>
-   * The foo field.
-   * </pre>
-   */
-  @JsonProperty("foo")
-  public Optional<Foo> getFoo() {
-    return this.foo;
-  }
-
-  @Override
-  public int hashCode() {
-    int result = 1;
-    result = result * 31 + this.foo.hashCode();
-    return result;
-  }
-
-  @Override
-  public boolean equals(final Object other) {
-    if (other == null) {
-      return false;
+    @JsonCreator
+    public Entry(
+        @JsonProperty("foo") Optional<Foo> foo
+    ) {
+        this.foo = foo;
     }
 
-    if (!(other instanceof Entry)) {
-      return false;
+    /**
+     * The foo field.
+     */
+    @JsonProperty("foo")
+    public Optional<Foo> getFoo() {
+        return this.foo;
     }
 
-    @SuppressWarnings("unchecked")
-    final Entry o = (Entry) other;
+    @Override
+    public String toString() {
+        final StringBuilder b = new StringBuilder();
 
-    if (!this.foo.equals(o.foo)) {
-      return false;
+        b.append("Entry(");
+        b.append("foo=");
+        b.append(this.foo.toString());
+        b.append(")");
+
+        return b.toString();
     }
 
-    return true;
-  }
-
-  @Override
-  public String toString() {
-    final StringBuilder b = new StringBuilder();
-
-    b.append("Entry");
-    b.append("(");
-    b.append("foo=");
-    b.append(this.foo.toString());
-    b.append(")");
-
-    return b.toString();
-  }
-
-  public static class Builder {
-    private Optional<Foo> foo = Optional.empty();
-
-    public Builder foo(final Foo foo) {
-      this.foo = Optional.of(foo);
-      return this;
+    @Override
+    public int hashCode() {
+        int result = 1;
+        final StringBuilder b = new StringBuilder();
+        result = result * 31 + this.foo.hashCode();
+        return result;
     }
 
-    public Entry build() {
-      final Optional<Foo> foo = this.foo;
+    @Override
+    public boolean equals(final Object other_) {
+        if (other_ == null) {
+            return false;
+        }
 
-      return new Entry(foo);
+        if (!(other_ instanceof Entry)) {
+            return false;
+        }
+
+        @SuppressWarnings("unchecked")
+        final Entry o_ = (Entry)other_;
+
+        if (!this.foo.equals(o_.foo)) {
+            return false;
+        }
+
+        return true;
     }
-  }
+
+    public static class Builder {
+        private Optional<Foo> foo;
+
+        private Builder() {
+            this.foo = Optional.empty();
+        }
+
+        public Entry build() {
+
+            return new Entry(
+                this.foo
+            );
+        }
+
+        public Builder foo(final Foo foo) {
+            this.foo = Optional.of(foo);
+            return this;
+        }
+    }
+
+    /**
+     * Construct a new builder.
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
 }

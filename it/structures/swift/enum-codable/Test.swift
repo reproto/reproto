@@ -31,7 +31,11 @@ extension Test_EnumExplicit: Decodable {
     case "bar":
       self = .B
     default:
-      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
+      let context = DecodingError.Context(
+        codingPath: decoder.codingPath,
+        debugDescription: "enum variant"
+      )
+
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -65,7 +69,11 @@ extension Test_EnumImplicit: Decodable {
     case "B":
       self = .B
     default:
-      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
+      let context = DecodingError.Context(
+        codingPath: decoder.codingPath,
+        debugDescription: "enum variant"
+      )
+
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -99,7 +107,11 @@ extension Test_EnumLongNames: Decodable {
     case "Baz":
       self = .Baz
     default:
-      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
+      let context = DecodingError.Context(
+        codingPath: decoder.codingPath,
+        debugDescription: "enum variant"
+      )
+
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -133,7 +145,11 @@ extension Test_EnumU32: Decodable {
     case 2147483647:
       self = .Max
     default:
-      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
+      let context = DecodingError.Context(
+        codingPath: decoder.codingPath,
+        debugDescription: "enum variant"
+      )
+
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -167,7 +183,11 @@ extension Test_EnumU64: Decodable {
     case 9007199254740991:
       self = .Max
     default:
-      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
+      let context = DecodingError.Context(
+        codingPath: decoder.codingPath,
+        debugDescription: "enum variant"
+      )
+
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -207,7 +227,11 @@ extension Test_EnumI32: Decodable {
     case 2147483647:
       self = .Max
     default:
-      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
+      let context = DecodingError.Context(
+        codingPath: decoder.codingPath,
+        debugDescription: "enum variant"
+      )
+
       throw DecodingError.dataCorrupted(context)
     }
   }
@@ -251,7 +275,11 @@ extension Test_EnumI64: Decodable {
     case 9007199254740991:
       self = .Max
     default:
-      let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "enum variant")
+      let context = DecodingError.Context(
+        codingPath: decoder.codingPath,
+        debugDescription: "enum variant"
+      )
+
       throw DecodingError.dataCorrupted(context)
     }
   }

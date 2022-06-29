@@ -41,25 +41,23 @@ export class Entry {
 
 export class Tagged {
   static decode(data) {
-    const f_tag = data["@type"]
+    const f_tag = data["@type"];
+
+    if (f_tag === null || f_tag === undefined) {
+      throw new Error("missing tag field: @type");
+    }
 
     if (f_tag === "foo") {
       return Tagged_A.decode(data);
-    }
-
-    if (f_tag === "b") {
+    }if (f_tag === "b") {
       return Tagged_B.decode(data);
-    }
-
-    if (f_tag === "Bar") {
+    }if (f_tag === "Bar") {
       return Tagged_Bar.decode(data);
-    }
-
-    if (f_tag === "Baz") {
+    }if (f_tag === "Baz") {
       return Tagged_Baz.decode(data);
     }
 
-    throw new Error("bad type: " + f_tag);
+    throw new Error("bad sub-type: " + f_tag);
   }
 }
 
@@ -69,10 +67,14 @@ export class Tagged_A {
   }
 
   static decode(data) {
-    const v_shared = data["shared"];
+    let v_shared = data["shared"];
 
     if (v_shared === null || v_shared === undefined) {
       throw new Error("shared" + ": required field");
+    }
+
+    if (typeof v_shared !== "string") {
+      throw Error("expected string");
     }
 
     return new Tagged_A(v_shared);
@@ -91,18 +93,20 @@ export class Tagged_A {
 
     return data;
   }
-}
-
-export class Tagged_B {
+}export class Tagged_B {
   constructor(shared) {
     this.shared = shared;
   }
 
   static decode(data) {
-    const v_shared = data["shared"];
+    let v_shared = data["shared"];
 
     if (v_shared === null || v_shared === undefined) {
       throw new Error("shared" + ": required field");
+    }
+
+    if (typeof v_shared !== "string") {
+      throw Error("expected string");
     }
 
     return new Tagged_B(v_shared);
@@ -121,18 +125,20 @@ export class Tagged_B {
 
     return data;
   }
-}
-
-export class Tagged_Bar {
+}export class Tagged_Bar {
   constructor(shared) {
     this.shared = shared;
   }
 
   static decode(data) {
-    const v_shared = data["shared"];
+    let v_shared = data["shared"];
 
     if (v_shared === null || v_shared === undefined) {
       throw new Error("shared" + ": required field");
+    }
+
+    if (typeof v_shared !== "string") {
+      throw Error("expected string");
     }
 
     return new Tagged_Bar(v_shared);
@@ -151,18 +157,20 @@ export class Tagged_Bar {
 
     return data;
   }
-}
-
-export class Tagged_Baz {
+}export class Tagged_Baz {
   constructor(shared) {
     this.shared = shared;
   }
 
   static decode(data) {
-    const v_shared = data["shared"];
+    let v_shared = data["shared"];
 
     if (v_shared === null || v_shared === undefined) {
       throw new Error("shared" + ": required field");
+    }
+
+    if (typeof v_shared !== "string") {
+      throw Error("expected string");
     }
 
     return new Tagged_Baz(v_shared);
@@ -185,23 +193,18 @@ export class Tagged_Baz {
 
 export class Untagged {
   static decode(data) {
-    var all = true
-
-    var keys = {}
+    var all = true;
+    var keys = {};
 
     for (const k in data) {
-      keys[k] = true
+      keys[k] = true;
     }
 
     if (("a" in keys) && ("b" in keys)) {
       return Untagged_A.decode(data);
-    }
-
-    if (("a" in keys)) {
+    }if (("a" in keys)) {
       return Untagged_B.decode(data);
-    }
-
-    if (("b" in keys)) {
+    }if (("b" in keys)) {
       return Untagged_C.decode(data);
     }
 
@@ -219,36 +222,52 @@ export class Untagged_A {
   }
 
   static decode(data) {
-    const v_shared = data["shared"];
+    let v_shared = data["shared"];
 
     if (v_shared === null || v_shared === undefined) {
       throw new Error("shared" + ": required field");
     }
 
+    if (typeof v_shared !== "string") {
+      throw Error("expected string");
+    }
+
     let v_shared_ignore = data["shared_ignore"];
 
     if (v_shared_ignore !== null && v_shared_ignore !== undefined) {
-      v_shared_ignore = v_shared_ignore;
+      if (typeof v_shared_ignore !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_shared_ignore = null;
     }
 
-    const v_a = data["a"];
+    let v_a = data["a"];
 
     if (v_a === null || v_a === undefined) {
       throw new Error("a" + ": required field");
     }
 
-    const v_b = data["b"];
+    if (typeof v_a !== "string") {
+      throw Error("expected string");
+    }
+
+    let v_b = data["b"];
 
     if (v_b === null || v_b === undefined) {
       throw new Error("b" + ": required field");
     }
 
+    if (typeof v_b !== "string") {
+      throw Error("expected string");
+    }
+
     let v_ignore = data["ignore"];
 
     if (v_ignore !== null && v_ignore !== undefined) {
-      v_ignore = v_ignore;
+      if (typeof v_ignore !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_ignore = null;
     }
@@ -287,9 +306,7 @@ export class Untagged_A {
 
     return data;
   }
-}
-
-export class Untagged_B {
+}export class Untagged_B {
   constructor(shared, shared_ignore, a, ignore) {
     this.shared = shared;
     this.shared_ignore = shared_ignore;
@@ -298,30 +315,42 @@ export class Untagged_B {
   }
 
   static decode(data) {
-    const v_shared = data["shared"];
+    let v_shared = data["shared"];
 
     if (v_shared === null || v_shared === undefined) {
       throw new Error("shared" + ": required field");
     }
 
+    if (typeof v_shared !== "string") {
+      throw Error("expected string");
+    }
+
     let v_shared_ignore = data["shared_ignore"];
 
     if (v_shared_ignore !== null && v_shared_ignore !== undefined) {
-      v_shared_ignore = v_shared_ignore;
+      if (typeof v_shared_ignore !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_shared_ignore = null;
     }
 
-    const v_a = data["a"];
+    let v_a = data["a"];
 
     if (v_a === null || v_a === undefined) {
       throw new Error("a" + ": required field");
     }
 
+    if (typeof v_a !== "string") {
+      throw Error("expected string");
+    }
+
     let v_ignore = data["ignore"];
 
     if (v_ignore !== null && v_ignore !== undefined) {
-      v_ignore = v_ignore;
+      if (typeof v_ignore !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_ignore = null;
     }
@@ -354,9 +383,7 @@ export class Untagged_B {
 
     return data;
   }
-}
-
-export class Untagged_C {
+}export class Untagged_C {
   constructor(shared, shared_ignore, b, ignore) {
     this.shared = shared;
     this.shared_ignore = shared_ignore;
@@ -365,30 +392,42 @@ export class Untagged_C {
   }
 
   static decode(data) {
-    const v_shared = data["shared"];
+    let v_shared = data["shared"];
 
     if (v_shared === null || v_shared === undefined) {
       throw new Error("shared" + ": required field");
     }
 
+    if (typeof v_shared !== "string") {
+      throw Error("expected string");
+    }
+
     let v_shared_ignore = data["shared_ignore"];
 
     if (v_shared_ignore !== null && v_shared_ignore !== undefined) {
-      v_shared_ignore = v_shared_ignore;
+      if (typeof v_shared_ignore !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_shared_ignore = null;
     }
 
-    const v_b = data["b"];
+    let v_b = data["b"];
 
     if (v_b === null || v_b === undefined) {
       throw new Error("b" + ": required field");
     }
 
+    if (typeof v_b !== "string") {
+      throw Error("expected string");
+    }
+
     let v_ignore = data["ignore"];
 
     if (v_ignore !== null && v_ignore !== undefined) {
-      v_ignore = v_ignore;
+      if (typeof v_ignore !== "string") {
+        throw Error("expected string");
+      }
     } else {
       v_ignore = null;
     }

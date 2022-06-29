@@ -11,7 +11,6 @@ public extension UpperCamel_Value {
     }
 
     let foo_bar = try decode_name(unbox(f_foo_bar, as: String.self), name: "FooBar")
-
     return UpperCamel_Value(foo_bar: foo_bar)
   }
 

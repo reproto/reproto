@@ -71,19 +71,19 @@ impl Type {
 
         match self {
             Self::Integer => Some(quote! {
-                if not isinstance(#var, int):
+                if not isinstance($var, int):
                     raise Exception("not an integer")
             }),
             Self::Float => Some(quote! {
-                if not isinstance(#var, float):
+                if not isinstance($var, float):
                     raise Exception("not a float")
             }),
             Self::Boolean => Some(quote! {
-                if not isinstance(#var, bool):
+                if not isinstance($var, bool):
                     raise Exception("not a boolean")
             }),
             Self::String { helper } => Some(quote! {
-                if not #(helper.is_string(var)):
+                if not $(helper.is_string(var)):
                     raise Exception("not a string")
             }),
             Self::Native => None,
@@ -92,19 +92,19 @@ impl Type {
                 let a = &Rc::new(format!("_a{}", l));
 
                 Some(quote! {
-                    if not isinstance(#var, list):
+                    if not isinstance($var, list):
                         raise Exception("not an array")
 
-                    #a = []
+                    $a = []
 
-                    for #v in #var:
-                        #(if let Some(d) = argument.decode(v.clone(), l + 1) {
-                            #d
-                            #<line>
+                    for $v in $var:
+                        $(if let Some(d) = argument.decode(v.clone(), l + 1) {
+                            $d
+                            $['\n']
                         })
-                        #a.append(#v)
+                        $a.append($v)
 
-                    #var = #a
+                    $var = $a
                 })
             }
             Self::Map { key, value } => {
@@ -113,25 +113,25 @@ impl Type {
                 let v = &Rc::new(format!("_v{}", l));
 
                 Some(quote! {
-                    if not isinstance(#var, dict):
+                    if not isinstance($var, dict):
                         raise Exception("not an object")
 
-                    #o = {}
+                    $o = {}
 
-                    for #k, #v in #var.items():
-                        #(if let Some(d) = key.decode(k.clone(), l + 1) =>
-                            #d
+                    for $k, $v in $var.items():
+                        $(if let Some(d) = key.decode(k.clone(), l + 1) =>
+                            $d
                         )
-                        #(if let Some(d) = value.decode(v.clone(), l + 1) =>
-                            #d
+                        $(if let Some(d) = value.decode(v.clone(), l + 1) =>
+                            $d
                         )
-                        #o[#k] = #v
+                        $o[$k] = $v
 
-                    #var = #o
+                    $var = $o
                 })
             }
-            Self::Local { ident } => Some(quote!(#(var.clone()) = #ident.decode(#(var.clone())))),
-            Self::Name { import } => Some(quote!(#(var.clone()) = #import.decode(#(var.clone())))),
+            Self::Local { ident } => Some(quote!($(var.clone()) = $ident.decode($(var.clone())))),
+            Self::Name { import } => Some(quote!($(var.clone()) = $import.decode($(var.clone())))),
         }
     }
 
@@ -139,19 +139,19 @@ impl Type {
     pub(crate) fn encode(&self, var: Tokens<Python>) -> Tokens<Python> {
         match self {
             Self::Integer | Self::Float | Self::Boolean | Self::Native | Self::String { .. } => {
-                quote!(#var)
+                quote!($var)
             }
-            v if v.is_native() => quote!(#var),
+            v if v.is_native() => quote!($var),
             Self::Array { argument } => {
                 let v = argument.encode(quote!(v));
-                quote!([#v for v in #var])
+                quote!([$v for v in $var])
             }
             Self::Map { key, value } => {
                 let k = key.encode(quote!(k));
                 let v = value.encode(quote!(v));
-                quote!(dict((#k, #v) for (k, v) in #var.items()))
+                quote!(dict(($k, $v) for (k, v) in $var.items()))
             }
-            Self::Local { .. } | Self::Name { .. } => quote!(#var.encode()),
+            Self::Local { .. } | Self::Name { .. } => quote!($var.encode()),
         }
     }
 }

@@ -11,7 +11,6 @@ public extension LowerSnake_Value {
     }
 
     let foo_bar = try decode_name(unbox(f_foo_bar, as: String.self), name: "foo_bar")
-
     return LowerSnake_Value(foo_bar: foo_bar)
   }
 

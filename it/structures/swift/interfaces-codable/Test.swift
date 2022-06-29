@@ -104,11 +104,13 @@ public enum Test_Untagged {
 
   enum BKeys: String, CodingKey {
     case a = "a"
+
     case _k0 = "b"
   }
 
   enum CKeys: String, CodingKey {
     case b = "b"
+
     case _k0 = "a"
   }
 }
@@ -130,7 +132,11 @@ extension Test_Untagged: Decodable {
       return
     }
 
-    let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "no legal field combination")
+    let context = DecodingError.Context(
+      codingPath: decoder.codingPath,
+      debugDescription: "no legal field combination"
+    )
+
     throw DecodingError.dataCorrupted(context)
   }
 }

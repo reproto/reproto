@@ -53,18 +53,18 @@ impl Type {
 impl<'a> FormatInto<Dart> for &'a Type {
     fn format_into(self, t: &mut dart::Tokens) {
         match self {
-            Type::Import { import } => quote_in!(*t => #import),
-            Type::Local { ident } => quote_in!(*t => #ident),
+            Type::Import { import } => quote_in!(*t => $import),
+            Type::Local { ident } => quote_in!(*t => $ident),
             Type::Dynamic => quote_in!(*t => dynamic),
             Type::Int => quote_in!(*t => int),
             Type::Double => quote_in!(*t => double),
             Type::Bool => quote_in!(*t => bool),
             Type::String => quote_in!(*t => String),
             Type::List { argument } => {
-                quote_in!(*t => List<#(&**argument)>);
+                quote_in!(*t => List<$(&**argument)>);
             }
             Type::Map { key, value } => {
-                quote_in!(*t => Map<#(&**key), #(&**value)>);
+                quote_in!(*t => Map<$(&**key), $(&**value)>);
             }
         }
     }
@@ -74,8 +74,8 @@ impl Type {
     /// Create an encode function appropriate for this type.
     pub fn encode(&self, i: dart::Tokens) -> dart::Tokens {
         match self {
-            Type::Import { .. } => quote!(#i.encode()),
-            Type::Local { .. } => quote!(#i.encode()),
+            Type::Import { .. } => quote!($i.encode()),
+            Type::Local { .. } => quote!($i.encode()),
             Type::Dynamic => i,
             Type::Int => i,
             Type::Double => i,
@@ -83,11 +83,11 @@ impl Type {
             Type::String => i,
             Type::Map { key, value } => {
                 let d = value.encode(quote!(e.value));
-                quote!(Map.fromEntries(#i.entries.map((e) => MapEntry(e.key, #d))))
+                quote!(Map.fromEntries($i.entries.map((e) => MapEntry(e.key, $d))))
             }
             Type::List { argument } => {
                 let d = argument.encode(quote!(e));
-                quote!(List.from(#i.map((e) => #d)))
+                quote!(List.from($i.map((e) => $d)))
             }
         }
     }
@@ -98,28 +98,28 @@ impl Type {
     pub fn decode(&self, i: dart::Tokens) -> (dart::Tokens, dart::Tokens) {
         let ty = match self {
             Type::Import { import } => {
-                return (quote!(#import.decode(#i)), quote!());
+                return (quote!($import.decode($i)), quote!());
             }
             Type::Local { ident } => {
-                return (quote!(#ident.decode(#i)), quote!());
+                return (quote!($ident.decode($i)), quote!());
             }
             Type::Map { key, value } => {
                 let i = &i;
                 let (d, e) = value.decode(quote!(e.value));
 
                 let t = if e.is_empty() {
-                    quote!(Map.fromEntries((#i as Map<#(&**key), dynamic>).entries.map((e) => MapEntry(e.key, #d))))
+                    quote!(Map.fromEntries(($i as Map<$(&**key), dynamic>).entries.map((e) => MapEntry(e.key, $d))))
                 } else {
                     quote! {
-                        Map.fromEntries((#i as Map<#(&**key), dynamic>).entries.map((e) {
-                            return MapEntry(e.key, #d);
+                        Map.fromEntries(($i as Map<$(&**key), dynamic>).entries.map((e) {
+                            return MapEntry(e.key, $d);
                         }))
                     }
                 };
 
                 let e = quote! {
-                    if (!(#i is Map<#(&**key), dynamic>)) {
-                        throw #_(expected map, but was: $(#i));
+                    if (!($i is Map<$(&**key), dynamic>)) {
+                        throw $[str](expected map, but was: $[const](&*i));
                     }
                 };
 
@@ -129,22 +129,22 @@ impl Type {
                 let i = &i;
                 let (d, e) = argument.decode(quote!(e));
 
-                let entries = quote!((#i as List<dynamic>));
+                let entries = quote!(($i as List<dynamic>));
 
                 let t = if e.is_empty() {
-                    quote!(List.of((#i as List<dynamic>).map((e) => #d)))
+                    quote!(List.of(($i as List<dynamic>).map((e) => $d)))
                 } else {
                     quote! {
-                        List.of((#i as List<dynamic>).map((e) {
-                            return #d;
+                        List.of(($i as List<dynamic>).map((e) {
+                            return $d;
                         }))
                     }
                 };
 
                 // check that value is a list.
                 let e = quote! {
-                    if (!(#i is List<dynamic>)) {
-                        throw #_(expected list, but was: $(#i));
+                    if (!($i is List<dynamic>)) {
+                        throw $[str](expected list, but was: $[const](&*i));
                     }
                 };
 
@@ -154,8 +154,8 @@ impl Type {
         };
 
         let mut e = quote! {
-            if (!(#(&i) is #ty)) {
-                throw #_(expected $(#ty), but was: $(#(&i)));
+            if (!($(&i) is $ty)) {
+                throw $[str](expected $[const](ty), but was: $[const](&i));
             }
         };
 

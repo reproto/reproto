@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Entry {
   #[serde(skip_serializing_if="Option::is_none")]
@@ -12,9 +14,12 @@ pub struct Entry {
 pub enum Tagged {
   #[serde(rename = "foo")]
   A(Tagged_A),
+
   #[serde(rename = "b")]
   B(Tagged_B),
+
   Bar(Tagged_Bar),
+
   Baz(Tagged_Baz),
 }
 
@@ -46,7 +51,9 @@ pub struct Tagged_Baz {
 #[serde(untagged)]
 pub enum Untagged {
   A(Untagged_A),
+
   B(Untagged_B),
+
   C(Untagged_C),
 }
 

@@ -5,7 +5,6 @@ import "errors"
 
 type Entry struct {
   Tagged *Tagged `json:"tagged,omitempty"`
-
   Untagged *Untagged `json:"untagged,omitempty"`
 }
 
@@ -183,13 +182,9 @@ type Untagged struct {
 // NOTE: due to rust support through untagged, the types are matched in-order.
 type Untagged_A struct {
   Shared string `json:"shared"`
-
   SharedIgnore *string `json:"shared_ignore,omitempty"`
-
   A string `json:"a"`
-
   B string `json:"b"`
-
   Ignore *string `json:"ignore,omitempty"`
 }
 
@@ -198,11 +193,8 @@ func (this Untagged_A) IsUntagged() {
 
 type Untagged_B struct {
   Shared string `json:"shared"`
-
   SharedIgnore *string `json:"shared_ignore,omitempty"`
-
   A string `json:"a"`
-
   Ignore *string `json:"ignore,omitempty"`
 }
 
@@ -211,11 +203,8 @@ func (this Untagged_B) IsUntagged() {
 
 type Untagged_C struct {
   Shared string `json:"shared"`
-
   SharedIgnore *string `json:"shared_ignore,omitempty"`
-
   B string `json:"b"`
-
   Ignore *string `json:"ignore,omitempty"`
 }
 
@@ -237,8 +226,8 @@ func (this *Untagged) UnmarshalJSON(b []byte) error {
   }
 
   var all bool
-
   all = true
+
   for _, k := range([]string{"a", "b"}) {
     if _, all = keys[k]; !all {
       break
@@ -256,7 +245,6 @@ func (this *Untagged) UnmarshalJSON(b []byte) error {
     return nil
   }
 
-  all = true
   for _, k := range([]string{"a"}) {
     if _, all = keys[k]; !all {
       break
@@ -274,7 +262,6 @@ func (this *Untagged) UnmarshalJSON(b []byte) error {
     return nil
   }
 
-  all = true
   for _, k := range([]string{"b"}) {
     if _, all = keys[k]; !all {
       break

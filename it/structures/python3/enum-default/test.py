@@ -1,37 +1,61 @@
 import enum
 
 class Entry:
-  def __init__(self, _explicit, _implicit, _enum_u32, _enum_u64, _enum_i32, _enum_i64):
-    self._explicit = _explicit
-    self._implicit = _implicit
-    self._enum_u32 = _enum_u32
-    self._enum_u64 = _enum_u64
-    self._enum_i32 = _enum_i32
-    self._enum_i64 = _enum_i64
+  def __init__(self, explicit, implicit, enum_u32, enum_u64, enum_i32, enum_i64):
+    self.__explicit = explicit
+    self.__implicit = implicit
+    self.__enum_u32 = enum_u32
+    self.__enum_u64 = enum_u64
+    self.__enum_i32 = enum_i32
+    self.__enum_i64 = enum_i64
 
   @property
   def explicit(self):
-    return self._explicit
+    return self.__explicit
+
+  @explicit.setter
+  def explicit(self, explicit):
+    self.__explicit = explicit
 
   @property
   def implicit(self):
-    return self._implicit
+    return self.__implicit
+
+  @implicit.setter
+  def implicit(self, implicit):
+    self.__implicit = implicit
 
   @property
   def enum_u32(self):
-    return self._enum_u32
+    return self.__enum_u32
+
+  @enum_u32.setter
+  def enum_u32(self, enum_u32):
+    self.__enum_u32 = enum_u32
 
   @property
   def enum_u64(self):
-    return self._enum_u64
+    return self.__enum_u64
+
+  @enum_u64.setter
+  def enum_u64(self, enum_u64):
+    self.__enum_u64 = enum_u64
 
   @property
   def enum_i32(self):
-    return self._enum_i32
+    return self.__enum_i32
+
+  @enum_i32.setter
+  def enum_i32(self, enum_i32):
+    self.__enum_i32 = enum_i32
 
   @property
   def enum_i64(self):
-    return self._enum_i64
+    return self.__enum_i64
+
+  @enum_i64.setter
+  def enum_i64(self, enum_i64):
+    self.__enum_i64 = enum_i64
 
   @staticmethod
   def decode(data):
@@ -88,36 +112,40 @@ class Entry:
   def encode(self):
     data = dict()
 
-    if self._explicit is not None:
-      data["explicit"] = self._explicit.encode()
+    if self.explicit is not None:
+      data["explicit"] = self.explicit.encode()
 
-    if self._implicit is not None:
-      data["implicit"] = self._implicit.encode()
+    if self.implicit is not None:
+      data["implicit"] = self.implicit.encode()
 
-    if self._enum_u32 is not None:
-      data["enum_u32"] = self._enum_u32.encode()
+    if self.enum_u32 is not None:
+      data["enum_u32"] = self.enum_u32.encode()
 
-    if self._enum_u64 is not None:
-      data["enum_u64"] = self._enum_u64.encode()
+    if self.enum_u64 is not None:
+      data["enum_u64"] = self.enum_u64.encode()
 
-    if self._enum_i32 is not None:
-      data["enum_i32"] = self._enum_i32.encode()
+    if self.enum_i32 is not None:
+      data["enum_i32"] = self.enum_i32.encode()
 
-    if self._enum_i64 is not None:
-      data["enum_i64"] = self._enum_i64.encode()
+    if self.enum_i64 is not None:
+      data["enum_i64"] = self.enum_i64.encode()
 
     return data
 
   def __repr__(self):
-    return "<Entry explicit:{!r}, implicit:{!r}, enum_u32:{!r}, enum_u64:{!r}, enum_i32:{!r}, enum_i64:{!r}>".format(self._explicit, self._implicit, self._enum_u32, self._enum_u64, self._enum_i32, self._enum_i64)
+    return "<Entry explicit:{!r}, implicit:{!r}, enum_u32:{!r}, enum_u64:{!r}, enum_i32:{!r}, enum_i64:{!r}>".format(self.explicit, self.implicit, self.enum_u32, self.enum_u64, self.enum_i32, self.enum_i64)
 
 class EnumExplicit:
   def __init__(self, _ordinal):
-    self._ordinal = _ordinal
+    self.__ordinal = _ordinal
 
   @property
-  def ordinal(self):
-    return self._ordinal
+  def _ordinal(self):
+    return self.__ordinal
+
+  @_ordinal.setter
+  def _ordinal(self, _ordinal):
+    self.__ordinal = _ordinal
 
   def encode(self):
     return self._ordinal
@@ -135,11 +163,15 @@ class EnumExplicit:
 
 class EnumImplicit:
   def __init__(self, _ordinal):
-    self._ordinal = _ordinal
+    self.__ordinal = _ordinal
 
   @property
-  def ordinal(self):
-    return self._ordinal
+  def _ordinal(self):
+    return self.__ordinal
+
+  @_ordinal.setter
+  def _ordinal(self, _ordinal):
+    self.__ordinal = _ordinal
 
   def encode(self):
     return self._ordinal
@@ -157,11 +189,15 @@ class EnumImplicit:
 
 class EnumLongNames:
   def __init__(self, _ordinal):
-    self._ordinal = _ordinal
+    self.__ordinal = _ordinal
 
   @property
-  def ordinal(self):
-    return self._ordinal
+  def _ordinal(self):
+    return self.__ordinal
+
+  @_ordinal.setter
+  def _ordinal(self, _ordinal):
+    self.__ordinal = _ordinal
 
   def encode(self):
     return self._ordinal
@@ -179,11 +215,15 @@ class EnumLongNames:
 
 class EnumU32:
   def __init__(self, _ordinal):
-    self._ordinal = _ordinal
+    self.__ordinal = _ordinal
 
   @property
-  def ordinal(self):
-    return self._ordinal
+  def _ordinal(self):
+    return self.__ordinal
+
+  @_ordinal.setter
+  def _ordinal(self, _ordinal):
+    self.__ordinal = _ordinal
 
   def encode(self):
     return self._ordinal
@@ -201,11 +241,15 @@ class EnumU32:
 
 class EnumU64:
   def __init__(self, _ordinal):
-    self._ordinal = _ordinal
+    self.__ordinal = _ordinal
 
   @property
-  def ordinal(self):
-    return self._ordinal
+  def _ordinal(self):
+    return self.__ordinal
+
+  @_ordinal.setter
+  def _ordinal(self, _ordinal):
+    self.__ordinal = _ordinal
 
   def encode(self):
     return self._ordinal
@@ -223,11 +267,15 @@ class EnumU64:
 
 class EnumI32:
   def __init__(self, _ordinal):
-    self._ordinal = _ordinal
+    self.__ordinal = _ordinal
 
   @property
-  def ordinal(self):
-    return self._ordinal
+  def _ordinal(self):
+    return self.__ordinal
+
+  @_ordinal.setter
+  def _ordinal(self, _ordinal):
+    self.__ordinal = _ordinal
 
   def encode(self):
     return self._ordinal
@@ -245,11 +293,15 @@ class EnumI32:
 
 class EnumI64:
   def __init__(self, _ordinal):
-    self._ordinal = _ordinal
+    self.__ordinal = _ordinal
 
   @property
-  def ordinal(self):
-    return self._ordinal
+  def _ordinal(self):
+    return self.__ordinal
+
+  @_ordinal.setter
+  def _ordinal(self, _ordinal):
+    self.__ordinal = _ordinal
 
   def encode(self):
     return self._ordinal

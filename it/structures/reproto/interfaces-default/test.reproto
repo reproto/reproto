@@ -6,17 +6,13 @@ type Entry {
 
 #[type_info(strategy = "tagged", tag = "@type")]
 interface Tagged {
-  A as "foo" {
-  }
+  A as "foo" {}
 
-  B as "b" {
-  }
+  B as "b" {}
 
-  Bar {
-  }
+  Bar {}
 
-  Baz {
-  }
+  Baz {}
 }
 
 #[type_info(strategy = "untagged")]

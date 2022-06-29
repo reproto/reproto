@@ -32,12 +32,12 @@ impl FormatInto<Reproto> for Interior<'_> {
                     .chain(sub_type.decls.iter().map(Interior::Decl));
 
                 quote_in! { *t =>
-                    #(if let Some(ref alias) = sub_type.sub_type_name {
-                        #(sub_type.ident.as_str()) as #(quoted(alias.as_str()))
+                    $(if let Some(ref alias) = sub_type.sub_type_name {
+                        $(sub_type.ident.as_str()) as $(quoted(alias.as_str()))
                     } else {
-                        #(sub_type.ident.as_str())
+                        $(sub_type.ident.as_str())
                     }) {
-                        #(for i in interior join (#<line>) => #i)
+                        $(for i in interior join ($['\n']) => $i)
                     }
                 }
             }
@@ -191,9 +191,9 @@ fn format_type(out: &mut Tokens<Reproto>, body: &RpTypeBody) {
         .chain(body.decls.iter().map(Interior::Decl));
 
     quote_in! { *out =>
-        #(Comments(&body.comment))
-        type #(body.ident.as_str()) {
-            #(for i in interior join (#<line>) => #i)
+        $(Comments(&body.comment))
+        type $(body.ident.as_str()) {
+            $(for i in interior join ($['\n']) => $i)
         }
     }
 }
@@ -206,18 +206,18 @@ fn format_interface(out: &mut Tokens<Reproto>, body: &RpInterfaceBody) {
         .chain(body.decls.iter().map(Interior::Decl));
 
     quote_in! { *out =>
-        #(match &body.sub_type_strategy {
+        $(match &body.sub_type_strategy {
             RpSubTypeStrategy::Tagged { tag, .. } if tag != DEFAULT_TAG => {
-                #[type_info(strategy = "tagged", tag = #(quoted(tag.as_str())))]
+                #[type_info(strategy = "tagged", tag = $(quoted(tag.as_str())))]
             }
             RpSubTypeStrategy::Untagged => {
                 #[type_info(strategy = "untagged")]
             }
             _ => {}
         })
-        #(Comments(&body.comment))
-        interface #(body.ident.as_str()) {
-            #(for i in interior join (#<line>) => #i)
+        $(Comments(&body.comment))
+        interface $(body.ident.as_str()) {
+            $(for i in interior join ($['\n']) => $i)
         }
     }
 }
@@ -230,19 +230,19 @@ fn format_tuple(out: &mut Tokens<Reproto>, body: &RpTupleBody) {
         .chain(body.decls.iter().map(Interior::Decl));
 
     quote_in! { *out =>
-        #(Comments(&body.comment))
-        tuple #(body.ident.as_str()) {
-            #(for i in interior join (#<line>) => #i)
+        $(Comments(&body.comment))
+        tuple $(body.ident.as_str()) {
+            $(for i in interior join ($['\n']) => $i)
         }
     }
 }
 
 fn format_enum(out: &mut Tokens<Reproto>, body: &RpEnumBody) {
     quote_in! { *out =>
-        #(Comments(&body.comment))
-        enum #(&body.ident) as #(body.enum_type.to_string()) {
-            #(for v in &body.variants join (#<line>) =>
-                #(ref out => format_variant(out, v))
+        $(Comments(&body.comment))
+        enum $(&body.ident) as $(body.enum_type.to_string()) {
+            $(for v in &body.variants join ($['\n']) =>
+                $(ref out => format_variant(out, v))
             )
         }
     }
@@ -250,11 +250,11 @@ fn format_enum(out: &mut Tokens<Reproto>, body: &RpEnumBody) {
 
 fn format_service(out: &mut Tokens<Reproto>, body: &RpServiceBody) {
     quote_in! { *out =>
-        #(Comments(&body.comment))
-        service #(body.ident.as_str()) {
-            #(for e in &body.endpoints join (#<line>) =>
-                #(Comments(&e.comment))
-                #(ref out => format_endpoint(out, e))
+        $(Comments(&body.comment))
+        service $(body.ident.as_str()) {
+            $(for e in &body.endpoints join ($['\n']) =>
+                $(Comments(&e.comment))
+                $(ref out => format_endpoint(out, e))
             )
         }
     }
@@ -263,8 +263,8 @@ fn format_service(out: &mut Tokens<Reproto>, body: &RpServiceBody) {
 
     fn format_endpoint(out: &mut Tokens<Reproto>, e: &RpEndpoint) {
         quote_in! { *out =>
-            #(e.ident.as_str())(#(for a in &e.arguments join (, ) =>
-                #(a.ident.as_str()): #(a.channel.to_string())
+            $(e.ident.as_str())($(for a in &e.arguments join (, ) =>
+                $(a.ident.as_str()): $(a.channel.to_string())
             ))
         }
     }
@@ -279,26 +279,26 @@ fn format_field(out: &mut Tokens<Reproto>, field: &RpField) {
     };
 
     quote_in! { *out =>
-        #(Comments(&field.comment))
-        #(if field.is_optional() {
-            #(field_name)?: #(&field.ty.to_string())
+        $(Comments(&field.comment))
+        $(if field.is_optional() {
+            $(field_name)?: $(&field.ty.to_string())
         } else {
-            #(field_name): #(field.ty.to_string())
-        })#(if let Some(ref field_as) = field.field_as {
-            #<space>as #(quoted(field_as.as_str()))
+            $(field_name): $(field.ty.to_string())
+        })$(if let Some(ref field_as) = field.field_as {
+            $[' ']as $(quoted(field_as.as_str()))
         })
     }
 }
 
 fn format_variant(out: &mut Tokens<Reproto>, variant: RpVariantRef<'_>) {
     quote_in! { *out =>
-        #(Comments(variant.comment))
-        #(variant.ident()) as #(match variant.value {
+        $(Comments(variant.comment))
+        $(variant.ident()) as $(match variant.value {
             RpVariantValue::String(string) => {
-                #(quoted(string))
+                $(quoted(string))
             }
             RpVariantValue::Number(number) => {
-                #(number.to_string())
+                $(number.to_string())
             }
         });
     }

@@ -2,34 +2,33 @@ package test;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import java.util.Objects;
 
+/**
+ * Variants with long names.
+ */
 public enum EnumLongNames {
-  FOO_BAR("FooBar"),
-  BAZ("Baz");
+    FooBar("FooBar"),
+    Baz("Baz");
 
-  private final String value;
+    String value;
 
-  private EnumLongNames(
-    final String value
-  ) {
-    Objects.requireNonNull(value, "value");
-    this.value = value;
-  }
-
-  @JsonCreator
-  public static EnumLongNames fromValue(final String value) {
-    for (final EnumLongNames v_value : values()) {
-      if (v_value.value.equals(value)) {
-        return v_value;
-      }
+    EnumLongNames(final String value) {
+        this.value = value;
     }
 
-    throw new IllegalArgumentException("value");
-  }
+    @JsonCreator
+    public static EnumLongNames fromValue(final String value) {
+        for (final EnumLongNames v : values()) {
+            if (v.value.equals(value)) {
+                return v;
+            }
+        }
 
-  @JsonValue
-  public String toValue() {
-    return this.value;
-  }
+        throw new IllegalArgumentException("value");
+    }
+
+    @JsonValue
+    public String toValue() {
+        return this.value;
+    }
 }

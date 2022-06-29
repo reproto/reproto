@@ -1,10 +1,14 @@
 class Value:
-  def __init__(self, _foo_bar):
-    self._foo_bar = _foo_bar
+  def __init__(self, foo_bar):
+    self.__foo_bar = foo_bar
 
   @property
   def foo_bar(self):
-    return self._foo_bar
+    return self.__foo_bar
+
+  @foo_bar.setter
+  def foo_bar(self, foo_bar):
+    self.__foo_bar = foo_bar
 
   @staticmethod
   def decode(data):
@@ -18,13 +22,12 @@ class Value:
   def encode(self):
     data = dict()
 
-    if self._foo_bar is None:
-      raise Exception("FOO_BAR: is a required field")
+    if self.foo_bar is None:
+      raise Exception("missing required field: foo_bar")
 
-    data["FOO_BAR"] = self._foo_bar
+    data["FOO_BAR"] = self.foo_bar
 
     return data
 
   def __repr__(self):
-    return "<Value foo_bar:{!r}>".format(self._foo_bar)
-
+    return "<Value foo_bar:{!r}>".format(self.foo_bar)

@@ -100,18 +100,17 @@ export class EnumExplicit {
   encode() {
     return this.value;
   }
+
   static decode(data) {
     for (let i = 0, l = EnumExplicit.values.length; i < l; i++) {
-      const member = EnumExplicit.values[i]
-
-
+      const member = EnumExplicit.values[i];
 
       if (member.value === data) {
         return member;
       }
     }
 
-    throw new Error("no matching value: " + data);
+    throw new Error("no value matching: " + data);
   }
 }
 
@@ -129,18 +128,17 @@ export class EnumImplicit {
   encode() {
     return this.value;
   }
+
   static decode(data) {
     for (let i = 0, l = EnumImplicit.values.length; i < l; i++) {
-      const member = EnumImplicit.values[i]
-
-
+      const member = EnumImplicit.values[i];
 
       if (member.value === data) {
         return member;
       }
     }
 
-    throw new Error("no matching value: " + data);
+    throw new Error("no value matching: " + data);
   }
 }
 
@@ -158,18 +156,17 @@ export class EnumLongNames {
   encode() {
     return this.value;
   }
+
   static decode(data) {
     for (let i = 0, l = EnumLongNames.values.length; i < l; i++) {
-      const member = EnumLongNames.values[i]
-
-
+      const member = EnumLongNames.values[i];
 
       if (member.value === data) {
         return member;
       }
     }
 
-    throw new Error("no matching value: " + data);
+    throw new Error("no value matching: " + data);
   }
 }
 
@@ -187,18 +184,17 @@ export class EnumU32 {
   encode() {
     return this.value;
   }
+
   static decode(data) {
     for (let i = 0, l = EnumU32.values.length; i < l; i++) {
-      const member = EnumU32.values[i]
-
-
+      const member = EnumU32.values[i];
 
       if (member.value === data) {
         return member;
       }
     }
 
-    throw new Error("no matching value: " + data);
+    throw new Error("no value matching: " + data);
   }
 }
 
@@ -216,18 +212,17 @@ export class EnumU64 {
   encode() {
     return this.value;
   }
+
   static decode(data) {
     for (let i = 0, l = EnumU64.values.length; i < l; i++) {
-      const member = EnumU64.values[i]
-
-
+      const member = EnumU64.values[i];
 
       if (member.value === data) {
         return member;
       }
     }
 
-    throw new Error("no matching value: " + data);
+    throw new Error("no value matching: " + data);
   }
 }
 
@@ -245,18 +240,17 @@ export class EnumI32 {
   encode() {
     return this.value;
   }
+
   static decode(data) {
     for (let i = 0, l = EnumI32.values.length; i < l; i++) {
-      const member = EnumI32.values[i]
-
-
+      const member = EnumI32.values[i];
 
       if (member.value === data) {
         return member;
       }
     }
 
-    throw new Error("no matching value: " + data);
+    throw new Error("no value matching: " + data);
   }
 }
 
@@ -276,18 +270,17 @@ export class EnumI64 {
   encode() {
     return this.value;
   }
+
   static decode(data) {
     for (let i = 0, l = EnumI64.values.length; i < l; i++) {
-      const member = EnumI64.values[i]
-
-
+      const member = EnumI64.values[i];
 
       if (member.value === data) {
         return member;
       }
     }
 
-    throw new Error("no matching value: " + data);
+    throw new Error("no value matching: " + data);
   }
 }
 

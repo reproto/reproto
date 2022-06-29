@@ -3,11 +3,9 @@ package test
 import "encoding/json"
 import "errors"
 
-type Entry struct {
-}
+type Entry struct {}
 
-type RootType struct {
-}
+type RootType struct {}
 
 type RootInterface struct {
   Value interface {
@@ -15,8 +13,7 @@ type RootInterface struct {
   }
 }
 
-type RootInterface_Foo struct {
-}
+type RootInterface_Foo struct {}
 
 func (this RootInterface_Foo) IsRootInterface() {
 }
@@ -118,8 +115,7 @@ func (this RootEnum) MarshalJSON() ([]byte, error) {
   return json.Marshal(s)
 }
 
-type RootTuple struct {
-}
+type RootTuple struct {}
 
 func (this *RootTuple) UnmarshalJSON(b []byte) error {
   var array []json.RawMessage
@@ -128,19 +124,16 @@ func (this *RootTuple) UnmarshalJSON(b []byte) error {
     return err
   }
 
-
   return nil
 }
 
 func (this RootTuple) MarshalJSON() ([]byte, error) {
   var array []json.RawMessage
 
-
   return json.Marshal(array)
 }
 
-type RootType_NestedType struct {
-}
+type RootType_NestedType struct {}
 
 type RootType_NestedInterface struct {
   Value interface {
@@ -148,8 +141,7 @@ type RootType_NestedInterface struct {
   }
 }
 
-type RootType_NestedInterface_Foo struct {
-}
+type RootType_NestedInterface_Foo struct {}
 
 func (this RootType_NestedInterface_Foo) IsRootType_NestedInterface() {
 }
@@ -251,8 +243,7 @@ func (this RootType_NestedEnum) MarshalJSON() ([]byte, error) {
   return json.Marshal(s)
 }
 
-type RootType_NestedTuple struct {
-}
+type RootType_NestedTuple struct {}
 
 func (this *RootType_NestedTuple) UnmarshalJSON(b []byte) error {
   var array []json.RawMessage
@@ -261,19 +252,16 @@ func (this *RootType_NestedTuple) UnmarshalJSON(b []byte) error {
     return err
   }
 
-
   return nil
 }
 
 func (this RootType_NestedTuple) MarshalJSON() ([]byte, error) {
   var array []json.RawMessage
 
-
   return json.Marshal(array)
 }
 
-type RootInterface_Foo_NestedType struct {
-}
+type RootInterface_Foo_NestedType struct {}
 
 type RootInterface_Foo_NestedInterface struct {
   Value interface {
@@ -281,8 +269,7 @@ type RootInterface_Foo_NestedInterface struct {
   }
 }
 
-type RootInterface_Foo_NestedInterface_NestedFoo struct {
-}
+type RootInterface_Foo_NestedInterface_NestedFoo struct {}
 
 func (this RootInterface_Foo_NestedInterface_NestedFoo) IsRootInterface_Foo_NestedInterface() {
 }
@@ -384,8 +371,7 @@ func (this RootInterface_Foo_NestedEnum) MarshalJSON() ([]byte, error) {
   return json.Marshal(s)
 }
 
-type RootInterface_Foo_NestedTuple struct {
-}
+type RootInterface_Foo_NestedTuple struct {}
 
 func (this *RootInterface_Foo_NestedTuple) UnmarshalJSON(b []byte) error {
   var array []json.RawMessage
@@ -394,19 +380,16 @@ func (this *RootInterface_Foo_NestedTuple) UnmarshalJSON(b []byte) error {
     return err
   }
 
-
   return nil
 }
 
 func (this RootInterface_Foo_NestedTuple) MarshalJSON() ([]byte, error) {
   var array []json.RawMessage
 
-
   return json.Marshal(array)
 }
 
-type RootTuple_NestedType struct {
-}
+type RootTuple_NestedType struct {}
 
 type RootTuple_NestedInterface struct {
   Value interface {
@@ -414,8 +397,7 @@ type RootTuple_NestedInterface struct {
   }
 }
 
-type RootTuple_NestedInterface_Foo struct {
-}
+type RootTuple_NestedInterface_Foo struct {}
 
 func (this RootTuple_NestedInterface_Foo) IsRootTuple_NestedInterface() {
 }
@@ -517,8 +499,7 @@ func (this RootTuple_NestedEnum) MarshalJSON() ([]byte, error) {
   return json.Marshal(s)
 }
 
-type RootTuple_NestedTuple struct {
-}
+type RootTuple_NestedTuple struct {}
 
 func (this *RootTuple_NestedTuple) UnmarshalJSON(b []byte) error {
   var array []json.RawMessage
@@ -527,19 +508,16 @@ func (this *RootTuple_NestedTuple) UnmarshalJSON(b []byte) error {
     return err
   }
 
-
   return nil
 }
 
 func (this RootTuple_NestedTuple) MarshalJSON() ([]byte, error) {
   var array []json.RawMessage
 
-
   return json.Marshal(array)
 }
 
-type RootService_NestedType struct {
-}
+type RootService_NestedType struct {}
 
 type RootService_NestedInterface struct {
   Value interface {
@@ -547,8 +525,7 @@ type RootService_NestedInterface struct {
   }
 }
 
-type RootService_NestedInterface_Foo struct {
-}
+type RootService_NestedInterface_Foo struct {}
 
 func (this RootService_NestedInterface_Foo) IsRootService_NestedInterface() {
 }
@@ -650,8 +627,7 @@ func (this RootService_NestedEnum) MarshalJSON() ([]byte, error) {
   return json.Marshal(s)
 }
 
-type RootService_NestedTuple struct {
-}
+type RootService_NestedTuple struct {}
 
 func (this *RootService_NestedTuple) UnmarshalJSON(b []byte) error {
   var array []json.RawMessage
@@ -660,49 +636,35 @@ func (this *RootService_NestedTuple) UnmarshalJSON(b []byte) error {
     return err
   }
 
-
   return nil
 }
 
 func (this RootService_NestedTuple) MarshalJSON() ([]byte, error) {
   var array []json.RawMessage
 
-
   return json.Marshal(array)
 }
 
-type RootType_NestedInterface_Foo_Nested struct {
-}
+type RootType_NestedInterface_Foo_Nested struct {}
 
-type RootType_NestedTuple_Nested struct {
-}
+type RootType_NestedTuple_Nested struct {}
 
-type RootType_NestedService_Nested struct {
-}
+type RootType_NestedService_Nested struct {}
 
-type RootInterface_Foo_NestedInterface_NestedFoo_Nested struct {
-}
+type RootInterface_Foo_NestedInterface_NestedFoo_Nested struct {}
 
-type RootInterface_Foo_NestedTuple_Nested struct {
-}
+type RootInterface_Foo_NestedTuple_Nested struct {}
 
-type RootInterface_Foo_NestedService_Nested struct {
-}
+type RootInterface_Foo_NestedService_Nested struct {}
 
-type RootTuple_NestedInterface_Foo_Nested struct {
-}
+type RootTuple_NestedInterface_Foo_Nested struct {}
 
-type RootTuple_NestedTuple_Nested struct {
-}
+type RootTuple_NestedTuple_Nested struct {}
 
-type RootTuple_NestedService_Nested struct {
-}
+type RootTuple_NestedService_Nested struct {}
 
-type RootService_NestedInterface_Foo_Nested struct {
-}
+type RootService_NestedInterface_Foo_Nested struct {}
 
-type RootService_NestedTuple_Nested struct {
-}
+type RootService_NestedTuple_Nested struct {}
 
-type RootService_NestedService_Nested struct {
-}
+type RootService_NestedService_Nested struct {}
