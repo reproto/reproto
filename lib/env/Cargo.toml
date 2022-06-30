@@ -34,7 +34,7 @@ dart = {package = "reproto-backend-dart", path = "../backend-dart", version = "0
 
 toml = "0.5.9"
 log = "0.4.17"
-url = "2.2.2"
+url = "=2.1.0"
 url_serde = "0.2.0"
 serde = { version = "1.0.137", features = ["derive"] }
 dirs = "4.0.0"

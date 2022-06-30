@@ -451,16 +451,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
-name = "form_urlencoded"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fc25a87fa4fd2094bffb06925852034d90a17f0d1e05197d4956d3555752191"
-dependencies = [
- "matches",
- "percent-encoding 2.1.0",
-]
-
-[[package]]
 name = "fs_extra"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1001,7 +991,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_repr",
- "url 2.2.2",
+ "url 2.1.0",
 ]
 
 [[package]]
@@ -1568,7 +1558,7 @@ dependencies = [
  "tar",
  "tokio",
  "toml",
- "url 2.2.2",
+ "url 2.1.0",
 ]
 
 [[package]]
@@ -1798,7 +1788,7 @@ dependencies = [
  "reproto-semver",
  "ropey",
  "serde",
- "url 2.2.2",
+ "url 2.1.0",
 ]
 
 [[package]]
@@ -1838,7 +1828,7 @@ dependencies = [
  "reproto-repository-http",
  "serde",
  "toml",
- "url 2.2.2",
+ "url 2.1.0",
  "url_serde",
 ]
 
@@ -1859,7 +1849,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "url 2.2.2",
+ "url 2.1.0",
 ]
 
 [[package]]
@@ -1953,7 +1943,7 @@ dependencies = [
  "serde",
  "serde_json",
  "toml",
- "url 2.2.2",
+ "url 2.1.0",
 ]
 
 [[package]]
@@ -1967,7 +1957,7 @@ dependencies = [
  "reproto-repository",
  "ring",
  "tokio-stream",
- "url 2.2.2",
+ "url 2.1.0",
 ]
 
 [[package]]
@@ -2593,11 +2583,10 @@ dependencies = [
 
 [[package]]
 name = "url"
-version = "2.2.2"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a507c383b2d33b5fc35d1861e77e6b383d158b2da5e14fe51b83dfedf6fd578c"
+checksum = "75b414f6c464c879d7f9babf951f23bc3743fb7313c081b2e6ca719067ea9d61"
 dependencies = [
- "form_urlencoded",
  "idna 0.2.3",
  "matches",
  "percent-encoding 2.1.0",

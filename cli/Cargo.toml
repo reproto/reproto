@@ -32,7 +32,7 @@ env = {package = "reproto-env", path = "../lib/env", version = "0.4"}
 backend = {package = "reproto-backend", path = "../lib/backend", version = "0.4"}
 doc = {package = "reproto-backend-doc", path = "../lib/backend-doc", version = "0.4"}
 repository = {package = "reproto-repository", path = "../lib/repository", version = "0.4"}
-url = "2.2.2"
+url = "=2.1.0"
 
 tokio = { version = "1.19.2", features = ["rt", "rt-multi-thread", "net", "macros"] }
 ansi_term = "0.12.1"
