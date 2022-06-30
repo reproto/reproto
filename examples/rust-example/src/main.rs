@@ -1,7 +1,3 @@
-extern crate failure;
-extern crate reqwest;
-extern crate rust;
-
 use rust::gen::github::v3;
 
 fn main() -> Result<(), rust::gen::reproto::Error> {

@@ -37,12 +37,12 @@ url = "2.2.2"
 tokio = { version = "1.19.2", features = ["rt", "rt-multi-thread", "net", "macros"] }
 ansi_term = "0.12.1"
 atty = "0.2.14"
-clap = "3.2.6"
+clap = "3.2.7"
 linked-hash-map = { version = "0.5.6", features = ["serde"] }
 log = "0.4.17"
 pulldown-cmark = "0.9.1"
 serde = { version = "1.0.137", features = ["derive"] }
-serde_json = "1.0.81"
+serde_json = "1.0.82"
 toml = "0.5.9"
 notify = { version = "4.0.17", optional = true }
 

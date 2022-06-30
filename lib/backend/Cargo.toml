@@ -20,5 +20,5 @@ path-parser = {package = "reproto-path-parser", path = "../path-parser", version
 naming = {package = "reproto-naming", path = "../naming", version = "0.4"}
 
 log = "0.4.17"
-serde_json = "1.0.81"
-genco = "0.16.1"
+serde_json = "1.0.82"
+genco = "0.17.0"

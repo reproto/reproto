@@ -22,6 +22,6 @@ naming = {package = "reproto-naming", path = "../naming", version = "0.4"}
 log = "0.4.17"
 serde = { version = "1.0.137", features = ["derive"] }
 yaml = { package = "serde_yaml", version = "0.8.24" }
-json = { package = "serde_json", version = "1.0.81" }
+json = { package = "serde_json", version = "1.0.82" }
 toml = "0.5.9"
 linked-hash-map = { version = "0.5.6", features = ["serde_impl"] }

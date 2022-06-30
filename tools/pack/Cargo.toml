@@ -14,7 +14,7 @@ Utility application to pack subleme themes and syntaxes for reproto.
 
 [dependencies]
 syntect = "5.0.0"
-clap = "3.2.6"
+clap = "3.2.7"
 anyhow = "1.0.58"
 
 [[bin]]

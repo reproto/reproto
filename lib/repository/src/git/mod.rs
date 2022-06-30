@@ -22,7 +22,7 @@ pub fn setup_git_repo<'a, P: AsRef<Path>>(
 
     remote
         .set_scheme(scheme)
-        .map_err(|_| format!("cannot set scheme for url: {}", url))?;
+        .map_err(|_| format!("cannot set scheme `{scheme}` for url: {}", url))?;
 
     let path = repos.as_ref().to_owned();
 

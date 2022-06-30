@@ -248,15 +248,6 @@ serde = "1"
 serde_derive = "1"
 ```
 
-And the following extern declarations:
-
-```rust
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate serde;
-```
-
 Rust does not support nested structs, so generated types follow a naming strategy like the
 following:
 

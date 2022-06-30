@@ -23,7 +23,7 @@ trans = {package = "reproto-trans", path = "../trans", version = "0.4"}
 lexer = {package = "reproto-lexer", path = "../lexer", version = "0.4"}
 manifest = {package = "reproto-manifest", path = "../manifest", version = "0.4"}
 
-genco = "0.16.1"
+genco = "0.17.0"
 toml = "0.5.9"
 log = "0.4.17"
 

@@ -141,11 +141,11 @@ impl ReprotoService {
             let actual = to_checksum(&mut checksum_read)?;
 
             if actual != checksum {
-                info!("{} != {}", actual, checksum);
+                log::info!("{} != {}", actual, checksum);
                 return Err(Error::BadRequest(CHECKSUM_MISMATCH.into()));
             }
 
-            info!("Uploading object: {}", checksum);
+            log::info!("Uploading object: {}", checksum);
 
             body.seek(SeekFrom::Start(0))?;
 
@@ -195,7 +195,7 @@ impl ReprotoService {
 
         let encoding = Self::pick_encoding(req.headers());
 
-        info!("Creating temporary file");
+        log::info!("Creating temporary file");
 
         let mut out = Vec::<u8>::new();
         let body = req.body_mut();
@@ -255,20 +255,20 @@ impl ReprotoService {
                 *response.body_mut() = Body::from("internal server error");
                 *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
 
-                error!("internal server error: {}", message);
+                log::error!("internal server error: {}", message);
             }
             Error::Core(error) => {
                 *response.body_mut() = Body::from("internal server error");
                 *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
 
-                error!("internal server error: {}", error.message());
+                log::error!("internal server error: {}", error.message());
 
                 for e in error.causes().skip(1) {
-                    error!("caused by: {}", e.message());
+                    log::error!("caused by: {}", e.message());
                 }
 
                 if let Some(backtrace) = error.backtrace() {
-                    error!("{:?}", backtrace);
+                    log::error!("{:?}", backtrace);
                 }
             }
         }

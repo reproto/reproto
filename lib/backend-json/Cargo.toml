@@ -20,5 +20,5 @@ manifest = {package = "reproto-manifest", path = "../manifest", version = "0.4"}
 
 log = "0.4.17"
 serde = "1.0.137"
-serde_json = "1.0.81"
+serde_json = "1.0.82"
 toml = "0.5.9"

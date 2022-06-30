@@ -1,5 +1,3 @@
-#![feature(proc_macro_hygiene)]
-
 mod compiler;
 mod flavored;
 mod module;

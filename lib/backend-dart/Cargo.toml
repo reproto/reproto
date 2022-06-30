@@ -19,7 +19,7 @@ naming = {package = "reproto-naming", path = "../naming", version = "0.4"}
 trans = {package = "reproto-trans", path = "../trans", version = "0.4"}
 manifest = {package = "reproto-manifest", path = "../manifest", version = "0.4"}
 
-genco = "0.16.1"
+genco = "0.17.0"
 log = "0.4.17"
 serde = { version = "1.0.137", features = ["derive"] }
 toml = "0.5.9"

@@ -22,7 +22,7 @@ parser = {package = "reproto-parser", path = "../parser", version = "0.4"}
 lexer = {package = "reproto-lexer", path = "../lexer", version = "0.4"}
 
 ty = { package = "lsp-types", version = "0.93.0" }
-json = { package = "serde_json", version = "1.0.81" }
+json = { package = "serde_json", version = "1.0.82" }
 serde = { version = "1.0.137", features = ["derive"] }
 serde_derive = "1.0.137"
 url = { version = "2.2.2", features = ["serde"] }

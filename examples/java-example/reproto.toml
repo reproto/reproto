@@ -3,7 +3,7 @@ language = "java"
 [presets.maven]
 
 [modules]
-okhttp = {version = "1"}
+# okhttp = {version = "1"}
 jackson = {}
 
 [packages]

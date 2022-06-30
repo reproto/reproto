@@ -20,14 +20,13 @@ tracing = []
 reproto-repository = { path = "../lib/repository", version = "0.4" }
 reproto-core = { path = "../lib/core", version = "0.4" }
 
-tokio = {version = "1.19.2", features = ["full", "macros"]}
+tokio = { version = "1.19.2", features = ["full", "macros"] }
 tokio-stream = "0.1.9"
 futures = "0.3.21"
-hyper = {version = "0.14.19", features = ["server", "stream"]}
+hyper = { version = "0.14.19", features = ["server", "stream"] }
 pretty_env_logger = "0.4.0"
 log = "0.4.17"
 flate2 = "1.0.24"
-clap = "3.2.6"
+clap = "3.2.7"
 toml = "0.5.9"
-serde = "1.0.137"
-serde_derive = "1.0.137"
+serde = { version = "1.0.137", features = ["derive"] }

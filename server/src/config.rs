@@ -3,6 +3,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use reproto_core::errors::Result;
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
