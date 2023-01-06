@@ -34,7 +34,7 @@ doc = {package = "reproto-backend-doc", path = "../lib/backend-doc", version = "
 repository = {package = "reproto-repository", path = "../lib/repository", version = "0.4"}
 url = "=2.1.0"
 
-tokio = { version = "1.19.2", features = ["rt", "rt-multi-thread", "net", "macros"] }
+tokio = { version = "1.20.3", features = ["rt", "rt-multi-thread", "net", "macros"] }
 ansi_term = "0.12.1"
 atty = "0.2.14"
 clap = "3.2.7"
